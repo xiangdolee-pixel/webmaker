@@ -21,7 +21,7 @@ const ACTIONS = {
 // ───────── 시작 · 로그인 ─────────
 async function start() {
   try { INFO = await api('/me'); } catch (e) {
-    if (e.status === 401 || e.status === 403) return showLogin(e.status === 403 ? '관리자 등급만 들어올 수 있습니다. 관리자 계정으로 다시 로그인해 주세요.' : '');
+    if (e.status === 401 || e.status === 403) return showLogin(e.status === 403 ? '지금 로그인한 계정은 관리자(레벨1)가 아니라 관리 화면에 들어올 수 없습니다. 관리자 계정으로 로그인해 주세요.' : '');
     return showLogin(e.message);
   }
   showApp();
@@ -37,10 +37,8 @@ $('#login-form').addEventListener('submit', (e) => {
   const form = e.currentTarget;
   busy(form.querySelector('button'), form.querySelector('.err'), async () => {
     const r = await pub('/login', { method: 'POST', data: formData(form) });
-    if (!r.admin) {
-      await pub('/logout', { method: 'POST', data: {} });
-      throw new Error('관리자 등급만 들어올 수 있습니다.');
-    }
+    // 서비스와 같은 로그인(SSO)이라 홈페이지 로그인은 그대로 두고, 관리 화면만 막는다
+    if (!r.admin) throw new Error('관리 화면은 레벨1(관리자) 계정만 들어올 수 있습니다. 홈페이지에는 이 계정으로 로그인돼 있습니다.');
     form.reset();
     await start();
   });

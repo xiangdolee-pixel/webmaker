@@ -50,7 +50,7 @@ function checkGroups(form) {
 onForm('login', async (form, data) => {
   const r = await api('/login', { method: 'POST', data });
   const next = form.dataset.next || '/';
-  location.href = r.admin && next === '/' ? '/admin/' : next;
+  location.href = next;
 });
 
 onForm('signup', async (form, data) => {

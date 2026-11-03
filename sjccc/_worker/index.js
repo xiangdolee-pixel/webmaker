@@ -8,7 +8,8 @@
 // 하는 일
 //   xim 에서 정지된 사이트                         → "서비스 일시 중단" 화면 (/admin/ 은 정지 중에도 열린다)
 //   /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  → xms (업체 관리 화면 · 회원 · 게시판)
-//   그 밖                                          → 이 폴더의 정적 파일 그대로
+//   그 밖                                          → 이 폴더의 정적 파일 (html 이면 공통 계정 버튼 스크립트를 넣어서)
+//   계정 버튼 자리: 헤더 안에 <span data-xms-account></span> (없으면 오른쪽 위에 떠 있음)
 // xim 이 잠깐 응답하지 않으면 사이트는 그냥 열어 둔다(정지 확인 실패 = 운영).
 
 const STATUS_TTL = 30000;
@@ -41,6 +42,14 @@ export default {
     const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/xms/') || pathname.startsWith('/xms-api/');
     if (!isAdmin && (await siteStatus(env)) === 'suspended') return forward(env.XIM, request, env, '/__suspended');
     if (XMS_PATHS.test(pathname)) return forward(env.XMS, request, env);
-    return env.ASSETS.fetch(request);
+    return withAccount(await env.ASSETS.fetch(request));
   },
 };
+
+// 모든 html 페이지에 공통 계정 버튼(사람 동그라미 · 로그인)을 넣는다 — xim 관할 모든 서비스 공통
+function withAccount(res) {
+  if (!(res.headers.get('Content-Type') || '').includes('text/html')) return res;
+  return new HTMLRewriter()
+    .on('head', { element(el) { el.append('<script src="/xms/js/account.js" defer></script>', { html: true }); } })
+    .transform(res);
+}

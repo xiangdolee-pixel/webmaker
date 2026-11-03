@@ -260,8 +260,8 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .pub-nav a, .pub-nav span { display: flex; align-items: center; min-height: 44px; color: var(--ink); text-decoration: none; font-weight: 600; }
 .pub-nav .sub a, .pub-nav .sub span { padding-left: 14px; font-weight: 500; color: var(--sub); min-height: 40px; }
 .pub-nav .sub .sub a { padding-left: 28px; }
-.pub-user { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-2); }
-.pub-user a, .pub-user .linkish { min-height: 40px; font-size: 14px; font-weight: 500; color: var(--sub); }
+.pub-account { flex: none; --xa-bg: var(--brand); }
+.pub-account .xa-login { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
 .pub-main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
 .pub-foot { padding: 28px 16px; color: var(--mute); font-size: 13px; text-align: center; border-top: 1px solid var(--line); background: #fff; }
 .pub-box { max-width: 900px; margin: 0 auto; padding: 22px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); animation: rise .35s var(--ease) both; }
@@ -356,7 +356,6 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
   .pub-nav .sub a { padding: 0 10px; border-radius: 6px; }
   .pub-nav .sub a:hover { background: var(--line-2); }
   .pub-nav .sub .sub { position: static; opacity: 1; visibility: visible; transform: none; border: 0; box-shadow: none; padding: 0 0 0 10px; }
-  .pub-user { margin: 0; padding: 0; border: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -52,10 +52,7 @@ async function page(ctx, title, content, opts = {}) {
   const { env, site, me } = ctx;
   const info = await siteInfo(env, site);
   const menus = await visibleMenus(env.DB, site, me);
-  const user = me.kind === 'member'
-    ? `<a href="/member/mypage">${esc(me.member.nickname || me.member.name)} 님</a>${isAdmin(me) ? '<a href="/admin/">관리자</a>' : ''}<button type="button" class="linkish" data-logout>로그아웃</button>`
-    : me.kind === 'staff' ? '<a href="/admin/">관리자 화면</a>'
-      : '<a href="/member/login">로그인</a><a href="/member/signup">회원가입</a>';
+  // 로그인 · 계정 메뉴는 모든 서비스 공통 버튼(/xms/js/account.js)이 그린다
   return html(`<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(title)} - ${esc(info.name)}</title>
@@ -63,11 +60,13 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ''}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/xms/css/style.css">
 <script type="module" src="/xms/js/public.js"></script>
+<script src="/xms/js/account.js" defer></script>
 </head><body class="pub">
 <header class="pub-top"><div class="pub-in">
   <a class="pub-brand" href="/">${esc(info.name)}</a>
+  <nav class="pub-nav" data-nav>${navHtml(menus)}</nav>
+  <span class="pub-account" data-xms-account></span>
   <button type="button" class="nav-btn" aria-label="메뉴 열기" aria-expanded="false" data-nav-toggle><i></i><i></i><i></i></button>
-  <nav class="pub-nav" data-nav>${navHtml(menus)}<div class="pub-user">${user}</div></nav>
 </div></header>
 <main class="pub-main">${content}</main>
 <footer class="pub-foot">© ${esc(info.name)}</footer>

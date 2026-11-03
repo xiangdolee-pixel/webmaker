@@ -131,6 +131,12 @@ ul, ol { list-style: none; }
 }
 .site-header.scrolled .gnb-cta:hover { background: var(--deep); }
 
+/* 로그인 · 계정 버튼 (xim 공통 /xms/js/account.js 가 채운다) */
+.gnb { margin-left: auto; }
+.gnb-account { margin-left: clamp(1rem, 2vw, 1.8rem); --xa-bg: var(--accent); }
+.gnb-account .xa-login { font-size: 1.1rem; font-weight: 500; opacity: 0.75; padding: 0.5rem 0; transition: opacity 0.3s; }
+.gnb-account .xa-login:hover { opacity: 1; }
+
 .nav-toggle {
   display: none;
   width: 44px; height: 44px;
@@ -1202,7 +1208,9 @@ section { padding: clamp(5rem, 11vw, 8.5rem) var(--gutter); }
   .site-header.menu-open .brand-en { color: var(--accent); }
   .header-inner { position: relative; z-index: 10; }
   /* 오버레이(.gnb)보다 위에 로고·닫기 버튼이 보이도록 */
-  .brand, .nav-toggle { position: relative; z-index: 11; }
+  .brand, .nav-toggle, .gnb-account { position: relative; z-index: 11; }
+  .gnb-account { margin-left: auto; margin-right: 0.9rem; padding-left: 0.9rem; }
+  .gnb-account .xa-login { font-size: 0.95rem; white-space: nowrap; opacity: 0.9; }
 
   .hero { padding-top: 6rem; }
   /* 첫화면 글자: 행간·간격을 균일하게 좁히고 더 아래로 */
