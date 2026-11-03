@@ -619,6 +619,20 @@ export default {
     const url = new URL(request.url);
     const { pathname } = url;
     try {
+      // 한 번에: 지수·환율·원자재 + 거래대금(?top=kr|us) + 휴장·서킷브레이커
+      if (pathname === '/api/all') {
+        const mk = url.searchParams.get('top') === 'us' ? 'us' : 'kr';
+        const [ind, top, mkt] = await Promise.all([
+          swr(ctx, 'indices', 5000, 10 * 60e3, loadIndices),
+          swr(ctx, `top:${mk}`, 8000, 10 * 60e3, () => loadTop(mk)).catch(() => null),
+          swr(ctx, 'market', 30000, 30 * 60e3, loadMarket).catch(() => null),
+        ]);
+        return json({
+          indices: { ...ind.data, fetchedAt: ind.at, stale: ind.stale },
+          top: top ? { ...top.data, fetchedAt: top.at } : null,
+          market: mkt ? { ...mkt.data, fetchedAt: mkt.at } : null,
+        });
+      }
       if (pathname === '/api/indices') {
         const r = await swr(ctx, 'indices', 5000, 10 * 60e3, loadIndices);
         return json({ ...r.data, fetchedAt: r.at, stale: r.stale });

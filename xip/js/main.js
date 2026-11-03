@@ -275,17 +275,19 @@
     el.innerHTML = lines.join('<br>');
     el.hidden = false;
   }
+  function applyMarket(d) {
+    if (!d) return;
+    if (/[?&]cbtest=1/.test(location.search)) { // 화면 확인용 가짜 발동
+      d.cb = [
+        { market: 'kr', index: '코스피', level: 1, pct: 8, at: '10:12', haltEnd: '10:32', auctionEnd: '10:42', resume: '10:42' },
+        { market: 'us', index: 'S&P 500', level: 1, pct: 7, at: '09:58', haltEnd: '10:13', resume: '10:13' },
+      ];
+    }
+    market = d;
+    renderHours();
+  }
   function loadMarket() {
-    return getJSON('/api/market').then(function (d) {
-      if (/[?&]cbtest=1/.test(location.search)) { // 화면 확인용 가짜 발동
-        d.cb = [
-          { market: 'kr', index: '코스피', level: 1, pct: 8, at: '10:12', haltEnd: '10:32', auctionEnd: '10:42', resume: '10:42' },
-          { market: 'us', index: 'S&P 500', level: 1, pct: 7, at: '09:58', haltEnd: '10:13', resume: '10:13' },
-        ];
-      }
-      market = d;
-      renderHours();
-    }).catch(function (e) { console.warn('[market]', e); });
+    return getJSON('/api/market').then(applyMarket).catch(function (e) { console.warn('[market]', e); });
   }
 
   /* ---------- 아이콘 (국기·원소 기호 등, 직접 그린 SVG) ---------- */
@@ -379,22 +381,42 @@
       else box.removeAttribute('data-msg');
     });
   }
+  function applyIndices(data) {
+    if (!data || !data.items) return;
+    idxFails = 0;
+    tileMsg('');
+    if (data.fx && data.fx.rate) { fxRate = data.fx.rate; fxData = data.fx; renderFxNote(); }
+    (data.items || []).forEach(function (it) { naverStatus[it.code] = it.status; });
+    renderTiles('indices', 'index', data.items);
+    renderTiles('fxs', 'fx', data.fxs);
+    renderTiles('cmdty', 'cmdty', data.cmdty);
+    renderHours();
+    chartTick();
+  }
+  function indicesFailed(e) {
+    idxFails++;
+    tileMsg('네이버 증권 응답이 늦어요 · 다시 받는 중 (' + idxFails + '번째)');
+    console.warn('[indices]', e);
+  }
   function loadIndices() {
-    return getJSON('/api/indices').then(function (data) {
-      idxFails = 0;
-      tileMsg('');
-      if (data.fx && data.fx.rate) { fxRate = data.fx.rate; fxData = data.fx; renderFxNote(); }
-      (data.items || []).forEach(function (it) { naverStatus[it.code] = it.status; });
-      renderTiles('indices', 'index', data.items);
-      renderTiles('fxs', 'fx', data.fxs);
-      renderTiles('cmdty', 'cmdty', data.cmdty);
-      renderHours();
-      chartTick();
-    }).catch(function (e) {
-      idxFails++;
-      tileMsg('네이버 증권 응답이 늦어요 · 다시 받는 중 (' + idxFails + '번째)');
-      console.warn('[indices]', e);
-    });
+    return getJSON('/api/indices').then(applyIndices).catch(indicesFailed);
+  }
+
+  /* 한 번에 받기: 지수·환율·원자재 + 거래대금(보고 있는 시장) + 휴장·서킷브레이커 → 요청 1번
+     받은 값은 브라우저에 저장해 두고, 다음에 열 때 기다리지 않고 바로 보여준다 */
+  var SNAP_KEY = 'xip:snap:v1';
+  function saveSnap(d) {
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), d: d })); } catch (e) {}
+  }
+  function applyAll(d, fromSnap) {
+    if (!d) return;
+    if (d.market) applyMarket(d.market);
+    if (d.indices) applyIndices(d.indices);
+    if (d.top) { if (d.top.market) renderTop(d.top); else { if (d.top.kr) renderTop(d.top.kr); if (d.top.us) renderTop(d.top.us); } }
+    if (!fromSnap) { snapShown(false); saveSnap(d); }
+  }
+  function loadAll() {
+    return getJSON('/api/all?top=' + topMarket).then(function (d) { applyAll(d); }).catch(indicesFailed);
   }
 
   /* ---------- 거래대금 상위 ---------- */
@@ -722,6 +744,7 @@
     return fetchCoinList().then(function (data) {
       var list = data.coins || [];
       if (!list.length) return;
+      try { localStorage.setItem('xip:coins:v1', JSON.stringify(list)); } catch (e) {}
       var prev = byId;
       byId = {};
       coins = list.map(function (c) {
@@ -1160,12 +1183,9 @@
   }
   function start() {
     stop();
-    // 지수·환율·원자재: 국내나 미국 장중이면 7초, 아니면 30초
-    timers.push(loop(loadIndices, function () { return marketOpen('kr') || marketOpen('us') ? INDEX_EVERY : 30000; }));
-    // 거래대금 상위: 보고 있는 시장이 장중이면 10초, 아니면 5분
-    timers.push(loop(loadTop, function () { return marketOpen(topMarket) ? TOP_EVERY : 300000; }));
+    // 지수·환율·원자재 + 거래대금 + 휴장/서킷브레이커를 한 번에: 국내나 미국 장중이면 7초, 아니면 30초
+    timers.push(loop(loadAll, function () { return marketOpen('kr') || marketOpen('us') ? INDEX_EVERY : 30000; }));
     timers.push(loop(loadCoins, function () { return COINS_EVERY; }));
-    timers.push(loop(loadMarket, function () { return 60000; }));
     var h = setInterval(renderHours, 30000);
     timers.push(function () { clearInterval(h); });
   }
@@ -1177,6 +1197,25 @@
     if (document.hidden) stop();
     else start();
   });
+
+  // 열자마자: 마지막으로 받은 값을 먼저 보여준다(서버를 기다리지 않음). 새 값이 오면 바로 바뀐다
+  function snapShown(on, at) {
+    var el = $('snap-note');
+    if (!el) return;
+    el.hidden = !on;
+    if (on) el.textContent = '마지막 저장 값 (' + fmtTime(new Date(at).toISOString()) + ') · 새 값 받는 중';
+  }
+  try {
+    var snap = JSON.parse(localStorage.getItem(SNAP_KEY) || 'null');
+    if (snap && snap.d && Date.now() - snap.at < 3 * 864e5) { applyAll(snap.d, true); snapShown(true, snap.at); }
+    var cs = JSON.parse(localStorage.getItem('xip:coins:v1') || 'null');
+    if (cs && cs.length && !coins.length) {
+      byId = {};
+      coins = cs.map(function (c) { c.live = false; byId[c.id] = c; dirty[c.id] = true; return c; });
+      buildRows();
+      schedule();
+    }
+  } catch (e) {}
 
   renderHours();
   start();

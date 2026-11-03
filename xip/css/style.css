@@ -47,6 +47,8 @@ button { font: inherit; color: inherit; }
 .logo-sub { font-size: 15px; font-weight: 600; color: var(--sub); letter-spacing: 0; }
 .top-meta { display: flex; align-items: center; gap: 14px; min-width: 0; font-size: 15px; color: var(--sub); }
 .fx { min-width: 0; }
+.snap-note { font-size: 12px; font-weight: 600; color: var(--warn); white-space: nowrap; }
+.snap-note[hidden] { display: none; }
 .fx b { color: var(--text); font-weight: 700; }
 .conn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .conn i { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); }
