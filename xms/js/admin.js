@@ -16,6 +16,9 @@ const ACTIONS = {
   DOC_PUBLISH: '약관·방침 발행', BOARD_CREATE: '게시판 만들기', BOARD_UPDATE: '게시판 설정 변경', BOARD_DELETE: '게시판 삭제', BOARD_RESTORE: '게시판 되살리기',
   MENU_CREATE: '메뉴 추가', MENU_UPDATE: '메뉴 변경', MENU_DELETE: '메뉴 삭제', MENU_SHOW: '메뉴 보이기', MENU_HIDE: '메뉴 숨기기',
   REQUEST_CREATE: '수정 요청', PASSWORD_CHANGE: '비밀번호 변경',
+  FAVICON_SET: '파비콘 바꾸기', FAVICON_REMOVE: '파비콘 내리기', SEO_UPDATE: '검색엔진 설정', ROBOTS_UPDATE: 'robots.txt 변경',
+  SHARE_UPDATE: '미리보기 설명 변경', SHARE_IMAGE_SET: '미리보기 그림 바꾸기', SHARE_IMAGE_REMOVE: '미리보기 그림 내리기',
+  POPUP_CREATE: '팝업 만들기', POPUP_UPDATE: '팝업 수정', POPUP_DELETE: '팝업 삭제',
 };
 
 // ───────── 시작 · 로그인 ─────────
@@ -65,7 +68,9 @@ const SIDE = [
     ['head', '가입 항목'], ['#/fields', '항목 목록', 'sub'], ['#/fields/new', '항목 추가', 'sub'],
     ['head', '약관·방침'], ['#/terms', '이용약관', 'sub'], ['#/privacy', '개인정보 처리방침', 'sub']]],
   ['사이트', [['head', '게시판'], ['#/boards', '게시판 목록', 'sub'], ['#/boards/new', '게시판 만들기', 'sub'],
-    ['head', '메뉴'], ['#/menus', '메뉴 목록', 'sub'], ['#/menus/new', '메뉴 추가', 'sub'], ['#/requests', '수정 요청']]],
+    ['head', '메뉴'], ['#/menus', '메뉴 목록', 'sub'], ['#/menus/new', '메뉴 추가', 'sub'],
+    ['head', '팝업'], ['#/popups', '팝업 목록', 'sub'], ['#/popups/new', '팝업 추가', 'sub'],
+    ['#/favicon', '파비콘'], ['#/seo', '검색엔진'], ['#/share', '카카오톡 미리보기'], ['#/requests', '수정 요청']]],
   ['내 계정', [['#/account', '비밀번호 변경'], ['#/audit', '관리 로그']]],
 ];
 function renderSide() {
@@ -115,6 +120,12 @@ async function route() {
     if (parts[0] === 'menus' && parts[1]) return await menuPage(Number(parts[1]));
     if (parts[0] === 'menus') return await menusPage();
     if (parts[0] === 'requests') return await requestsPage();
+    if (parts[0] === 'popups' && parts[1] === 'new') return await popupPage(null);
+    if (parts[0] === 'popups' && parts[1]) return await popupPage(Number(parts[1]));
+    if (parts[0] === 'popups') return await popupsPage(qs);
+    if (parts[0] === 'favicon') return await faviconPage();
+    if (parts[0] === 'seo') return await seoPage(qs);
+    if (parts[0] === 'share') return await sharePage();
     if (parts[0] === 'storage') return storagePage();
     if (parts[0] === 'account') return accountPage();
     if (parts[0] === 'audit') return await auditPage(qs);
@@ -648,6 +659,316 @@ async function auditPage(qs) {
         <td data-l="행위">${esc(ACTIONS[r.action] || r.action)}</td><td data-l="대상">${esc(r.target)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</td></tr>`).join('')}</tbody></table>`
     : empty('아직 기록이 없습니다', '회원·게시판·메뉴를 바꾸면 여기에 남습니다.')}</div>
     ${pager(d.page, d.size, d.total, (n) => `#/audit?page=${n}`)}`;
+}
+
+// ───────── 그림 다루기 (브라우저에서 줄여서 올린다) ─────────
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) { reject(new Error('그림 파일을 골라 주세요.')); return; }
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('그림을 읽지 못했습니다.'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+// 정사각형 투명 PNG — 정사각이 아니면 잘라내지 않고 여백을 넣어 맞춘다
+function squarePng(img, size) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const r = Math.min(size / img.naturalWidth, size / img.naturalHeight);
+  const w = img.naturalWidth * r; const h = img.naturalHeight * r;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  return c.toDataURL('image/png');
+}
+// 폭을 maxW 아래로 줄인 JPEG — maxBytes 를 넘으면 화질을 낮춘다
+function fitJpeg(img, maxW, maxBytes) {
+  const r = Math.min(1, maxW / img.naturalWidth);
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, c.width, c.height);
+  let q = 0.88; let url = c.toDataURL('image/jpeg', q);
+  while (url.length * 0.75 > maxBytes && q > 0.4) { q -= 0.08; url = c.toDataURL('image/jpeg', q); }
+  return url;
+}
+// 그림 고르기 칸: 누르기 · 끌어다 놓기(화면 아무 곳) · 붙여넣기(Ctrl+V)
+function imagePicker(host, onFile) {
+  host.innerHTML = `<label class="drop"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+    <b>여기에 그림을 끌어다 놓으세요</b><span>화면 아무 곳에나 놓아도 됩니다 · 복사한 그림은 Ctrl+V · 눌러서 고를 수도 있습니다</span></label>`;
+  const input = host.querySelector('input');
+  input.addEventListener('change', () => input.files[0] && onFile(input.files[0]));
+  const over = (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); host.classList.add('on'); } };
+  const drop = (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); host.classList.remove('on'); onFile(e.dataTransfer.files[0]); };
+  const leave = () => host.classList.remove('on');
+  const paste = (e) => { const f = [...(e.clipboardData?.files || [])].find((x) => x.type.startsWith('image/')); if (f) { e.preventDefault(); onFile(f); } };
+  document.addEventListener('dragover', over); document.addEventListener('drop', drop); document.addEventListener('dragleave', leave); document.addEventListener('paste', paste);
+  addEventListener('hashchange', () => { document.removeEventListener('dragover', over); document.removeEventListener('drop', drop); document.removeEventListener('dragleave', leave); document.removeEventListener('paste', paste); }, { once: true });
+}
+
+// ───────── 파비콘 ─────────
+async function faviconPage() {
+  const d = await api('/settings/favicon');
+  const v = d.updated_at;
+  main.innerHTML = `${head('사이트', '파비콘', '브라우저 탭과 휴대폰 홈 화면에 나오는 작은 아이콘입니다. 머리글 로고는 바뀌지 않습니다.')}
+    <section class="panel pad"><h2>지금 쓰는 파비콘</h2>
+      ${d.has ? `<div class="fav-row">${d.sizes.map((n) => `<figure><img src="/xms/file/favicon-${n}.png?v=${v}" alt="${n}px 아이콘" width="${Math.min(n, 96)}" height="${Math.min(n, 96)}"><figcaption>${n}</figcaption></figure>`).join('')}</div>
+        <p class="meta">올릴 때 자동으로 만들어집니다. <b>32</b>는 브라우저 탭, <b>180</b>은 아이폰 홈 화면, <b>192·512</b>는 안드로이드와 앱 설치에 쓰입니다.</p>
+        <div class="actions"><button class="btn danger" type="button" data-off>파비콘 내리기</button></div>`
+      : '<p class="meta">아직 없습니다. 브라우저 탭에는 사이트에 원래 넣어 둔 아이콘(없으면 기본 아이콘)이 나갑니다.</p>'}
+    </section>
+    <section class="panel pad"><h2>파비콘 바꾸기 <small class="meta">큰 그림은 자동으로 줄여 저장합니다</small></h2>
+      <div data-pick></div>
+      <p class="meta gap"><b>정사각형 투명 PNG</b>가 가장 잘 나옵니다. 탭 아이콘은 아주 작게 보이므로 글자가 긴 로고보다 <b>심볼 하나</b>가 알아보기 쉽습니다. 정사각이 아니면 잘라내지 않고 여백을 넣어 맞춥니다.</p>
+      <div class="fav-row" data-new hidden></div>
+      <p class="err" role="alert"></p>
+      <div class="actions"><button class="btn primary" type="button" data-save disabled>이 파일로 바꾸기</button></div>
+    </section>`;
+  let icons = null;
+  const box = $('[data-new]');
+  imagePicker($('[data-pick]'), async (file) => {
+    try {
+      const img = await loadImage(file);
+      icons = Object.fromEntries(d.sizes.map((n) => [n, squarePng(img, n)]));
+      box.hidden = false;
+      box.innerHTML = d.sizes.map((n) => `<figure><img src="${icons[n]}" alt="" width="${Math.min(n, 96)}" height="${Math.min(n, 96)}"><figcaption>${n}</figcaption></figure>`).join('');
+      $('[data-save]').disabled = false;
+    } catch (e) { toast(e.message); }
+  });
+  $('[data-save]').onclick = (e) => busy(e.currentTarget, $('.err'), async () => {
+    await api('/settings/favicon', { method: 'PUT', data: { icons } });
+    toast('파비콘을 바꿨습니다. 브라우저 탭에는 새로고침 뒤에 보입니다.'); route();
+  });
+  $('[data-off]')?.addEventListener('click', (e) => confirmInline(e.currentTarget, '브라우저 탭 아이콘이 사이트에 원래 넣어 둔 아이콘으로 돌아갑니다. 머리글 로고는 그대로입니다.', '파비콘을 내립니다', async () => {
+    await api('/settings/favicon', { method: 'DELETE' }); toast('파비콘을 내렸습니다.'); route();
+  }));
+}
+
+// ───────── 검색엔진 ─────────
+async function seoPage(qs) {
+  const d = await api('/settings/seo');
+  const tab = qs.get('tab') || 'result';
+  const consoles = {
+    naver: ['네이버 서치어드바이저', 'https://searchadvisor.naver.com/', '사이트 등록 › 소유확인'],
+    google: ['구글 서치콘솔', 'https://search.google.com/search-console', '소유권 확인 › HTML 태그'],
+    bing: ['Bing 웹마스터도구', 'https://www.bing.com/webmasters', '사이트 추가 › HTML 메타 태그'],
+  };
+  main.innerHTML = `${head('사이트', '검색엔진', '네이버·구글에 사이트를 등록할 때 필요한 것들입니다. 검색 결과에 보이는 글과 소유권 확인, robots.txt를 여기서 정합니다.')}
+    <div class="tabs" id="seotabs"></div>
+    <form class="gap" id="seo-result" data-sec="result">
+      <section class="panel pad"><h2>검색 결과에 보이는 글 <small class="meta">네이버·구글 검색 결과의 제목과 그 아래 두 줄입니다</small></h2>
+        <label class="field"><span>제목</span><input class="input" name="title" maxlength="70" value="${esc(d.title)}" placeholder="${esc(d.siteName)}"><small>비우면 홈페이지 원래 제목이 그대로 쓰입니다.</small></label>
+        <label class="field"><span>설명글 <b class="count" data-count>0자</b></span><textarea class="input" name="description" maxlength="300" placeholder="어떤 곳인지 한두 문장으로 적습니다. 예) ${esc(d.siteName)} 공식 홈페이지입니다. 소식과 안내를 전합니다.">${esc(d.description)}</textarea>
+          <small>검색 결과에서 <b>제목 아래 두 줄</b>로 잘려 보입니다. <b>80~150자</b>가 알맞습니다 — 짧으면 검색엔진이 본문에서 아무 문장이나 골라 쓰고, 길면 뒤가 잘립니다. 대화방 미리보기(카카오톡·페이스북)에도 이 글이 나갑니다 — 거기만 다르게 쓰려면 <a href="#/share">카카오톡 미리보기</a>에서 따로 적습니다.</small></label>
+      </section>
+      <section class="panel pad"><h2>소유권 확인 코드 <small class="meta">사이트를 등록할 때 「내 사이트가 맞다」를 증명하는 한 줄입니다</small></h2>
+        <p class="meta">검색엔진이 준 <b>태그를 통째로 붙여넣어도 됩니다</b> — 저장할 때 필요한 값만 꺼냅니다. 확인이 끝난 뒤에도 지우지 마세요. 코드가 사라지면 소유권도 함께 풀립니다.</p>
+        ${Object.entries(consoles).map(([k, [name, href, where]]) => `<label class="field"><span>${esc(d.engines[k].label)}</span>
+          <input class="input" name="v_${k}" value="${esc(d.verify[k] || '')}" placeholder='&lt;meta name="…" content="여기 값" /&gt;' autocomplete="off">
+          <small><a href="${href}" target="_blank" rel="noopener">${name}</a> › ${where}에서 받습니다.</small></label>`).join('')}
+      </section>
+      ${saveBar('검색엔진 설정을 고치는 중입니다.', '')}
+    </form>
+    <section class="panel pad gap" data-sec="sitemap"><h2>사이트맵 주소 <small class="meta">구글 서치콘솔·네이버 서치어드바이저에 넣을 주소입니다</small></h2>
+      <p><code class="copy">${esc(d.sitemapUrl)}</code> <button class="btn sm" type="button" data-copy>복사</button> <a class="btn sm" href="/sitemap.xml" target="_blank" rel="noopener">열어 보기</a></p>
+      <p class="meta">이 주소 한 줄만 등록하면 <b>사이트의 모든 화면</b>을 검색엔진에 알려 줍니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다.</p>
+    </section>
+    <form class="gap" id="seo-robots" data-sec="robots">
+      <section class="panel pad"><h2>robots.txt <small class="meta">검색엔진에게 긁어도 되는 곳을 알려 줍니다</small></h2>
+        <p class="meta">${d.robots ? '이 사이트만의 내용을 쓰고 있습니다.' : '기본값이 나가고 있습니다. <b>그대로 두어도 됩니다.</b>'}</p>
+        <div class="field"><span>지금 나가는 내용</span><pre class="robots-now" data-now>불러오는 중…</pre></div>
+        <label class="field"><span>직접 쓰기</span><textarea class="input mono" name="robots" rows="7" placeholder="비워 두면 위의 기본값이 그대로 나갑니다">${esc(d.robots)}</textarea>
+          <small><b>사이트맵 줄은 적지 마세요</b> — 주소가 바뀌어도 맞도록 자동으로 붙습니다.</small></label>
+        ${d.robots ? '<div class="actions"><button class="btn" type="button" data-reset>기본값으로 되돌리기</button></div>' : ''}
+      </section>
+      ${saveBar('robots.txt를 고치는 중입니다.', '')}
+    </form>`;
+  const show = (k) => { $$('[data-sec]').forEach((el) => { el.hidden = el.dataset.sec !== k; }); };
+  pillTabs($('#seotabs'), [['result', '검색 결과와 소유권'], ['sitemap', '사이트맵 주소'], ['robots', 'robots.txt']], tab, show);
+  show(tab);
+  const desc = $('#seo-result [name=description]');
+  const count = () => { const n = desc.value.trim().length; const el = $('[data-count]'); el.textContent = `${n}자`; el.className = `count${n && (n < 80 || n > 150) ? ' warn' : ''}`; };
+  desc.addEventListener('input', count); count();
+  const fr = $('#seo-result');
+  ctrlS(fr);
+  fr.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = formData(fr);
+    busy(fr.querySelector('[type=submit]'), null, async () => {
+      await api('/settings/seo', { method: 'PUT', data: { title: f.title, description: f.description, verify: { naver: f.v_naver, google: f.v_google, bing: f.v_bing } } });
+      dirty = false; toast('검색엔진 설정을 저장했습니다.'); go('#/seo?tab=result');
+    });
+  });
+  $('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(d.sitemapUrl); toast('복사했습니다.'); } catch { toast('복사하지 못했습니다. 주소를 직접 골라 복사해 주세요.'); } };
+  fetch('/robots.txt', { cache: 'no-store' }).then((r) => r.text()).then((t) => { $('[data-now]').textContent = t; }).catch(() => { $('[data-now]').textContent = '지금 나가는 내용을 읽어 오지 못했습니다.'; });
+  const rf = $('#seo-robots');
+  rf.addEventListener('input', () => { dirty = true; });
+  rf.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(rf.querySelector('[type=submit]'), null, async () => {
+      await api('/settings/robots', { method: 'PUT', data: { robots: rf.robots.value } });
+      dirty = false; toast('robots.txt를 저장했습니다.'); go('#/seo?tab=robots');
+    });
+  });
+  $('[data-reset]')?.addEventListener('click', (e) => confirmInline(e.currentTarget, '직접 쓴 내용을 지우고 기본값으로 돌아갑니다.', '되돌립니다', async () => {
+    await api('/settings/robots', { method: 'PUT', data: { robots: '' } }); dirty = false; toast('기본값으로 되돌렸습니다.'); go('#/seo?tab=robots');
+  }));
+}
+
+// ───────── 카카오톡 미리보기 ─────────
+async function sharePage() {
+  const d = await api('/settings/share');
+  const host = d.origin.replace(/^https?:[/][/]/, '');
+  main.innerHTML = `${head('사이트', '카카오톡 미리보기', '주소를 대화방에 붙여넣었을 때 뜨는 글과 그림입니다. 페이스북·문자 미리보기도 같은 값을 씁니다.')}
+    <div class="share-grid">
+      <div>
+        <form class="panel pad" id="share-form"><h2>미리보기 설명 <small class="meta">대화방에서 제목 아래 작은 글씨로 붙습니다</small></h2>
+          <label class="field"><span>설명</span><textarea class="input" name="share_description" maxlength="200" placeholder="${esc(d.seo_description || '비우면 검색엔진 화면의 설명글을 그대로 씁니다')}">${esc(d.share_description)}</textarea>
+            <small>비우면 <b>검색엔진 화면의 설명글</b>을 그대로 씁니다. 대화방에서는 두 줄쯤에서 잘리니 <b>40~80자</b>가 알맞습니다.</small></label>
+          ${saveBar('미리보기 설명을 고치는 중입니다.', '')}
+        </form>
+        <section class="panel pad"><h2>미리보기 그림 <small class="meta">대화방에서 글 위에 크게 뜨는 그림입니다</small></h2>
+          ${d.image ? `<img class="share-now" src="/xms/file/og?v=${d.image.updated_at}" alt="지금 쓰는 미리보기 그림"><div class="actions gap"><button class="btn danger" type="button" data-off>그림 내리기</button></div>`
+            : '<p class="meta">아직 없습니다. 없으면 홈페이지에 원래 넣어 둔 그림이 나갑니다.</p>'}
+          <h2 class="gap">그림 바꾸기 <small class="meta">1200×630 권장</small></h2>
+          <div data-pick></div>
+          <p class="meta gap">비율이 다르면 대화방이 위아래를 잘라 냅니다. 바꿔도 카카오톡은 한동안 옛 그림을 보여 줍니다 — 급하면 <a href="https://developers.kakao.com/tool" target="_blank" rel="noopener">카카오 개발자도구</a>에서 캐시를 지웁니다.</p>
+          <p class="err" role="alert"></p>
+          <div class="actions"><button class="btn primary" type="button" data-save disabled>이 그림으로 바꾸기</button></div>
+        </section>
+      </div>
+      <aside class="panel pad share-pv-box"><h2>미리보기</h2>
+        <div class="kakao"><div class="kakao-card"><div class="kakao-img" data-pv-img>${d.image ? `<img src="/xms/file/og?v=${d.image.updated_at}" alt="">` : '<span>그림 없음</span>'}</div>
+          <div class="kakao-t"><b>${esc(d.seo_title || d.siteName)}</b><p data-pv-desc></p><small>${esc(host)}</small></div></div></div>
+        <p class="meta">대화방에서 대략 이렇게 보입니다.</p>
+      </aside>
+    </div>`;
+  const form = $('#share-form');
+  ctrlS(form);
+  const ta = form.share_description;
+  const pv = () => { $('[data-pv-desc]').textContent = ta.value.trim() || d.seo_description || ''; };
+  ta.addEventListener('input', pv); pv();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(form.querySelector('[type=submit]'), null, async () => {
+      await api('/settings/share', { method: 'PUT', data: { share_description: ta.value } }); dirty = false; toast('미리보기 설명을 저장했습니다.'); route();
+    });
+  });
+  let image = null;
+  imagePicker($('[data-pick]'), async (file) => {
+    try {
+      const img = await loadImage(file);
+      image = fitJpeg(img, 1200, 700000);
+      $('[data-pv-img]').innerHTML = `<img src="${image}" alt="">`;
+      $('[data-save]').disabled = false;
+    } catch (e) { toast(e.message); }
+  });
+  $('[data-save]').onclick = (e) => busy(e.currentTarget, $('.share-grid .err'), async () => {
+    await api('/settings/share/image', { method: 'PUT', data: { image } }); toast('미리보기 그림을 바꿨습니다.'); route();
+  });
+  $('[data-off]')?.addEventListener('click', (e) => confirmInline(e.currentTarget, '대화방 미리보기에 홈페이지에 원래 넣어 둔 그림이 대신 나갑니다.', '그림을 내립니다', async () => {
+    await api('/settings/share/image', { method: 'DELETE' }); toast('그림을 내렸습니다.'); route();
+  }));
+}
+
+// ───────── 팝업 ─────────
+const POPUP_STATUS = { WAITING: '대기', OPEN: '노출', CLOSED: '종료' };
+const POPUP_MODE = { TODAY: '오늘 하루 열지 않음', FOREVER: '다시 열지 않음', ALWAYS: '기간 내 무조건 열림' };
+const fmtDay = (s) => `${s.replace(/-/g, '. ')}.`;
+const period = (p) => (p.starts_at || p.ends_at ? `${p.starts_at ? fmtDay(p.starts_at) : '지금'} ~ ${p.ends_at ? fmtDay(p.ends_at) : '계속'}` : '기간 없음 (계속)');
+async function popupsPage(qs) {
+  const list = await api('/popups');
+  const tab = qs.get('tab') || 'all';
+  const live = list.filter((p) => p.bucket === 'live').length;
+  const shown = tab === 'all' ? list : list.filter((p) => p.bucket === tab);
+  const sortableOn = tab === 'all';
+  main.innerHTML = `${head('사이트', '팝업', live ? `지금 홈 화면에 팝업 ${live}개가 떠 있습니다. 여러 개면 창 하나 안에서 좌우로 넘어갑니다.` : '홈 화면에 들어온 방문자에게 창을 띄웁니다. 여러 개를 켜면 창 하나 안에서 좌우로 넘어갑니다.')}
+    ${list.length ? `<div class="tabs" id="ptabs"></div>
+      <p class="meta gap">${tab === 'expired' ? '기간이 지난 팝업입니다. 다시 쓰려면 열어서 기간만 고치면 됩니다.' : sortableOn ? '줄을 끌어서 차례를 바꿀 수 있습니다 — 여러 개가 함께 뜨면 방문자가 이 차례로 넘겨 봅니다.' : '차례는 [전체]에서 끌어서 바꿉니다.'}</p>
+      <div class="panel">${shown.length ? `<table class="tbl cardy"><thead><tr>${sortableOn ? '<th>차례</th>' : ''}<th>그림</th><th>이름</th><th>노출 기간</th><th>상태</th><th>운영 모드</th><th>관리</th></tr></thead><tbody id="prows">
+        ${shown.map((p) => `<tr data-id="${p.id}">${sortableOn ? '<td><button type="button" class="handle" aria-label="끌어서 차례 바꾸기">⠿</button></td>' : ''}
+          <td>${p.image ? `<img class="pop-thumb" src="${esc(p.image)}" alt="">` : '<span class="tag">글만</span>'}</td>
+          <td><b>${esc(p.title)}</b>${p.link_url ? `<small>누르면 → ${esc(p.link_url)}</small>` : ''}</td>
+          <td data-l="노출 기간">${esc(period(p))}</td>
+          <td data-l="상태">${p.bucket === 'live' ? '<span class="tag green">노출중</span>' : p.bucket === 'expired' ? '<span class="tag warn">만료</span>' : `<span class="tag">${POPUP_STATUS[p.status]}</span>`}</td>
+          <td data-l="운영 모드">${POPUP_MODE[p.close_mode]}</td>
+          <td><div class="mng"><a class="btn sm" href="#/popups/${p.id}">수정</a><button class="btn sm danger" type="button" data-del>삭제</button></div></td></tr>`).join('')}</tbody></table>`
+        : empty('이 칸에 해당하는 팝업이 없습니다', '')}</div>`
+    : `<div class="panel">${empty('아직 팝업이 없습니다', '행사 안내나 공지처럼, 홈에 들어온 분께 먼저 보여드릴 것을 만들어 보세요.', '<a class="btn primary" href="#/popups/new">첫 팝업 만들기</a>')}</div>`}`;
+  if (!list.length) return;
+  pillTabs($('#ptabs'), [['all', '전체'], ['live', '노출중'], ['idle', '대기·숨김'], ['expired', '날짜만료']], tab, (v) => go(`#/popups?tab=${v}`));
+  if (sortableOn && shown.length) {
+    sortable($('#prows'), { rowSel: 'tr[data-id]', onDrop: (rows) => busy(null, null, async () => {
+      await api('/popups/order', { method: 'PUT', data: { ids: rows.map((r) => Number(r.id)) } }); toast('차례를 저장했습니다.');
+    }) });
+  }
+  $$('#prows tr').forEach((tr) => {
+    const p = list.find((x) => x.id === +tr.dataset.id);
+    tr.querySelector('[data-del]').onclick = (e) => confirmInline(e.currentTarget, `"${esc(p.title)}" 팝업을 지웁니다. 되돌릴 수 없습니다.`, '팝업 삭제', async () => {
+      await api(`/popups/${p.id}`, { method: 'DELETE' }); toast('팝업을 지웠습니다.'); route();
+    });
+  });
+}
+
+async function popupPage(id) {
+  const p = id ? await api(`/popups/${id}`) : { title: '', body: '', link_url: '', starts_at: '', ends_at: '', status: 'OPEN', close_mode: 'TODAY', image: null };
+  let image; // undefined = 그대로, null = 빼기, data URL = 새 그림
+  let shown = p.image;
+  main.innerHTML = `${head('사이트 › 팝업', id ? '팝업 수정' : '팝업 만들기', '')}
+    <form id="pform"><div class="pop-grid"><div>
+      <section class="panel pad"><h2>노출 설정</h2>
+        <label class="field"><span>팝업 이름</span><input class="input" name="title" required maxlength="60" value="${esc(p.title)}" placeholder="예시: 휴무 안내"><small>관리용 이름입니다. 방문자에게는 보이지 않습니다.</small></label>
+        <div class="field"><span>노출 기간</span><div class="row2"><input class="input" type="date" name="starts_at" value="${esc(p.starts_at)}" aria-label="시작일"><input class="input" type="date" name="ends_at" value="${esc(p.ends_at)}" aria-label="끝나는 날"></div>
+          <small>비워 두면 시작은 지금부터, 끝은 정하지 않습니다. 끝나는 날까지 뜹니다.</small></div>
+        <fieldset class="field"><legend>상태</legend><div class="choices">${Object.entries(POPUP_STATUS).map(([k, l]) => `<label class="check"><input type="radio" name="status" value="${k}"${p.status === k ? ' checked' : ''}> ${l}</label>`).join('')}</div></fieldset>
+        <fieldset class="field"><legend>운영 모드</legend><div class="choices">${Object.entries(POPUP_MODE).map(([k, l]) => `<label class="check"><input type="radio" name="close_mode" value="${k}"${p.close_mode === k ? ' checked' : ''}> ${l}</label>`).join('')}</div></fieldset>
+        <label class="field"><span>링크 연결</span><input class="input" name="link_url" value="${esc(p.link_url)}" placeholder="/board/notice/12 또는 https://…"><small>링크를 넣으면 새 창에서 띄웁니다.</small></label>
+      </section>
+      <section class="panel pad"><h2>팝업 사진 업로드</h2>
+        <div data-cur></div><div data-pick></div>
+        <label class="field gap"><span>본문</span><textarea class="input" name="body" maxlength="2000" placeholder="예시: 10월 3일은 쉽니다. 4일부터 정상 운영합니다.">${esc(p.body)}</textarea><small>선택 항목입니다. 적으면 그림 아래에 글자로 나갑니다.</small></label>
+      </section>
+    </div>
+    <aside class="panel pad pop-pv-box"><h2>미리보기</h2><p class="meta">지금 적은 값 그대로, 방문자에게 어떻게 보이는지 확인합니다.</p>
+      <div class="pop-pv"><span class="pv-close">팝업닫기 ✕</span><div class="pv-card" data-pv></div><span class="pv-hide" data-pv-hide></span></div>
+      <p class="meta">홈에서는 기간이 겹치는 다른 팝업과 <b>한 창 안에서 좌우로 넘어갑니다</b>.</p>
+    </aside></div>
+    <p class="err" role="alert"></p>
+    ${saveBar(id ? '팝업을 고치는 중입니다.' : '새 팝업을 만드는 중입니다.', '#/popups')}</form>`;
+  const form = $('#pform');
+  ctrlS(form);
+  const pv = () => {
+    const f = formData(form);
+    $('[data-pv]').innerHTML = shown || f.body.trim()
+      ? `${shown ? `<img src="${esc(shown)}" alt="">` : ''}${f.body.trim() ? `<p>${esc(f.body)}</p>` : ''}`
+      : '<p class="pv-empty">그림도 본문도 없습니다. 둘 중 하나는 있어야 저장됩니다.</p>';
+    const hide = $('[data-pv-hide]');
+    hide.hidden = f.close_mode === 'ALWAYS';
+    hide.textContent = `☐ ${f.close_mode === 'FOREVER' ? '다시 보지 않기' : '오늘 하루 보지 않기'}`;
+  };
+  const cur = () => {
+    $('[data-cur]').innerHTML = shown ? `<img class="pic-shot" src="${esc(shown)}" alt="팝업에 들어갈 그림"><p class="meta">방문자에게 이 그림이 그대로 보입니다. 세로로 긴 그림도 괜찮습니다 — 창이 그림에 맞춰 늘어납니다.</p>
+      <div class="actions"><button class="btn sm danger" type="button" data-rm>그림 빼기</button></div>` : '';
+    $('[data-rm]')?.addEventListener('click', () => { image = null; shown = null; dirty = true; cur(); pv(); });
+  };
+  imagePicker($('[data-pick]'), async (file) => {
+    try { const img = await loadImage(file); image = fitJpeg(img, 1200, 1000000); shown = image; dirty = true; cur(); pv(); } catch (e) { toast(e.message); }
+  });
+  form.addEventListener('input', pv); form.addEventListener('change', pv);
+  cur(); pv();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = { ...formData(form) };
+    if (image !== undefined) data.image = image;
+    busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+      if (!form.reportValidity()) return;
+      if (id) await api(`/popups/${id}`, { method: 'PUT', data }); else await api('/popups', { method: 'POST', data });
+      dirty = false; toast(id ? '팝업을 저장했습니다.' : '팝업을 만들었습니다.'); go('#/popups');
+    });
+  });
 }
 
 start();

@@ -3,6 +3,8 @@ import {
   DAY, now, bad, forbidden, notFound, json, str, body, audit, isAdmin, siteSettings, saveSettings, BUILTIN_FIELDS,
   MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
 } from './lib.js';
+import { settingsApi } from './site-meta.js';
+import { popupsApi } from './popups.js';
 
 const PAGE = 20;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -338,6 +340,10 @@ export async function adminApi(ctx) {
     const { results } = await db.prepare('SELECT * FROM audit_log WHERE site = ? ORDER BY id DESC LIMIT ? OFFSET ?').bind(site, 30, (page - 1) * 30).all();
     return json({ total, page, size: 30, rows: results });
   }
+
+  // 파비콘 · 검색엔진 · 카카오톡 미리보기 · 팝업
+  const extra = (await settingsApi(ctx, path, method)) || (await popupsApi(ctx, path, method));
+  if (extra) return extra;
 
   throw notFound('없는 주소입니다.');
 }

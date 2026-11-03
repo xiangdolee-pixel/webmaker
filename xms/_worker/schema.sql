@@ -164,3 +164,41 @@ CREATE TABLE IF NOT EXISTS site_import (
   site        TEXT PRIMARY KEY,
   imported_at INTEGER NOT NULL
 );
+
+-- 검색엔진 · 카카오톡 미리보기 설정 (사이트마다 한 줄)
+CREATE TABLE IF NOT EXISTS site_seo (
+  site              TEXT PRIMARY KEY,
+  title             TEXT NOT NULL DEFAULT '',
+  description       TEXT NOT NULL DEFAULT '',
+  verify            TEXT NOT NULL DEFAULT '{}',   -- { naver, google, bing } 소유권 확인 값
+  robots            TEXT NOT NULL DEFAULT '',     -- 비우면 기본 robots.txt
+  share_description TEXT NOT NULL DEFAULT '',     -- 비우면 description
+  updated_at        INTEGER NOT NULL DEFAULT 0
+);
+
+-- 파비콘(크기별) · 공유 그림. 작게 줄여 base64 로 둔다 (R2 를 붙이기 전까지)
+CREATE TABLE IF NOT EXISTS site_files (
+  site       TEXT NOT NULL,
+  kind       TEXT NOT NULL,      -- favicon-32 | favicon-180 | favicon-192 | favicon-512 | og
+  mime       TEXT NOT NULL,
+  data       TEXT NOT NULL,      -- base64
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (site, kind)
+);
+
+-- 팝업 (홈 화면). 그림은 site_files 의 popup-<id>
+CREATE TABLE IF NOT EXISTS popups (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  site       TEXT NOT NULL,
+  title      TEXT NOT NULL,                 -- 관리용 이름 (방문자에게는 안 보임)
+  body       TEXT NOT NULL DEFAULT '',
+  link_url   TEXT NOT NULL DEFAULT '',
+  starts_at  TEXT NOT NULL DEFAULT '',      -- YYYY-MM-DD (한국 날짜), 비면 바로
+  ends_at    TEXT NOT NULL DEFAULT '',      -- YYYY-MM-DD 까지, 비면 끝없음
+  status     TEXT NOT NULL DEFAULT 'OPEN',  -- WAITING | OPEN | CLOSED
+  close_mode TEXT NOT NULL DEFAULT 'TODAY', -- TODAY | FOREVER | ALWAYS
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_popups_site ON popups(site, sort);

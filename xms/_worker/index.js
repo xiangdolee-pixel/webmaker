@@ -12,7 +12,9 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { fail, whoAmI, now, createSession, html } from './lib.js';
 import { adminApi } from './admin-api.js';
-import { publicApi, publicPage } from './public.js';
+import { publicApi, publicPage, visibleMenus } from './public.js';
+import { serveFile, serveRobots, serveSitemap, headData } from './site-meta.js';
+import { livePopups } from './popups.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 
@@ -33,6 +35,11 @@ export class Cms extends WorkerEntrypoint {
 
     try {
       // 정적 파일
+      // 올린 파일 (파비콘 · 공유 그림 · 팝업 그림)
+      let fm = p.match(/^\/xms\/file\/(favicon-(?:32|180|192|512)|og|popup-\d+)(?:\.png)?$/);
+      if (fm) return await serveFile(env, site, fm[1]);
+      if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
+      if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
       if (p.startsWith('/xms/')) {
         const rest = p.slice(4);
         if (!/^\/(css|js)\/[\w.-]+$/.test(rest)) return new Response('Not found', { status: 404 });
@@ -55,6 +62,12 @@ export class Cms extends WorkerEntrypoint {
 
       const me = await whoAmI(env.DB, request, site);
       const ctx = { request, env, site, me, url };
+      // 사이트 Worker 가 html 을 내보낼 때 한 번에 묻는다: 메뉴 · 머리(head) 값 · 홈 팝업
+      if (p === '/xms-api/site-head') {
+        const home = url.searchParams.get('home') === '1';
+        const [menu, head, popups] = await Promise.all([visibleMenus(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
+        return new Response(JSON.stringify({ menu, head, popups }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+      }
       if (p.startsWith('/xms-api/admin/')) return await adminApi(ctx);
       if (p.startsWith('/xms-api/')) return await publicApi(ctx);
       if (p.startsWith('/member/') || p.startsWith('/board/') || p === '/board') return await publicPage(ctx);
