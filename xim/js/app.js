@@ -200,7 +200,7 @@ function siteCard(s) {
   const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
   return `
   <article class="card item" data-site="${s.id}">
-    <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
+    <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
     <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
     <div class="meta">${addr}</div>
     <div class="meta"><span>관리자 ${s.admin_count}명</span><span>처리할 요청 ${s.open_requests}건</span></div>

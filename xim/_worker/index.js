@@ -309,7 +309,10 @@ async function ximApi(request, env, url) {
     const { results: admins } = await env.XMS_DB.prepare("SELECT site, COUNT(*) AS n FROM members WHERE level = 1 AND status != 'WITHDRAWN' GROUP BY site").all();
     const count = Object.fromEntries(admins.map((a) => [a.site, a.n]));
     const use = await siteUsage(env);
-    return json(results.map((s) => ({ ...s, admin_count: count[s.slug] || 0, url: siteUrl(s), usage: use[s.slug] || { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 } })));
+    // 파비콘 (xms 에 올린 것) — 카드 이름 옆에 보인다
+    const { results: favs } = await env.XMS_DB.prepare("SELECT site, updated_at FROM site_files WHERE kind = 'favicon-32'").all();
+    const fav = Object.fromEntries(favs.map((f) => [f.site, f.updated_at]));
+    return json(results.map((s) => ({ ...s, admin_count: count[s.slug] || 0, url: siteUrl(s), favicon: fav[s.slug] ? `${siteUrl(s)}/xms/file/favicon-32.png?v=${fav[s.slug]}` : '', usage: use[s.slug] || { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 } })));
   }
   if (path === '/api/sites' && method === 'POST') {
     const raw = await body(request);
