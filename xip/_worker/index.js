@@ -1,4 +1,4 @@
-// pan — 시세 중계 Worker
+// xip — 시세 중계 Worker
 //   /api/indices : 네이버 증권 지수 5종 + 원자재 6종 + 환율 4종(달러·엔·위안·유로)
 //   /api/coins   : 코인게코 시가총액 상위 20위 (브라우저 직접 호출이 실패할 때 쓰는 예비)
 //   /api/top     : 거래대금 상위 20 종목 (?market=kr|us) — 국내는 ETF 제외, 미국은 나스닥+뉴욕+아멕스 합쳐 정렬
@@ -281,7 +281,7 @@ const MANAGERS = {
   druck: { cik: 1536411, who: '스탠리 드러켄밀러', fund: '듀케인 패밀리오피스' },
   tepper: { cik: 1656456, who: '데이비드 테퍼', fund: '아팔루사' },
 };
-const SEC_UA = { 'User-Agent': 'pan-dashboard/1.0 (https://pan.xiangdolee.workers.dev)', Accept: 'application/json, text/xml' };
+const SEC_UA = { 'User-Agent': 'xip-dashboard/1.0 (https://xip.xiangdolee.workers.dev)', Accept: 'application/json, text/xml' };
 
 async function secFetch(url, as) {
   const res = await fetch(url, { headers: SEC_UA });

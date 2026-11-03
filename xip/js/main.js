@@ -1,4 +1,4 @@
-/* pan — 실시간 시세
+/* xip — 실시간 시세
  * 지수·환율·원자재: /api/indices (Worker 가 네이버 증권을 대신 부름) — 7초마다
  * 거래대금 상위: /api/top?market=kr|us — 10초마다
  * 코인: 코인게코 상위 20위(1분, 브라우저가 직접 → 안 되면 /api/coins) + 바이낸스 웹소켓(miniTicker)
@@ -811,7 +811,7 @@
     sock.onopen = function () {
       if (up !== sock) return;
       upRetry = 0;
-      sock.send(JSON.stringify([{ ticket: 'pan-' + Date.now() }, { type: 'ticker', codes: codes }, { format: 'SIMPLE' }]));
+      sock.send(JSON.stringify([{ ticket: 'xip-' + Date.now() }, { type: 'ticker', codes: codes }, { format: 'SIMPLE' }]));
     };
     sock.onmessage = function (ev) {
       var t = typeof ev.data === 'string' ? ev.data : dec ? dec.decode(ev.data) : '';
