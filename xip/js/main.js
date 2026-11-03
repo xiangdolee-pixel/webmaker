@@ -330,7 +330,8 @@
   // ref: 자릿수 기준 값(등락폭은 가격 자릿수를 따른다)
   function tileFmt(kind, v, ref) {
     if (v == null) return '—';
-    if (kind === 'cmdty') { var d = decFor(ref == null ? v : ref); return nf(v, d, d); }
+    // 원자재는 달러 시세 → $ 를 붙인다 (금 $3,953.40, 등락 $15.20)
+    if (kind === 'cmdty') { var d = decFor(ref == null ? v : ref); return '$' + nf(v, d, d); }
     return nf(v, 2, 2);
   }
   function renderTiles(elId, kind, items) {
