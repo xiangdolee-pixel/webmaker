@@ -170,8 +170,6 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .side .meter.full { color: var(--danger); font-weight: 700; }
 .side .foot { margin: 22px 16px 0; color: var(--mute); font-size: 12px; }
 
-.staff-bar { padding: 9px 16px; background: #fff4d6; color: #7a5300; font-size: 14px; border-bottom: 1px solid #f1dd9f; }
-.adm.staff { box-shadow: inset 5px 0 0 #f0b429; }
 .main { min-width: 0; padding: 18px 16px 90px; }
 .ph { margin: 0 0 18px; }
 .ph small { color: var(--mute); font-size: 13px; font-weight: 600; }
@@ -203,8 +201,10 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .tbl small { display: block; color: var(--mute); }
 .tbl .dash { color: var(--mute); }
 .handle { cursor: grab; touch-action: none; user-select: none; color: var(--mute); font-size: 18px; padding: 4px 6px; border: 0; background: none; }
-.dragging { opacity: .55; }
-.drop-line { outline: 2px dashed var(--brand); outline-offset: -2px; }
+.dragging { background: var(--surface); box-shadow: 0 14px 34px -12px rgba(20, 26, 40, .45), 0 0 0 1px var(--line); cursor: grabbing; }
+tr.dragging td { background: var(--surface); }
+.is-sorting, .is-sorting * { cursor: grabbing !important; user-select: none; }
+.tree-row, tr[data-id] { will-change: transform; }
 
 .pager { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 16px; }
 .pager a, .pager b, .pager button { min-width: 38px; height: 38px; display: inline-grid; place-items: center; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; font-size: 14px; cursor: pointer; }

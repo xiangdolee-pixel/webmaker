@@ -54,11 +54,6 @@ function showApp() {
   const s = INFO.site;
   document.title = `${s.name} 관리`;
   $('#who').textContent = INFO.me.staff ? '운영자' : `${INFO.me.name} 님`;
-  if (INFO.me.staff) {
-    $('#staff-bar').hidden = false;
-    $('#staff-bar').textContent = `운영자가 ${s.name} 관리 화면에 대신 들어와 있습니다 — 여기서 하는 모든 작업은 기록에 남습니다.`;
-    $('#adm').classList.add('staff');
-  }
   renderSide();
   route();
 }
@@ -535,7 +530,9 @@ async function menusPage() {
       const hiddenRows = $$('.tree-row[hidden]', tree);
       if (hiddenRows.length) { toast('접힌 메뉴를 모두 편 뒤에 옮겨 주세요.'); return route(); }
       await api('/menus/tree', { method: 'PUT', data: { items: treeFromDepths(list) } });
-      toast('메뉴 순서를 저장했습니다.'); route();
+      toast('메뉴 순서를 저장했습니다.');
+      await new Promise((r) => setTimeout(r, 280)); // 내려앉는 애니메이션이 끝난 뒤 다시 그린다
+      route();
     }),
   });
   $$('.tree-row', tree).forEach((row) => {

@@ -23,7 +23,6 @@
   font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
   opacity:0;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .18s,transform .22s cubic-bezier(.22,.8,.24,1);pointer-events:none}
 .xa-menu.xa-open{opacity:1;transform:none;pointer-events:auto}
-.xa-menu .xa-who{padding:6px 28px 10px;font-size:13px;color:#8a909c;border-bottom:1px solid #eef0f3;margin-bottom:6px}
 .xa-menu a,.xa-menu button{display:block;width:100%;padding:14px 28px;border:0;background:none;color:inherit;text-align:left;text-decoration:none;
   font-family:inherit;font-size:18px;font-weight:700;line-height:1.3;letter-spacing:-.01em;cursor:pointer}
 .xa-menu a:hover,.xa-menu button:hover{background:#f4f5f8}
@@ -67,10 +66,9 @@
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
     // 운영자 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
-    menu.innerHTML = `<div class="xa-who">${me.staff ? '운영자로 들어와 있음 (xim)' : `${esc(me.name)} 님`}</div>
-      ${admin ? '<a role="menuitem" href="/admin/">관리</a><a role="menuitem" href="/admin/#/requests">유지보수 요청</a>' : ''}
+    menu.innerHTML = `${admin ? '<a role="menuitem" href="/admin/">관리</a><a role="menuitem" href="/admin/#/requests">유지보수 요청</a>' : ''}
       ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
-      <button type="button" role="menuitem" data-xa-logout>${me.staff ? '운영자 나가기' : '로그아웃'}</button>`;
+      <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
     document.body.append(menu);
     const btn = el.querySelector('.xa-avatar');
 

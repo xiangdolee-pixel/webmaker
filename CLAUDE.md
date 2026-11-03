@@ -42,6 +42,12 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 - 숨겨져 있어 폭을 못 재면 칸 자체 배경으로 대신하고, 창 크기·글꼴 로딩 뒤 다시 잰다.
 - 참고 구현: `E:\ws\WebMaker\design\bstv2\cms\public\ui.js` `slideTabs`(ES 모듈), `E:\ws\WebMaker\design\bstv2\web\assets\js\site.js` `B.seg`(ES5).
 
+### 6. 끌어서 순서 바꾸기는 자연스럽게 (사용자 지시 2026-11-03, WebMaker2 의 모든 순서 조정 UI)
+메뉴 · 게시판 · 가입 항목 등 **순서를 바꾸는 모든 목록**은 끌 때:
+- 끄는 항목은 마우스/손가락을 그대로 따라오고(살짝 떠오른 그림자), **나머지 항목은 밀려나며 미끄러지듯 비켜난다**(FLIP: 옮기기 전 위치 → 옮긴 뒤 차이만큼 되돌렸다가 `transform` 을 0 으로, 0.22s 안팎 `cubic-bezier(.22, .8, .24, 1)`).
+- 놓으면 제자리로 부드럽게 내려앉고, 애니메이션이 끝난 뒤에 화면을 다시 그린다(바로 다시 그리면 끊긴다). 단계(들여쓰기) 바뀜도 부드럽게. `prefers-reduced-motion` 이면 끔.
+- 참고 구현: `xms/js/drag.js` `sortable` — 새 목록도 이걸 그대로 쓴다.
+
 그 밖의 기본 제작 기준(폴더 구조, 순수 HTML/CSS/JS 등)은 `GUIDELINES.md`.
 
 ---

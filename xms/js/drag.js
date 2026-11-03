@@ -1,13 +1,22 @@
-// 손잡이(⠿)로 끌어 순서 바꾸기. nest 를 켜면 오른쪽으로 끌면 위 항목 아래로, 왼쪽으로 끌면 한 단계 밖으로.
+// 손잡이(⠿)로 끌어 순서 바꾸기 — 부드럽게 (WebMaker2 공통 규칙: 순서 바꾸는 모든 UI)
+//   · 끄는 항목은 손가락/마우스를 그대로 따라오고(살짝 떠오름), 나머지 항목은 미끄러지듯 비켜난다(FLIP 애니메이션).
+//   · 놓으면 끄던 항목이 제자리로 부드럽게 내려앉는다.
+//   · nest 를 켜면 오른쪽으로 끌면 위 항목 아래로, 왼쪽으로 끌면 한 단계 밖으로(들여쓰기도 부드럽게).
 //   행: [data-id][data-depth]   손잡이: .handle
 //   onDrop([{ id, depth }...]) — 바뀐 전체 순서
+const EASE = 'cubic-bezier(.22, .8, .24, 1)';
+const SLIDE_MS = 220;
+const SETTLE_MS = 240;
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 export function sortable(box, { rowSel, nest = false, indent = 28, canParent = () => true, onDrop }) {
   box.addEventListener('pointerdown', (e) => {
     const handle = e.target.closest('.handle');
-    if (!handle || !box.contains(handle)) return;
+    if (!handle || !box.contains(handle) || e.button > 0) return;
     const row = handle.closest(rowSel);
     if (!row) return;
     e.preventDefault();
+
     const rows = () => [...box.querySelectorAll(rowSel)];
     const all = rows();
     const i0 = all.indexOf(row);
@@ -17,57 +26,105 @@ export function sortable(box, { rowSel, nest = false, indent = 28, canParent = (
     const block = all.slice(i0, n);
     const rel = block.map((r) => (+r.dataset.depth || 0) - d0);
     const lastRel = rel[rel.length - 1];
+    const before = all.map((r) => `${r.dataset.id}:${r.dataset.depth || 0}`).join();
     const startX = e.clientX;
-    let depth = d0;
-    block.forEach((r) => r.classList.add('dragging'));
-    // 행을 DOM 에서 옮기면 포인터 캡처가 풀리므로 문서 전체에서 받는다
-    const before = rows().map((r) => `${r.dataset.id}:${r.dataset.depth || 0}`).join();
+    const startY = e.clientY;
+    let lastX = startX;
+    let lastY = startY;
+    // 끄는 묶음의 "원래 화면 위치" — DOM 이 바뀌어도 손가락 아래 그대로 두기 위한 기준
+    let originTop = block[0].getBoundingClientRect().top;
 
-    const setDepth = (d) => {
-      depth = d;
-      block.forEach((r, k) => { r.dataset.depth = d + rel[k]; r.style.setProperty('--d', d + rel[k]); });
+    document.body.classList.add('is-sorting');
+    block.forEach((r) => {
+      r.classList.add('dragging');
+      r.style.transition = reduced() ? 'none' : `padding-left 180ms ${EASE}`; // 위치는 바로 따라오고, 들여쓰기만 부드럽게
+      r.style.position = 'relative';
+      r.style.zIndex = '5';
+    });
+
+    const follow = () => {
+      const top = block[0].getBoundingClientRect().top - (parseFloat(block[0].dataset.ty) || 0);
+      const ty = (lastY - startY) - (top - originTop);
+      block.forEach((r) => { r.dataset.ty = ty; r.style.transform = `translateY(${ty}px)`; });
     };
+
+    // FLIP: DOM 을 옮기기 전 위치를 재 두고, 옮긴 뒤 차이만큼 되돌려 놓았다가 0 으로 미끄러지게
+    const flip = (mutate) => {
+      const others = rows().filter((r) => !block.includes(r));
+      const first = new Map(others.map((r) => [r, r.getBoundingClientRect().top]));
+      mutate();
+      if (reduced()) return;
+      for (const r of others) {
+        const dy = first.get(r) - r.getBoundingClientRect().top;
+        if (!dy) continue;
+        r.style.transition = 'none';
+        r.style.transform = `translateY(${dy}px)`;
+        void r.offsetHeight;
+        r.style.transition = `transform ${SLIDE_MS}ms ${EASE}`;
+        r.style.transform = '';
+      }
+    };
+
+    const setDepth = (d) => block.forEach((r, k) => { r.dataset.depth = d + rel[k]; r.style.setProperty('--d', d + rel[k]); });
     const clampDepth = () => {
       if (!nest) return;
       const list = rows();
       const at = list.indexOf(block[0]);
       const prev = list[at - 1];
       const next = list[at + block.length];
-      const want = d0 + Math.round((e2x - startX) / indent);
-      let max = prev ? (+prev.dataset.depth || 0) + (canParent(prev) ? 1 : 0) : 0;
+      const want = d0 + Math.round((lastX - startX) / indent);
+      const max = prev ? (+prev.dataset.depth || 0) + (canParent(prev) ? 1 : 0) : 0;
       let min = next ? Math.max(0, (+next.dataset.depth || 0) - 1 - lastRel) : 0;
       if (min > max) min = max;
-      setDepth(Math.max(min, Math.min(max, want)));
+      const d = Math.max(min, Math.min(max, want));
+      if (d !== (+block[0].dataset.depth || 0)) setDepth(d);
     };
-    let e2x = startX;
 
     const move = (ev) => {
-      e2x = ev.clientX;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
       const others = rows().filter((r) => !block.includes(r));
+      // 끄는 묶음의 가운데가 어느 항목의 가운데를 넘었는지로 자리를 정한다
+      const bTop = block[0].getBoundingClientRect().top;
+      const bBottom = block[block.length - 1].getBoundingClientRect().bottom;
+      const mid = (bTop + bBottom) / 2;
       let target = null;
       for (const r of others) {
         const b = r.getBoundingClientRect();
-        if (ev.clientY < b.top + b.height / 2) { target = r; break; }
+        const ty = parseFloat(getComputedStyle(r).transform.split(',')[5]) || 0; // 미끄러지는 중이면 도착 위치로 계산
+        if (mid < b.top - ty + b.height / 2) { target = r; break; }
       }
-      // 다른 항목의 하위 묶음 한가운데로 들어가지 않도록, 고른 자리 바로 앞은 그대로 둔다
       const parent = block[0].parentNode;
-      if (target) { if (target !== block[block.length - 1].nextElementSibling) block.forEach((r) => parent.insertBefore(r, target)); } else {
-        const last = others[others.length - 1];
-        if (last && last.nextElementSibling !== block[0]) block.forEach((r) => parent.insertBefore(r, null));
-      }
+      const nextOfBlock = block[block.length - 1].nextElementSibling;
+      const needMove = target ? target !== nextOfBlock : (others.length && others[others.length - 1].nextElementSibling !== block[0]);
+      if (needMove) flip(() => block.forEach((r) => parent.insertBefore(r, target)));
       clampDepth();
+      follow();
     };
+
     const up = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
-      block.forEach((r) => r.classList.remove('dragging'));
+      document.body.classList.remove('is-sorting');
+      // 제자리로 부드럽게 내려앉기
+      block.forEach((r) => {
+        r.style.transition = reduced() ? 'none' : `transform ${SETTLE_MS}ms ${EASE}`;
+        r.style.transform = '';
+        delete r.dataset.ty;
+      });
+      setTimeout(() => block.forEach((r) => {
+        r.classList.remove('dragging');
+        r.style.transition = ''; r.style.position = ''; r.style.zIndex = '';
+      }), reduced() ? 0 : SETTLE_MS);
       const after = rows().map((r) => ({ id: r.dataset.id, depth: +r.dataset.depth || 0 }));
       if (after.map((r) => `${r.id}:${r.depth}`).join() !== before) onDrop(after);
     };
+
     document.addEventListener('pointermove', move);
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
+    originTop = block[0].getBoundingClientRect().top;
   });
 }
 
