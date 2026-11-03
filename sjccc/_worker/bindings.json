@@ -1,0 +1,5 @@
+{
+  "vars": { "XIM_SITE": "sjccc" },
+  "services": [{ "binding": "XIM", "service": "xim", "entrypoint": "Engine" }],
+  "assets": { "run_worker_first": true }
+}
