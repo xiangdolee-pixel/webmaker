@@ -63,3 +63,21 @@ export async function ensureMailDomain(token, domain) {
     return { status: 'error', message: e.message };
   }
 }
+
+// 사이트마다 Cloudflare 봇 확인(Turnstile) 위젯을 하나씩 만든다 (가입 인증번호 보내기 앞에 붙는다)
+//   토큰 권한: Account · Turnstile · Edit (CF_MAIL_TOKEN 에 함께)
+//   hosts: 대표 도메인 + workers.dev 주소. 이미 있으면 주소 목록만 맞춘다.
+export async function ensureTurnstile(token, accountId, { slug, hosts, sitekey }) {
+  if (!token) return { status: 'skip', message: '토큰(CF_MAIL_TOKEN)이 아직 없습니다' };
+  const domains = [...new Set(hosts.map(asciiHost).filter(Boolean))];
+  try {
+    if (sitekey) {
+      await cf(token, 'PUT', `/accounts/${accountId}/challenges/widgets/${sitekey}`, { name: `xms ${slug}`, domains, mode: 'managed' });
+      return { status: 'ok', message: '봇 확인 준비됨', sitekey };
+    }
+    const w = await cf(token, 'POST', `/accounts/${accountId}/challenges/widgets`, { name: `xms ${slug}`, domains, mode: 'managed' });
+    return { status: 'added', message: '봇 확인을 만들었습니다', sitekey: w.sitekey, secret: w.secret };
+  } catch (e) {
+    return { status: 'error', message: `봇 확인: ${e.message}` };
+  }
+}

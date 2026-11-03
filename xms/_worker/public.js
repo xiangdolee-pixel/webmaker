@@ -5,7 +5,7 @@ import {
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 import { postAttachments, attachToPost } from './uploads.js';
-import { sendSignupCode, verifySignupCode, takeTicket, turnstileKey } from './signup.js';
+import { sendSignupCode, verifySignupCode, takeTicket, turnstileKeys } from './signup.js';
 
 const LOCK_AFTER = 5;
 const LOCK_MS = 15 * 60000;
@@ -147,7 +147,7 @@ async function signupPage(ctx) {
   const agreeBox = docs.TERMS || docs.PRIVACY ? `<div class="agree">
       <label class="check all"><input type="checkbox" data-agree-all> 아래 내용에 모두 동의합니다</label>
       ${agree(docs.TERMS, 'terms', '이용약관')}${agree(docs.PRIVACY, 'privacy', '개인정보 처리방침')}</div>` : '';
-  const tk = turnstileKey(env);
+  const tk = (await turnstileKeys(env, site)).sitekey;
   // 1단계: 이메일 → 6자리 번호 / 2단계: 비밀번호 · 이름 · 닉네임 · 휴대전화 … (이메일 칸은 1단계에서 받았으니 뺀다)
   return page(ctx, '회원가입', `<section class="pub-box narrow">
     <h1>회원가입</h1>

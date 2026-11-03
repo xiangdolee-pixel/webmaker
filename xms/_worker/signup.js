@@ -3,7 +3,7 @@
 //   ② 번호 확인 → 가입표(ticket, 30분)를 돌려준다
 //   ③ /signup 은 가입표가 있어야 받는다 — 아이디 = 이메일
 // 설정 (리포에 두지 않는다):
-//   Turnstile: vars TURNSTILE_SITE_KEY(공개) + secret TURNSTILE_SECRET — 없으면 봇 확인을 건너뛴다
+//   Turnstile: 사이트마다 xim 이 만든 위젯 키(xim DB sites.turnstile_sitekey/secret) — 없으면 봇 확인을 건너뛴다
 //   메일: Cloudflare Email Service 바인딩 EMAIL(send_email) 또는 secret RESEND_API_KEY
 //   보내는 주소: 그 사이트 도메인의 noreply@<도메인> (고객은 그 사이트에 가입하므로).
 //     그 도메인을 아직 Email Sending 에 등록(Onboard)하지 않았으면 예비 주소 vars MAIL_FROM(noreply@plators.com)으로 보낸다.
@@ -18,13 +18,16 @@ const MAX_TRIES = 5;              // 번호 5번 틀리면 새로 받기
 
 const sha = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-export const turnstileKey = (env) => env.TURNSTILE_SITE_KEY || '';
+export async function turnstileKeys(env, site) {
+  const r = await env.XIM_DB.prepare('SELECT turnstile_sitekey AS k, turnstile_secret AS s FROM sites WHERE slug = ?').bind(site).first().catch(() => null);
+  return { sitekey: r?.k || '', secret: r?.s || '' };
+}
 
-async function checkTurnstile(env, request, token) {
-  if (!env.TURNSTILE_SECRET) return; // 아직 설정 전이면 건너뛴다
+async function checkTurnstile(env, request, token, secret) {
+  if (!secret) return; // 아직 설정 전이면 건너뛴다
   if (!token) throw bad('사람인지 확인하는 칸을 먼저 끝내 주세요.');
   const f = new FormData();
-  f.append('secret', env.TURNSTILE_SECRET);
+  f.append('secret', secret);
   f.append('response', String(token).slice(0, 2048));
   f.append('remoteip', clientIp(request));
   const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: f }).then((x) => x.json()).catch(() => null);
@@ -70,7 +73,7 @@ export async function sendSignupCode({ env, request, site }, raw, info = {}) {
   if (await tooManyFails(db, ipKey, 10)) throw new HttpError(429, '인증 메일을 너무 많이 요청했습니다. 15분 뒤에 다시 해 주세요.');
   const email = normEmail(raw.email);
   if (!EMAIL_RE.test(email)) throw bad('이메일 주소를 확인해 주세요.');
-  await checkTurnstile(env, request, raw.turnstile);
+  await checkTurnstile(env, request, raw.turnstile, (await turnstileKeys(env, site)).secret);
   const dup = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(login_id) = ? OR lower(email) = ?) AND status != 'WITHDRAWN' LIMIT 1").bind(site, email, email).first();
   if (dup) throw bad('이미 가입한 이메일입니다. 로그인해 주세요.');
   const cur = await db.prepare('SELECT sent_at FROM signup_codes WHERE site = ? AND email = ?').bind(site, email).first();

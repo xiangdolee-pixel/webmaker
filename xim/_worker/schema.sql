@@ -84,4 +84,6 @@ CREATE TABLE IF NOT EXISTS otp_trust (
 --   ALTER TABLE sites ADD COLUMN static_mb REAL NOT NULL DEFAULT 0;   -- 배포한 홈페이지 파일 크기 (deploy.mjs 가 적는다)
 --   ALTER TABLE sites ADD COLUMN mail_status TEXT NOT NULL DEFAULT '';  -- 대표 도메인 Email Sending 등록 결과 ok|added|error|skip
 --   ALTER TABLE sites ADD COLUMN mail_note TEXT NOT NULL DEFAULT '';
+--   ALTER TABLE sites ADD COLUMN turnstile_sitekey TEXT NOT NULL DEFAULT '';  -- 사이트별 봇 확인(Turnstile) 위젯 (xim 이 만든다)
+--   ALTER TABLE sites ADD COLUMN turnstile_secret TEXT NOT NULL DEFAULT '';
 --   ALTER TABLE requests ADD COLUMN attachments TEXT;   -- 수정 요청 첨부 [{ id, name, size, kind }] (파일은 그 사이트 xms 업로드)

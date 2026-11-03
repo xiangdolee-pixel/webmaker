@@ -6,7 +6,7 @@
 //     fetch(request)                    /__suspended (정지 화면). 업체 관리 화면 · 회원 · 게시판은 xms 가 맡는다.
 //
 //   바인딩: DB(D1 xim), XMS_DB(D1 xms: 업체 관리자 계정 · 입장권), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
-import { ensureMailDomain } from './mail-domain.js';
+import { ensureMailDomain, ensureTurnstile } from './mail-domain.js';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 const DAY = 86400000;
@@ -520,10 +520,19 @@ function customerFields(raw) {
   return { name, contact: str(raw.contact, 40), phone: str(raw.phone, 40), email: str(raw.email, 120), memo: str(raw.memo) };
 }
 // 대표 도메인 → Cloudflare Email Sending 등록, 결과를 사이트에 적어 둔다 (카드에 보임)
+//   + 봇 확인(Turnstile) 위젯도 함께 (키는 xim DB 에 두고 xms 가 읽는다)
 async function mailRegister(env, id, domain) {
-  const r = await ensureMailDomain(env.CF_MAIL_TOKEN, domain);
-  await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ? WHERE id = ?').bind(r.status, r.message.slice(0, 300), id).run();
-  return r;
+  const site = await env.DB.prepare('SELECT slug, turnstile_sitekey FROM sites WHERE id = ?').bind(id).first();
+  const mail = await ensureMailDomain(env.CF_MAIL_TOKEN, domain);
+  const bot = await ensureTurnstile(env.CF_MAIL_TOKEN, ACCOUNT_ID, {
+    slug: site.slug, sitekey: site.turnstile_sitekey, hosts: [domain, `${site.slug}.${WORKERS_SUB}.workers.dev`],
+  });
+  if (bot.secret) await env.DB.prepare('UPDATE sites SET turnstile_sitekey = ?, turnstile_secret = ? WHERE id = ?').bind(bot.sitekey, bot.secret, id).run();
+  const ok = (x) => ['ok', 'added'].includes(x.status);
+  const status = ok(mail) && ok(bot) ? (mail.status === 'added' || bot.status === 'added' ? 'added' : 'ok') : (mail.status === 'error' || bot.status === 'error' ? 'error' : 'skip');
+  const message = `메일: ${mail.message} · ${bot.message}`;
+  await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ? WHERE id = ?').bind(status, message.slice(0, 300), id).run();
+  return { status, message };
 }
 
 function siteFields(raw) {
@@ -547,6 +556,7 @@ function siteFields(raw) {
 
 // 업체 사이트 주소: 도메인이 있으면 그 주소, 없으면 workers.dev
 const WORKERS_SUB = 'xiangdolee';
+const ACCOUNT_ID = 'f225d506d8cf6ddf97704a36c69f5ce7'; // xiangdolee 계정
 function siteUrl(site) {
   const d = String(site.domain || '').trim().replace(/^https?:[/][/]/, '').replace(/[/].*$/, '');
   return d ? `https://${d}` : `https://${site.slug}.${WORKERS_SUB}.workers.dev`;

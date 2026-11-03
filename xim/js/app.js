@@ -199,7 +199,7 @@ function siteCard(s) {
   const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
   const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
   // 인증 메일 보내는 주소 상태 (대표 도메인 → Email Sending)
-  const MAIL = { ok: ['메일 준비됨', 'done'], added: ['메일 준비됨', 'done'], error: ['메일 등록 실패 · 다시', 'suspended'], skip: ['메일 대기 · 등록', 'new'] };
+  const MAIL = { ok: ['메일 · 봇확인 준비됨', 'done'], added: ['메일 · 봇확인 준비됨', 'done'], error: ['메일 · 봇확인 실패 · 다시', 'suspended'], skip: ['메일 · 봇확인 대기 · 등록', 'new'] };
   const [mt, mc] = MAIL[s.mail_status] || MAIL.skip;
   const mailTag = s.domain ? `<button type="button" class="badge ${mc} mail-badge" data-mail="${s.id}" title="${esc(s.mail_note || '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다. 누르면 등록합니다.')}">${mt}</button>` : '';
   return `
