@@ -24,6 +24,19 @@
     document.body.style.overflow = open ? "hidden" : "";
   });
 
+  /* ─── 관리자 로그인(xim): 로그인돼 있으면 "관리자"로 표시 ─── */
+  var loginLink = document.getElementById("ximLogin");
+  if (loginLink && window.fetch) {
+    fetch("/xim-api/me", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (me) {
+        if (!me) return;
+        loginLink.textContent = "관리자";
+        loginLink.title = (me.name || me.username || "") + " 님 로그인 중";
+      })
+      .catch(function () {});
+  }
+
   gnb.addEventListener("click", function (e) {
     if (e.target.tagName === "A" && gnb.classList.contains("open")) {
       gnb.classList.remove("open");

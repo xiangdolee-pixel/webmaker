@@ -1162,6 +1162,9 @@ section { padding: clamp(5rem, 11vw, 8.5rem) var(--gutter); }
   .criteria-photo { max-width: 30rem; }
   .about-photo { max-width: 30rem; }
   .sec-side { display: none; }
+  .gnb { gap: 1rem; }
+  .gnb a { font-size: 1rem; }
+  .gnb-cta { padding: 0.5rem 1.1rem !important; }
 }
 
 @media (max-width: 767px) {
