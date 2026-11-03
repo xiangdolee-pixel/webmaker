@@ -257,11 +257,17 @@ async function ximApi(request, env, url) {
       db.prepare("SELECT COUNT(*) AS n, SUM(status = 'suspended') AS off FROM sites"),
       db.prepare("SELECT COUNT(*) AS n FROM requests WHERE status != 'done'"),
     ]);
+    // 데이터베이스 전체 크기 (D1 이 돌려주는 size_after) · R2 에 올린 파일 합계
+    const [ximMeta, xmsMeta, r2] = await Promise.all([
+      db.prepare('SELECT 1').run(), env.XMS_DB.prepare('SELECT 1').run(),
+      env.XMS_DB.prepare('SELECT COALESCE(SUM(size), 0) AS n FROM uploads WHERE r2_key IS NOT NULL').first(),
+    ]);
     return json({
       customers: r[0].results[0].n,
       sites: r[1].results[0].n,
       suspended: r[1].results[0].off || 0,
       openRequests: r[2].results[0].n,
+      storage: { xim_db: ximMeta.meta.size_after || 0, xms_db: xmsMeta.meta.size_after || 0, r2: r2.n },
     });
   }
 
@@ -302,7 +308,8 @@ async function ximApi(request, env, url) {
     // 업체 관리자 = xms 의 등급 1 회원
     const { results: admins } = await env.XMS_DB.prepare("SELECT site, COUNT(*) AS n FROM members WHERE level = 1 AND status != 'WITHDRAWN' GROUP BY site").all();
     const count = Object.fromEntries(admins.map((a) => [a.site, a.n]));
-    return json(results.map((s) => ({ ...s, admin_count: count[s.slug] || 0, url: siteUrl(s) })));
+    const use = await siteUsage(env);
+    return json(results.map((s) => ({ ...s, admin_count: count[s.slug] || 0, url: siteUrl(s), usage: use[s.slug] || { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 } })));
   }
   if (path === '/api/sites' && method === 'POST') {
     const raw = await body(request);
@@ -421,6 +428,39 @@ async function ximApi(request, env, url) {
   }
 
   throw new HttpError(404, '없는 주소입니다.');
+}
+
+// ───────── 사이트별 사용량 (xms DB 기준, 바이트) ─────────
+//   db    : 회원 · 글 · 댓글 · 메뉴 · 게시판 · 약관 · 팝업 · 관리 로그 등 글자 데이터 (줄마다 대략 크기를 더함)
+//   files : 올린 사진 · 첨부 (R2 + DB 에 둔 것) + 파비콘 · 미리보기 · 팝업 그림
+async function siteUsage(env) {
+  const x = env.XMS_DB;
+  // D1 은 UNION 으로 묶을 수 있는 SELECT 수가 적어 표마다 따로 묻고 더한다
+  const DB_QUERIES = [
+    "SELECT site, SUM(length(login_id) + length(pw_hash) + length(pw_salt) + length(name) + length(nickname) + length(email) + length(mobile) + length(phone) + length(extra) + 120) AS n FROM members GROUP BY site",
+    "SELECT site, SUM(length(title) + length(content_html) + length(writer_name) + 100) AS n FROM posts GROUP BY site",
+    "SELECT site, SUM(length(body) + length(writer_name) + 60) AS n FROM comments GROUP BY site",
+    "SELECT site, SUM(length(content) + 40) AS n FROM documents GROUP BY site",
+    "SELECT site, SUM(length(title) + length(path) + 60) AS n FROM menus GROUP BY site",
+    "SELECT site, SUM(length(name) + length(slug) + length(options) + 120) AS n FROM boards GROUP BY site",
+    "SELECT site, SUM(length(actor_name) + length(target) + length(detail) + length(ip) + 60) AS n FROM audit_log GROUP BY site",
+    "SELECT site, SUM(length(title) + length(body) + length(link_url) + 80) AS n FROM popups GROUP BY site",
+    "SELECT site, SUM(length(level_names) + length(signup_fields)) AS n FROM site_settings GROUP BY site",
+    "SELECT site, SUM(length(title) + length(description) + length(verify) + length(robots) + length(share_description)) AS n FROM site_seo GROUP BY site"
+  ];
+  const res = await x.batch([
+    ...DB_QUERIES.map((q) => x.prepare(q)),
+    x.prepare("SELECT site, COUNT(*) AS c, COALESCE(SUM(size), 0) AS total, COALESCE(SUM(CASE WHEN r2_key IS NOT NULL THEN size ELSE 0 END), 0) AS r2 FROM uploads GROUP BY site"),
+    x.prepare('SELECT site, COUNT(*) AS c, COALESCE(SUM(length(data)), 0) * 3 / 4 AS total FROM site_files GROUP BY site'),
+  ]);
+  const upRows = res[DB_QUERIES.length];
+  const sfRows = res[DB_QUERIES.length + 1];
+  const out = {};
+  const get = (s) => (out[s] ??= { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 });
+  for (const q of res.slice(0, DB_QUERIES.length)) for (const r of q.results) get(r.site).db += r.n || 0;
+  for (const r of upRows.results) { const u = get(r.site); u.files += r.total; u.file_count += r.c; u.r2 += r.r2; u.d1_files += r.total - r.r2; }
+  for (const r of sfRows.results) { const u = get(r.site); u.files += r.total; u.file_count += r.c; u.d1_files += r.total; }
+  return out;
 }
 
 // ───────── GitHub (webmaker 저장소) ─────────

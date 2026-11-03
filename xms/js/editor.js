@@ -26,21 +26,28 @@ const ICON = {
 const SIZES = [12, 14, 16, 18, 20, 24, 28, 32];
 const ALIGN = { justify: 'justifyFull', left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight' };
 
-// 그림은 큰 것만 줄인다 (긴 변 1600px, 1.2MB 넘으면 JPEG)
-export async function shrinkImage(file) {
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return file;
+// 모든 사진은 올릴 때 WEBP 로 바꾼다 (저장 공간 아끼기, 사용자 지시). 긴 변 1920px 까지, 화질 0.82 부터 900KB 안으로.
+//   움직이는 GIF 는 그대로(바꾸면 움직임이 사라진다). 브라우저가 WEBP 를 못 만들면 JPEG 로.
+export async function shrinkImage(file, { max = 1920, maxBytes = 900000 } = {}) {
+  if (!/^image\/(png|jpeg|webp|bmp)$/.test(file.type)) return file;
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-  const max = 1600;
-  if (file.size < 1200000 && img.naturalWidth <= max && img.naturalHeight <= max) return file;
   const r = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement('canvas');
   c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
   const g = c.getContext('2d');
-  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-  g.drawImage(img, 0, 0, c.width, c.height);
-  let q = 0.86; let blob;
-  do { blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', q)); q -= 0.08; } while (blob.size > 1200000 && q > 0.4);
-  return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, c.width, c.height); // WEBP 는 투명을 그대로 담는다
+  let q = 0.82; let blob;
+  do { blob = await new Promise((res) => c.toBlob(res, 'image/webp', q)); q -= 0.08; } while (blob && blob.type === 'image/webp' && blob.size > maxBytes && q > 0.4);
+  if (!blob || blob.type !== 'image/webp') { // WEBP 를 못 만드는 브라우저
+    g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    q = 0.85;
+    do { blob = await new Promise((res) => c.toBlob(res, 'image/jpeg', q)); q -= 0.08; } while (blob.size > maxBytes && q > 0.4);
+  }
+  // 바꾼 게 더 크면(이미 작은 WEBP 등) 원래 파일을 쓴다
+  if (file.type === 'image/webp' && file.size <= blob.size && r === 1) return file;
+  const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+  return new File([blob], `${file.name.replace(/\.\w+$/, '')}.${ext}`, { type: blob.type });
 }
 export async function uploadFile(board, kind, file) {
   const res = await fetch(`/xms-api/uploads?board=${encodeURIComponent(board)}&kind=${kind}`, {

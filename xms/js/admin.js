@@ -695,6 +695,19 @@ function fitJpeg(img, maxW, maxBytes) {
   while (url.length * 0.75 > maxBytes && q > 0.4) { q -= 0.08; url = c.toDataURL('image/jpeg', q); }
   return url;
 }
+// WEBP data URL (팝업 그림 — 저장 공간 아끼기). 못 만드는 브라우저면 JPEG
+function fitWebp(img, maxW, maxBytes) {
+  const r = Math.min(1, maxW / img.naturalWidth);
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, c.width, c.height);
+  let q = 0.82; let url = c.toDataURL('image/webp', q);
+  if (!url.startsWith('data:image/webp')) return fitJpeg(img, maxW, maxBytes);
+  while (url.length * 0.75 > maxBytes && q > 0.4) { q -= 0.08; url = c.toDataURL('image/webp', q); }
+  return url;
+}
 // 그림 고르기 칸: 누르기 · 끌어다 놓기(화면 아무 곳) · 붙여넣기(Ctrl+V)
 function imagePicker(host, onFile) {
   host.innerHTML = `<label class="drop"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
@@ -955,7 +968,7 @@ async function popupPage(id) {
     $('[data-rm]')?.addEventListener('click', () => { image = null; shown = null; dirty = true; cur(); pv(); });
   };
   imagePicker($('[data-pick]'), async (file) => {
-    try { const img = await loadImage(file); image = fitJpeg(img, 1200, 1000000); shown = image; dirty = true; cur(); pv(); } catch (e) { toast(e.message); }
+    try { const img = await loadImage(file); image = fitWebp(img, 1200, 700000); shown = image; dirty = true; cur(); pv(); } catch (e) { toast(e.message); }
   });
   form.addEventListener('input', pv); form.addEventListener('change', pv);
   cur(); pv();

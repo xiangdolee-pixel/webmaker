@@ -75,7 +75,9 @@ async function renderTiles() {
     ['사이트', s.sites],
     ['정지된 사이트', s.suspended],
     ['처리할 수정요청', s.openRequests, s.openRequests > 0],
-  ].map(([label, n, alert]) => `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`).join('');
+  ].map(([label, n, alert]) => `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`).join('')
+  + (s.storage ? `<div class="card tile wide-tile"><span>전체 사용량 (Cloudflare 무료 한도)</span>
+      <div class="usage-sum"><span>xms DB <b>${mb(s.storage.xms_db)}</b> / 500MB</span><span>xim DB <b>${mb(s.storage.xim_db)}</b> / 500MB</span><span>R2 파일 <b>${mb(s.storage.r2)}</b> / 10GB</span></div></div>` : '');
 }
 
 function render() {
@@ -169,8 +171,13 @@ function connectDialog() {
   loadRuns();
 }
 
+// 바이트 → 읽기 쉬운 크기
+const mb = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(b >= 104857600 ? 0 : 1)}MB` : b >= 1024 ? `${Math.round(b / 1024)}KB` : `${b || 0}B`);
+
 function siteCard(s) {
-  const pct = s.quota_mb ? Math.min(100, (s.used_mb / s.quota_mb) * 100) : 0;
+  const u = s.usage || { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 };
+  const quotaB = (s.quota_mb || 0) * 1048576;
+  const pct = quotaB ? Math.min(100, (u.files / quotaB) * 100) : 0;
   // 바로가기: 도메인이 있으면 도메인, 없으면 workers.dev (서버가 s.url 로 준다). 둘 다 보여 준다.
   const dev = `https://${s.slug}.xiangdolee.workers.dev`;
   const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
@@ -180,8 +187,13 @@ function siteCard(s) {
     <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
     <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
     <div class="meta">${addr}</div>
-    <div class="meta"><span>용량 ${Math.round(s.used_mb)} / ${s.quota_mb} MB</span><span>관리자 ${s.admin_count}명</span>
-      <span>처리할 요청 ${s.open_requests}건</span></div>
+    <div class="meta"><span>관리자 ${s.admin_count}명</span><span>처리할 요청 ${s.open_requests}건</span></div>
+    <dl class="usage">
+      <div><dt>DB</dt><dd>${mb(u.db)}<small>회원 · 글 · 메뉴 등</small></dd></div>
+      <div><dt>파일</dt><dd>${mb(u.files)}<small>${u.file_count}개${u.files ? ` · R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}` : ''}</small></dd></div>
+      <div><dt>홈페이지</dt><dd>${s.static_mb ? `${s.static_mb}MB` : '—'}<small>배포한 디자인 파일</small></dd></div>
+    </dl>
+    <div class="meta"><span>파일 저장 한도 ${mb(u.files)} / ${s.quota_mb}MB (${pct < 1 && pct > 0 ? '1% 미만' : `${Math.round(pct)}%`})</span></div>
     <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div>
     <div class="actions">
       <a class="btn sm primary" href="${esc(s.url)}" target="_blank" rel="noopener">홈페이지 열기</a>

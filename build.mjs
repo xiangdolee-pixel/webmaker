@@ -157,7 +157,7 @@ if (CONNECT) {
   })(OUT);
   const index = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
   const title = textOf((index.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '') || slug;
-  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), menus: menusFrom(index) }, null, 2));
+  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), static_bytes: bytes, menus: menusFrom(index) }, null, 2));
   config.main = './xim/_worker/site-worker.js';
   config.assets.binding = 'ASSETS';
   config.assets.run_worker_first = true;
