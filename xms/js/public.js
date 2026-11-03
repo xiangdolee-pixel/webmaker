@@ -247,3 +247,32 @@ if (mbar) {
   }));
   sync();
 }
+
+// 닉네임 · 이메일 중복: 입력하는 동안 칸 아래에 바로 알려 준다 (가입 · 내 정보)
+$$('form[data-form=signup] [name=nickname], form[data-form=profile] [name=nickname], form[data-form=profile] [name=email]').forEach((input) => {
+  const note = document.createElement('small');
+  note.className = 'dup-note';
+  note.setAttribute('aria-live', 'polite');
+  input.after(note);
+  const first = input.value.trim();
+  let timer = 0;
+  let seq = 0;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const v = input.value.trim();
+    note.textContent = '';
+    note.className = 'dup-note';
+    input.setCustomValidity('');
+    if (!v || v === first) return;
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      try {
+        const r = await api(`/check?${input.name}=${encodeURIComponent(v)}`);
+        if (my !== seq) return;
+        note.textContent = r.message;
+        note.className = `dup-note ${r.ok ? 'ok' : 'bad'}`;
+        input.setCustomValidity(r.ok ? '' : r.message);
+      } catch { /* 확인 못 하면 저장할 때 서버가 다시 본다 */ }
+    }, 350);
+  });
+});

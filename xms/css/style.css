@@ -321,6 +321,9 @@ tr.dragging td { background: var(--surface); }
 .timer.over { color: var(--danger, #d33); }
 .done-email { display: flex; align-items: center; gap: 8px; margin: 0; overflow-wrap: anywhere; }
 .cf-turnstile { margin: 4px 0 12px; }
+.dup-note { display: block; min-height: 0; font-size: 13px; }
+.dup-note.ok { color: var(--ok, #1a7f4b); }
+.dup-note.bad { color: var(--danger); }
 .agree { display: grid; gap: 2px; margin: 8px 0 14px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--line-2); }
 .agree .all { font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .agree-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

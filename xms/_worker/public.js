@@ -506,6 +506,14 @@ export async function publicApi(ctx) {
     return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SESS_COOKIE, '', 0) });
   }
 
+  //   GET /xms-api/check?nickname=… | ?email=…  → { ok, message }  (가입 · 내 정보 화면에서 입력하는 동안)
+  if (path === '/check' && method === 'GET') {
+    const nickname = str(url.searchParams.get('nickname'), 100);
+    const email = str(url.searchParams.get('email'), 254);
+    if (!nickname && !email) return json({ ok: false, message: '' });
+    const prob = await uniqueProblem(db, site, { nickname, email }, me.kind === 'member' ? me.member.id : 0);
+    return json(prob ? { ok: false, message: prob.message } : { ok: true, message: nickname ? '쓸 수 있는 닉네임입니다.' : '쓸 수 있는 이메일입니다.' });
+  }
   if (path === '/signup/code' && method === 'POST') {
     return json(await sendSignupCode(ctx, await body(request), await siteInfo(env, site)));
   }
@@ -526,6 +534,8 @@ export async function publicApi(ctx) {
     const dup = await db.prepare('SELECT status FROM members WHERE site = ? AND (lower(login_id) = ? OR (lower(email) = ? AND status != \'WITHDRAWN\')) ORDER BY status = \'WITHDRAWN\' LIMIT 1').bind(site, loginId, loginId).first();
     if (dup?.status === 'WITHDRAWN') throw bad('탈퇴한 이메일입니다. 다시 가입하려면 사이트 관리자에게 문의해 주세요.');
     if (dup) throw bad('이미 가입한 이메일입니다. 로그인해 주세요.');
+    const prob = await uniqueProblem(db, site, { nickname: vals.cols.nickname });
+    if (prob) throw bad(prob.message);
     const p = await newPassword(pw);
     const t = now();
     const r = await db.prepare(`INSERT INTO members (site, login_id, pw_hash, pw_salt, name, nickname, level, email, mobile, phone, extra, last_login_at, created_at)
@@ -544,6 +554,8 @@ export async function publicApi(ctx) {
     const raw = await body(request);
     if (me.member.login_id.includes('@')) raw.email = me.member.login_id; // 이메일이 아이디인 회원은 이메일을 바꿀 수 없다
     const vals = memberValues(fields, raw, false);
+    const prob = await uniqueProblem(db, site, { nickname: vals.cols.nickname, email: me.member.login_id.includes('@') ? '' : vals.cols.email }, me.member.id);
+    if (prob) throw bad(prob.message);
     const extra = { ...JSON.parse(me.member.extra || '{}'), ...vals.extra };
     await db.prepare('UPDATE members SET name = ?, nickname = ?, email = ?, mobile = ?, phone = ?, extra = ? WHERE id = ?')
       .bind(vals.cols.name || me.member.name, vals.cols.nickname, vals.cols.email, vals.cols.mobile, vals.cols.phone, JSON.stringify(extra), me.member.id).run();
@@ -632,6 +644,23 @@ export async function publicApi(ctx) {
 }
 
 // 가입 항목 값 검사 → member 컬럼 / extra 로 나눈다
+// 닉네임 · 이메일 중복 확인 (탈퇴하지 않은 회원끼리, 대소문자 · 앞뒤 빈칸 무시). exceptId = 자기 자신
+const RESERVED_NICK = ['관리자', '운영자', 'admin', 'administrator'];
+async function uniqueProblem(db, site, { nickname = '', email = '' }, exceptId = 0) {
+  const nick = String(nickname).trim();
+  if (nick) {
+    if (RESERVED_NICK.includes(nick.toLowerCase())) return { field: 'nickname', message: '쓸 수 없는 닉네임입니다.' };
+    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND lower(trim(nickname)) = lower(?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, nick, exceptId).first();
+    if (d) return { field: 'nickname', message: '이미 쓰고 있는 닉네임입니다. 다른 닉네임을 넣어 주세요.' };
+  }
+  const em = String(email).trim().toLowerCase();
+  if (em) {
+    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(email) = ? OR lower(login_id) = ?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, em, em, exceptId).first();
+    if (d) return { field: 'email', message: '이미 쓰고 있는 이메일입니다.' };
+  }
+  return null;
+}
+
 function memberValues(fields, raw, isSignup) {
   const cols = { name: '', nickname: '', email: '', mobile: '', phone: '' };
   const extra = {};
