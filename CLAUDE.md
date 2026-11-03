@@ -79,7 +79,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
   ```
   node deploy.mjs <폴더>
   ```
-  (안에서 `node build.mjs <폴더>` → `npx wrangler deploy`.) `build.mjs` 가 그 폴더만 `dist/` 로 모으고(메모 `.md` · 설정 · 숨김 파일 제외) `wrangler.jsonc`(name = 폴더 이름)를 만든다.
+  (안에서 `node build.mjs <폴더>` → `npx wrangler deploy`.) `build.mjs` 가 그 폴더만 `dist/` 로 모으고(메모 `.md` · 설정 · 숨김 파일 제외) `wrangler.jsonc`(name = 폴더 이름)를 만든다. 단 deploy.mjs 는 `.deploy/<폴더>` + `.deploy-<폴더>.wrangler.jsonc` 에 따로 빌드한다 — 다른 세션이 `dist` 를 다시 빌드해도 섞이지 않게. (섞여 올라가면 그 파일 해시에 엉뚱한 내용이 굳어, 내용을 한 글자라도 바꿔 다시 올려야 고쳐진다.)
 - **리포 전체를 올리지 않는다.** `build.mjs` 없이 `wrangler deploy` 하지 않고, 리포 루트를 통째로 assets 로 쓰지 않고, `webmaker` 이름의 Worker 를 만들지 않는다.
 - 어느 폴더인지: 요청에 폴더 이름이 있으면 그것, 없으면 지금 작업 중인 폴더. 애매하면 한 줄로 묻는다.
 - 로컬 파일을 그대로 올린다(커밋 · 푸시 전이어도 된다).
