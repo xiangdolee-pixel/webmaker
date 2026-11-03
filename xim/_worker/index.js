@@ -399,7 +399,64 @@ async function ximApi(request, env, url) {
     return json({ ok: true });
   }
 
+  // GitHub에서 연결: webmaker 저장소 폴더 주소 → GitHub Actions(xim-connect.yml) 가 빌드 · 연결 · 등록 · 배포
+  if (path === '/api/connect' && method === 'POST') {
+    const folder = repoFolder(str((await body(request)).url, 300));
+    await github(env, `/contents/${encodeURIComponent(folder)}?ref=main`).then((list) => {
+      if (!Array.isArray(list)) throw bad(`"${folder}" 는 폴더가 아닙니다.`);
+      if (!list.some((f) => f.type === 'file' && /\.html?$/i.test(f.name))) throw bad(`"${folder}" 폴더에 html 파일이 없습니다. 정적 홈페이지 폴더를 넣어 주세요.`);
+    }, (e) => { throw e.status === 404 ? bad(`저장소에 "${folder}" 폴더가 없습니다. 먼저 GitHub 에 올라가 있어야 합니다.`) : e; });
+    await github(env, `/actions/workflows/${WORKFLOW}/dispatches`, { ref: 'main', inputs: { folder } });
+    return json({ ok: true, folder });
+  }
+  if (path === '/api/connect/runs' && method === 'GET') {
+    if (!env.GITHUB_TOKEN) return json({ ready: false, runs: [] });
+    const r = await github(env, `/actions/workflows/${WORKFLOW}/runs?per_page=10`);
+    return json({
+      ready: true,
+      runs: (r.workflow_runs || []).map((x) => ({
+        id: x.id, title: x.display_title, status: x.status, conclusion: x.conclusion, created_at: Date.parse(x.created_at), url: x.html_url,
+      })),
+    });
+  }
+
   throw new HttpError(404, '없는 주소입니다.');
+}
+
+// ───────── GitHub (webmaker 저장소) ─────────
+const REPO = 'xiangdolee-pixel/webmaker';
+const WORKFLOW = 'xim-connect.yml';
+// https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc(/…) 또는 그냥 sjccc → 폴더 이름
+function repoFolder(input) {
+  let s = input.trim().replace(/[?#].*$/, '');
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/]+)\/([^/]+)(?:\/(?:tree|blob)\/([^/]+)\/([^/]+))?/i);
+  if (m) {
+    if (`${m[1]}/${m[2]}`.toLowerCase() !== REPO) throw bad(`${REPO} 저장소의 폴더 주소만 넣을 수 있습니다.`);
+    if (!m[4]) throw bad('저장소 주소 뒤에 폴더까지 넣어 주세요. 예) https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc');
+    if (m[3] !== 'main') throw bad('main 브랜치의 폴더만 연결할 수 있습니다.');
+    s = decodeURIComponent(m[4]);
+  }
+  if (!/^[A-Za-z0-9._-]+$/.test(s) || s.startsWith('.')) throw bad('폴더 주소를 확인해 주세요. 예) https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc');
+  if (['xim', 'xms', 'dist', 'node_modules'].includes(s.toLowerCase())) throw bad('그 폴더는 연결할 수 없습니다.');
+  return s;
+}
+async function github(env, path, data) {
+  if (!env.GITHUB_TOKEN) throw new HttpError(503, 'GitHub 토큰이 아직 없습니다. 처음 한 번 설정이 필요합니다(보안 탭 안내).');
+  const res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
+    method: data ? 'POST' : 'GET',
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'xim',
+      ...(data ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (res.status === 204) return null;
+  const out = await res.json().catch(() => null);
+  if (!res.ok) {
+    const e = new HttpError(res.status === 404 ? 404 : 502, `GitHub 요청이 실패했습니다 (${res.status}${out?.message ? `: ${out.message}` : ''})`);
+    throw e;
+  }
+  return out;
 }
 
 function customerFields(raw) {

@@ -18,9 +18,14 @@ const ACCOUNT_ID = 'f225d506d8cf6ddf97704a36c69f5ce7';
 const AUTH_HOME = path.join(os.homedir(), '.wrangler-xiangdolee');
 fs.mkdirSync(AUTH_HOME, { recursive: true });
 
-const env = { ...process.env, XDG_CONFIG_HOME: AUTH_HOME, CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID };
-delete env.CLOUDFLARE_API_TOKEN;
-delete env.CF_API_TOKEN;
+// GitHub Actions(xim "GitHub에서 연결")에서는 저장소 비밀값 CLOUDFLARE_API_TOKEN 으로, 이 PC 에서는 xiangdolee 전용 로그인으로.
+const CI_TOKEN = process.env.GITHUB_ACTIONS === 'true' && process.env.CLOUDFLARE_API_TOKEN;
+const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID };
+if (!CI_TOKEN) {
+  env.XDG_CONFIG_HOME = AUTH_HOME;
+  delete env.CLOUDFLARE_API_TOKEN;
+  delete env.CF_API_TOKEN;
+}
 
 function run(cmd, args) {
   const r = spawnSync([cmd, ...args].join(' '), { cwd: ROOT, env, stdio: 'inherit', shell: true });
@@ -83,6 +88,7 @@ WHERE NOT EXISTS (SELECT 1 FROM site_import WHERE site = ${q(c.slug)}) AND NOT E
     console.log(`[xim] ${c.slug}: xim ${site} · xms ${menus}`);
   } catch (e) {
     console.warn('[xim] 자동 등록에 실패했습니다(배포는 계속):', e.message);
+    if (CI_TOKEN) process.exitCode = 1; // GitHub 에서는 실패로 남겨 xim 화면에 보이게
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

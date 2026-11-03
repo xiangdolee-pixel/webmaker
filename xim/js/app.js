@@ -94,9 +94,10 @@ async function renderSites() {
   const [sites, cs] = await Promise.all([api('/sites'), api('/customers')]);
   customers = cs;
   view.innerHTML = `
-    <div class="bar"><h2>사이트 ${sites.length}</h2><button class="btn primary" type="button" data-act="new-site">+ 사이트 만들기</button></div>
+    <div class="bar"><h2>사이트 ${sites.length}</h2><button class="btn primary" type="button" data-act="connect">GitHub에서 연결</button><button class="btn" type="button" data-act="new-site">+ 직접 만들기</button></div>
     <div class="list cols">${sites.map(siteCard).join('') || '<div class="card empty">아직 등록된 사이트가 없습니다.</div>'}</div>`;
   view.querySelector('[data-act="new-site"]').onclick = () => siteDialog();
+  view.querySelector('[data-act="connect"]').onclick = () => connectDialog();
   view.querySelectorAll('[data-site]').forEach((el) => {
     const site = sites.find((s) => s.id === +el.dataset.site);
     el.querySelector('[data-act="edit"]').onclick = () => siteDialog(site);
@@ -109,6 +110,63 @@ async function renderSites() {
     });
     el.querySelector('[data-act="toggle"]').onclick = (e) => toggleSite(site, e.currentTarget);
   });
+}
+
+// ───────── GitHub에서 연결 ─────────
+const RUN_LABEL = { queued: ['대기 중', 'new'], in_progress: ['진행 중', 'doing'], waiting: ['대기 중', 'new'], requested: ['대기 중', 'new'], pending: ['대기 중', 'new'] };
+function runBadge(r) {
+  if (r.status !== 'completed') { const [t, c] = RUN_LABEL[r.status] || ['진행 중', 'doing']; return `<span class="badge ${c}">${t}</span>`; }
+  return r.conclusion === 'success' ? '<span class="badge done">완료</span>' : `<span class="badge suspended">${r.conclusion === 'cancelled' ? '취소됨' : '실패'}</span>`;
+}
+function connectDialog() {
+  let timer = null;
+  let changed = false;
+  const dlg = openDialog(`
+    <h2>GitHub에서 연결</h2>
+    <p class="meta">webmaker 저장소에 올라간 홈페이지 폴더 주소를 넣으면 로그인 · 관리 화면 · 회원 · 게시판 · 메뉴를 붙이고, xim 에 등록하고, Cloudflare 에 배포합니다. 1~2분 걸립니다.</p>
+    <form>
+      <label class="field"><span>폴더 주소</span><input class="input" name="url" required placeholder="https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc" autocomplete="off">
+        <small>폴더 이름만 넣어도 됩니다 (예: sjccc). 이미 연결된 사이트를 다시 넣으면 최신 내용으로 다시 배포합니다.</small></label>
+      <p class="err" role="alert"></p>
+      <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">연결 시작</button></div>
+    </form>
+    <h3 class="runs-h">최근 연결</h3>
+    <div class="sub-list" data-runs><div class="sub-row"><span>불러오는 중…</span></div></div>`, (d) => {
+    const form = d.querySelector('form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+        const r = await api('/connect', { method: 'POST', data: { url: form.url.value } });
+        form.reset();
+        toast(`${r.folder} 연결을 시작했습니다.`);
+        setTimeout(loadRuns, 2500);
+      });
+    });
+    d.addEventListener('close', () => { clearTimeout(timer); if (changed) render(); });
+  });
+  const box = dlg.querySelector('[data-runs]');
+  const seen = new Map();
+  async function loadRuns() {
+    clearTimeout(timer);
+    let data;
+    try { data = await api('/connect/runs'); } catch (e) { box.innerHTML = `<div class="sub-row"><span>${esc(e.message)}</span></div>`; return; }
+    if (!data.ready) {
+      box.innerHTML = '<div class="sub-row"><span>처음 한 번 설정이 필요합니다 — GitHub 토큰이 아직 없습니다. Claude 에게 "xim GitHub 연결 설정" 을 물어보세요.</span></div>';
+      return;
+    }
+    box.innerHTML = data.runs.map((r) => `<div class="sub-row"><span><b>${esc(r.title.replace(/^xim 연결:\s*/, ''))}</b> <small class="meta">${fmtDate(r.created_at)}</small></span>
+      ${runBadge(r)}<a class="btn sm" href="${esc(r.url)}" target="_blank" rel="noopener">기록</a></div>`).join('') || '<div class="sub-row"><span>아직 연결한 적이 없습니다.</span></div>';
+    for (const r of data.runs) {
+      const before = seen.get(r.id);
+      if (before && before !== 'completed' && r.status === 'completed') {
+        changed = true;
+        toast(r.conclusion === 'success' ? `${r.title.replace(/^xim 연결:\s*/, '')} 연결이 끝났습니다.` : '연결이 실패했습니다. "기록" 을 눌러 확인해 주세요.');
+      }
+      seen.set(r.id, r.status);
+    }
+    if (dlg.open && data.runs.some((r) => r.status !== 'completed')) timer = setTimeout(loadRuns, 5000);
+  }
+  loadRuns();
 }
 
 function siteCard(s) {

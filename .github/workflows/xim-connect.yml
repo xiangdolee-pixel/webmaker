@@ -1,0 +1,52 @@
+# xim "GitHub에서 연결" — xim 화면에 이 저장소 폴더 주소를 넣으면 xim 이 이 작업을 실행한다.
+# 하는 일은 이 PC 에서 `node deploy.mjs <폴더>` 와 같다:
+#   공통 사이트 Worker(로그인 · 관리 화면 · 회원 · 게시판 · 정지) 붙이기 → 헤더 메뉴 표시 → xim 등록 · xms 메뉴 가져오기 → Cloudflare 배포
+# 필요한 저장소 비밀값: CLOUDFLARE_API_TOKEN (xiangdolee 계정, Workers 편집 + D1 편집 권한)
+name: xim 사이트 연결
+run-name: "xim 연결: ${{ inputs.folder }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: WebMaker2 안의 폴더 이름 (예 sjccc)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xim-connect-${{ inputs.folder }}
+  cancel-in-progress: false
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 폴더 확인
+        env:
+          FOLDER: ${{ inputs.folder }}
+        run: |
+          if ! [[ "$FOLDER" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "$FOLDER" == .* ]] || [ ! -d "$FOLDER" ]; then
+            echo "::error::폴더가 없습니다: $FOLDER"; exit 1
+          fi
+          case "$FOLDER" in xim|xms|dist|node_modules) echo "::error::연결할 수 없는 폴더입니다: $FOLDER"; exit 1;; esac
+
+      - name: wrangler 설치
+        run: npm install -g wrangler@4
+
+      - name: 연결 · 등록 · 배포
+        env:
+          FOLDER: ${{ inputs.folder }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::저장소 비밀값 CLOUDFLARE_API_TOKEN 이 없습니다"; exit 1; fi
+          node deploy.mjs "$FOLDER"
