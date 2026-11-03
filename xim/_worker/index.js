@@ -84,12 +84,79 @@ async function tooManyFails(db, key) {
 }
 const recordFail = (db, key) => db.prepare('INSERT INTO login_fails (key, at) VALUES (?, ?)').bind(key, now()).run();
 
-async function newSession(db, kind, siteId = null, adminId = null) {
+async function newSession(db, kind, siteId = null, adminId = null, expiresAt = now() + SESSION_MS) {
   const token = randomHex(32);
   await db.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now()).run();
   await db.prepare('INSERT INTO sessions (token, kind, site_id, admin_id, expires_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(token, kind, siteId, adminId, now() + SESSION_MS).run();
+    .bind(token, kind, siteId, adminId, expiresAt).run();
   return token;
+}
+
+// ───────── 구글 OTP (TOTP, RFC 6238: SHA-1 · 6자리 · 30초) ─────────
+
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function base32(bytes) {
+  let bits = 0; let val = 0; let out = '';
+  for (const b of bytes) {
+    val = ((val << 8) | b) & 0xffff; bits += 8;
+    while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+  return out;
+}
+function unbase32(s) {
+  let bits = 0; let val = 0; const out = [];
+  for (const c of s.toUpperCase().replace(/=+$/, '')) {
+    const i = B32.indexOf(c);
+    if (i < 0) throw new Error('base32');
+    val = ((val << 5) | i) & 0xffff; bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return new Uint8Array(out);
+}
+async function totpAt(secret, counter) {
+  const key = await crypto.subtle.importKey('raw', unbase32(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const msg = new DataView(new ArrayBuffer(8));
+  msg.setUint32(0, Math.floor(counter / 2 ** 32));
+  msg.setUint32(4, counter >>> 0);
+  const h = new Uint8Array(await crypto.subtle.sign('HMAC', key, msg));
+  const o = h[19] & 15;
+  const n = ((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
+  return String(n % 1000000).padStart(6, '0');
+}
+
+const getSetting = async (db, key) => (await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first())?.value ?? null;
+const setSetting = (db, key, value) =>
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(key, value).run();
+
+// 앞뒤 30초까지 허용. 한 번 쓴 번호(같은 30초 칸)는 다시 못 쓴다.
+async function checkTotp(db, secret, code) {
+  code = String(code ?? '').replace(/\s/g, '');
+  if (!/^\d{6}$/.test(code)) return false;
+  const c0 = Math.floor(now() / 30000);
+  const last = Number(await getSetting(db, 'totp_last')) || 0;
+  for (const c of [c0 - 1, c0, c0 + 1]) {
+    if (c > last && sameText(await totpAt(secret, c), code)) {
+      await setSetting(db, 'totp_last', String(c));
+      return true;
+    }
+  }
+  return false;
+}
+
+const OTP_COOKIE = 'xim_otp';
+async function otpTrustUntil(db, request) {
+  const token = cookie(request, OTP_COOKIE);
+  if (!token || !/^[0-9a-f]{64}$/.test(token)) return 0;
+  const row = await db.prepare('SELECT expires_at FROM otp_trust WHERE token = ? AND expires_at > ?').bind(token, now()).first();
+  return row ? row.expires_at : 0;
+}
+async function trustBrowser(db) {
+  const token = randomHex(32);
+  const until = now() + DAY;
+  await db.prepare('DELETE FROM otp_trust WHERE expires_at < ?').bind(now()).run();
+  await db.prepare('INSERT INTO otp_trust (token, expires_at) VALUES (?, ?)').bind(token, until).run();
+  return { until, cookie: setCookie(OTP_COOKIE, token, DAY / 1000) };
 }
 async function readSession(db, request, cookieName, kind) {
   const token = cookie(request, cookieName);
@@ -114,11 +181,30 @@ async function ximApi(request, env, url) {
     if (!env.XIM_ADMIN_PASSWORD) throw new HttpError(503, '운영자 비밀번호가 아직 설정되지 않았습니다.');
     const key = `xim:${clientIp(request)}`;
     if (await tooManyFails(db, key)) throw new HttpError(429, '로그인 실패가 많아 10분 뒤에 다시 시도해 주세요.');
-    const { password } = await body(request);
-    const ok = sameText(await sha256(str(password, 200)), await sha256(env.XIM_ADMIN_PASSWORD));
+    const { password, otp } = await body(request);
+    const ok = sameText(await sha256(String(password ?? '').slice(0, 200)), await sha256(env.XIM_ADMIN_PASSWORD));
     if (!ok) { await recordFail(db, key); throw new HttpError(401, '비밀번호가 맞지 않습니다.'); }
-    const token = await newSession(db, 'xim');
-    return json({ ok: true }, 200, { 'Set-Cookie': setCookie(XIM_COOKIE, token, SESSION_MS / 1000) });
+
+    // 구글 OTP 를 등록했으면: 이 브라우저가 24시간 안에 OTP 를 넣었을 때만 비밀번호로 통과
+    const secret = await getSetting(db, 'totp_secret');
+    const cookies = [];
+    let expires = now() + DAY;
+    if (secret) {
+      const until = await otpTrustUntil(db, request);
+      if (until) expires = until;
+      else {
+        if (!otp) return json({ need_otp: true });
+        if (!(await checkTotp(db, secret, otp))) { await recordFail(db, key); throw new HttpError(401, 'OTP 번호가 맞지 않습니다.'); }
+        const t = await trustBrowser(db);
+        cookies.push(t.cookie);
+        expires = t.until;
+      }
+    }
+    const token = await newSession(db, 'xim', null, null, expires);
+    cookies.push(setCookie(XIM_COOKIE, token, Math.round((expires - now()) / 1000)));
+    const res = json({ ok: true });
+    cookies.forEach((c) => res.headers.append('Set-Cookie', c));
+    return res;
   }
 
   const session = await readSession(db, request, XIM_COOKIE, 'xim');
@@ -129,6 +215,42 @@ async function ximApi(request, env, url) {
     return json({ ok: true }, 200, { 'Set-Cookie': setCookie(XIM_COOKIE, '', 0) });
   }
   if (path === '/api/me') return json({ ok: true });
+
+  // 구글 OTP 등록 · 해제
+  if (path === '/api/otp' && method === 'GET') {
+    return json({ enabled: !!(await getSetting(db, 'totp_secret')) });
+  }
+  if (path === '/api/otp/setup' && method === 'POST') {
+    if (await getSetting(db, 'totp_secret')) throw bad('이미 OTP 가 등록돼 있습니다. 다시 등록하려면 먼저 해제해 주세요.');
+    const secret = base32(crypto.getRandomValues(new Uint8Array(20)));
+    await setSetting(db, 'totp_pending', secret);
+    const uri = `otpauth://totp/xim:${encodeURIComponent('운영자')}?secret=${secret}&issuer=xim&algorithm=SHA1&digits=6&period=30`;
+    return json({ secret, uri });
+  }
+  if (path === '/api/otp/enable' && method === 'POST') {
+    const { code } = await body(request);
+    const pending = await getSetting(db, 'totp_pending');
+    if (!pending) throw bad('먼저 QR 코드를 만들어 주세요.');
+    if (!(await checkTotp(db, pending, code))) throw bad('OTP 번호가 맞지 않습니다. 앱에 보이는 6자리를 다시 넣어 주세요.');
+    await db.batch([
+      db.prepare("INSERT INTO settings (key, value) VALUES ('totp_secret', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(pending),
+      db.prepare("DELETE FROM settings WHERE key = 'totp_pending'"),
+      db.prepare('DELETE FROM otp_trust'),
+    ]);
+    const t = await trustBrowser(db); // 지금 이 브라우저는 방금 OTP 를 넣었으니 24시간 믿는다
+    return json({ ok: true }, 200, { 'Set-Cookie': t.cookie });
+  }
+  if (path === '/api/otp/disable' && method === 'POST') {
+    const { code } = await body(request);
+    const secret = await getSetting(db, 'totp_secret');
+    if (!secret) return json({ ok: true });
+    if (!(await checkTotp(db, secret, code))) throw bad('OTP 번호가 맞지 않습니다.');
+    await db.batch([
+      db.prepare("DELETE FROM settings WHERE key IN ('totp_secret', 'totp_pending')"),
+      db.prepare('DELETE FROM otp_trust'),
+    ]);
+    return json({ ok: true });
+  }
 
   if (path === '/api/summary') {
     const r = await db.batch([

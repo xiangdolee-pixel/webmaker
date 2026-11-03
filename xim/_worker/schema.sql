@@ -65,3 +65,15 @@ CREATE TABLE IF NOT EXISTS login_fails (
   at          INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_login_fails ON login_fails(key, at);
+
+-- xim 설정값 (구글 OTP 비밀키 등). key = totp_secret | totp_pending | totp_last
+CREATE TABLE IF NOT EXISTS settings (
+  key         TEXT PRIMARY KEY,
+  value       TEXT NOT NULL
+);
+
+-- OTP 를 한 번 넣은 브라우저는 24시간 동안 비밀번호만으로 로그인 (쿠키 xim_otp)
+CREATE TABLE IF NOT EXISTS otp_trust (
+  token       TEXT PRIMARY KEY,
+  expires_at  INTEGER NOT NULL
+);

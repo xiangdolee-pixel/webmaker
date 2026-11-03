@@ -125,6 +125,15 @@ textarea.input { min-height: 120px; resize: vertical; }
 .quota { height: 6px; border-radius: 99px; background: #eceef3; overflow: hidden; }
 .quota i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
 
+/* ── 구글 OTP ── */
+.otp-input { font-size: 22px; letter-spacing: .4em; text-align: center; font-variant-numeric: tabular-nums; }
+.steps { margin: 0 0 16px; padding-left: 1.3em; color: var(--sub); }
+.steps li { margin-bottom: 4px; }
+.qr { display: flex; justify-content: center; margin: 0 0 12px; }
+.qr svg { width: min(220px, 70vw); height: auto; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.center { justify-content: center; text-align: center; margin: 0 0 18px; }
+.key { padding: 2px 8px; border-radius: 6px; background: var(--brand-soft); color: var(--brand); font-size: 14px; word-break: break-all; }
+
 /* ── 대화상자 ── */
 dialog {
   width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 0; border-radius: 18px;

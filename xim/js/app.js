@@ -1,5 +1,6 @@
 // xim 운영자 화면
 import { $, esc, makeApi, fmtDate, badge, toast, pillTabs, formData, openDialog, busy } from './common.js';
+import { qrSvg } from './qr.js';
 
 const api = makeApi('/api');
 const view = $('#view');
@@ -26,9 +27,19 @@ function showLogin() {
 $('#login-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.currentTarget;
+  const otpField = $('#otp-field');
   busy(form.querySelector('button'), $('#login-err'), async () => {
-    await api('/login', { method: 'POST', data: formData(form) });
+    const res = await api('/login', { method: 'POST', data: formData(form) });
+    if (res?.need_otp) {
+      // 비밀번호는 맞음 → 오늘 첫 로그인이라 구글 OTP 를 묻는다
+      otpField.hidden = false;
+      otpField.querySelector('input').required = true;
+      otpField.querySelector('input').focus();
+      return;
+    }
     form.reset();
+    otpField.hidden = true;
+    otpField.querySelector('input').required = false;
     showApp();
   });
 });
@@ -44,7 +55,7 @@ function showApp() {
   $('#app').hidden = false;
   if (!navReady) {
     navReady = true;
-    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청']], tab, (v) => { tab = v; render(); });
+    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['security', '보안']], tab, (v) => { tab = v; render(); });
   }
   render();
 }
@@ -73,6 +84,7 @@ function render() {
     if (tab === 'sites') tasks.push(renderSites());
     if (tab === 'customers') tasks.push(renderCustomers());
     if (tab === 'requests') tasks.push(renderRequests());
+    if (tab === 'security') tasks.push(renderSecurity());
     await Promise.all(tasks);
   });
 }
@@ -311,6 +323,77 @@ function requestDialog(r) {
         await api(`/requests/${r.id}`, { method: 'PUT', data: { status, reply: form.reply.value } });
         dlg.close();
         toast('저장했습니다.');
+        render();
+      });
+    });
+  });
+}
+
+// ───────── 보안: 구글 OTP ─────────
+async function renderSecurity() {
+  const { enabled } = await api('/otp');
+  view.innerHTML = `
+    <div class="bar"><h2>보안</h2></div>
+    <section class="card item">
+      <div class="item-head"><h3>구글 OTP (2단계 로그인)</h3><span class="badge ${enabled ? 'active' : 'new'}">${enabled ? '사용 중' : '사용 안 함'}</span></div>
+      <p class="meta">${enabled
+        ? '브라우저마다 하루에 한 번 OTP 번호를 넣어야 로그인됩니다. 넣은 뒤 24시간 동안은 그 브라우저에서 비밀번호만으로 로그인돼요.'
+        : 'OTP 를 등록하면 비밀번호만 알아서는 로그인할 수 없습니다. 폰에 Google Authenticator 앱을 설치해 두세요.'}</p>
+      <div class="actions">${enabled
+        ? '<button class="btn sm danger" type="button" data-act="off">OTP 해제</button>'
+        : '<button class="btn primary" type="button" data-act="on">OTP 등록하기</button>'}</div>
+    </section>`;
+  view.querySelector('[data-act]').onclick = enabled ? otpOffDialog : otpOnDialog;
+}
+
+async function otpOnDialog() {
+  let setup;
+  try { setup = await api('/otp/setup', { method: 'POST', data: {} }); } catch (e) { return toast(e.message); }
+  openDialog(`
+    <h2>구글 OTP 등록</h2>
+    <ol class="steps">
+      <li>폰에서 <b>Google Authenticator</b> 앱을 열고 <b>+ → QR 코드 스캔</b></li>
+      <li>아래 QR 코드를 찍습니다</li>
+      <li>앱에 생긴 <b>xim</b> 의 6자리 번호를 넣고 등록</li>
+    </ol>
+    <div class="qr">${qrSvg(setup.uri)}</div>
+    <p class="meta center">QR 을 못 찍으면 앱에서 "설정 키 입력" → <code class="key">${esc(setup.secret.replace(/(.{4})/g, '$1 ').trim())}</code></p>
+    <form>
+      <label class="field"><span>OTP 번호 6자리</span>
+        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required placeholder="000000"></label>
+      <p class="err" role="alert"></p>
+      <div class="dlg-foot"><button class="btn" type="button" data-close>취소</button><button class="btn primary" type="submit">등록</button></div>
+    </form>`, (dlg) => {
+    const form = dlg.querySelector('form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+        await api('/otp/enable', { method: 'POST', data: formData(form) });
+        dlg.close();
+        toast('구글 OTP 를 등록했습니다.');
+        render();
+      });
+    });
+  });
+}
+
+function otpOffDialog() {
+  openDialog(`
+    <h2>구글 OTP 해제</h2>
+    <p class="meta">해제하면 비밀번호만으로 로그인됩니다. 확인을 위해 지금 앱에 보이는 번호를 넣어 주세요.</p>
+    <form>
+      <label class="field"><span>OTP 번호 6자리</span>
+        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required placeholder="000000"></label>
+      <p class="err" role="alert"></p>
+      <div class="dlg-foot"><button class="btn" type="button" data-close>취소</button><button class="btn danger" type="submit">해제</button></div>
+    </form>`, (dlg) => {
+    const form = dlg.querySelector('form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+        await api('/otp/disable', { method: 'POST', data: formData(form) });
+        dlg.close();
+        toast('구글 OTP 를 해제했습니다.');
         render();
       });
     });

@@ -18,6 +18,10 @@
       <label class="field"><span>운영자 비밀번호</span>
         <input class="input" type="password" name="password" autocomplete="current-password" required>
       </label>
+      <label class="field" id="otp-field" hidden><span>구글 OTP 번호</span>
+        <input class="input otp-input" name="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="000000">
+        <small>하루에 한 번만 넣으면 됩니다. 24시간 동안은 이 브라우저에서 비밀번호만으로 로그인돼요.</small>
+      </label>
       <button class="btn primary" type="submit">로그인</button>
       <p class="err" id="login-err" role="alert"></p>
     </form>
