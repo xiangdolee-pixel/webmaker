@@ -93,7 +93,8 @@ button { font: inherit; color: inherit; }
 .flash-down { animation: flashDown .8s ease-out; }
 
 /* 지수·원자재 칸 */
-.tile-grid { display: grid; gap: var(--gap); }
+.tile-grid { display: grid; gap: var(--gap); position: relative; }
+.tile-grid[data-msg]::before { content: attr(data-msg); position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; padding: 0 16px; text-align: center; font-size: 14px; font-weight: 600; color: var(--sub); }
 .idx-grid { grid-template-columns: repeat(5, 1fr); }
 .cm-grid { grid-template-columns: repeat(6, 1fr); }
 .fx-grid { grid-template-columns: repeat(4, 1fr); }

@@ -367,8 +367,19 @@
     });
   }
 
+  // 못 받으면 빈 칸 대신 이유를 보여준다 (프로그램이 멈춘 줄 알지 않게)
+  var idxFails = 0;
+  function tileMsg(text) {
+    ['indices', 'fxs', 'cmdty'].forEach(function (id) {
+      var box = $(id);
+      if (text && box.querySelector('.skel')) box.setAttribute('data-msg', text);
+      else box.removeAttribute('data-msg');
+    });
+  }
   function loadIndices() {
     return getJSON('/api/indices').then(function (data) {
+      idxFails = 0;
+      tileMsg('');
       if (data.fx && data.fx.rate) { fxRate = data.fx.rate; fxData = data.fx; renderFxNote(); }
       (data.items || []).forEach(function (it) { naverStatus[it.code] = it.status; });
       renderTiles('indices', 'index', data.items);
@@ -376,7 +387,11 @@
       renderTiles('cmdty', 'cmdty', data.cmdty);
       renderHours();
       chartTick();
-    }).catch(function (e) { console.warn('[indices]', e); });
+    }).catch(function (e) {
+      idxFails++;
+      tileMsg('네이버 증권 응답이 늦어요 · 다시 받는 중 (' + idxFails + '번째)');
+      console.warn('[indices]', e);
+    });
   }
 
   /* ---------- 거래대금 상위 ---------- */

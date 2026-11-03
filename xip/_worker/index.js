@@ -91,10 +91,32 @@ function normIndex(d) {
   };
 }
 
+// 앞의 것부터 시도해 처음 성공한 값을 쓴다 (네이버 서버 하나가 막혀도 다른 주소로)
+async function firstOk(...fns) {
+  let err;
+  for (const f of fns) {
+    try { return await f(); } catch (e) { err = e; }
+  }
+  throw err;
+}
+// 네이버 시장지표(환율·원자재) 한 건: api.stock → 안 되면 m.stock
+async function marketIndex(cat, code) {
+  return firstOk(
+    async () => {
+      const j = await getJSON(`https://api.stock.naver.com/marketindex/${cat}/${code}`);
+      return j.exchangeInfo || (j.closePrice != null ? j : j.metalsInfo || j.energyInfo || j);
+    },
+    async () => {
+      const j = await getJSON(`https://m.stock.naver.com/front-api/marketIndex/productDetail?category=${cat}&reutersCode=${code}`);
+      if (!j.result) throw new Error('m.stock empty');
+      return j.result;
+    },
+  );
+}
+
 async function loadCmdty(code) {
   const [cat, name] = CMDTY[code];
-  const j = await getJSON(`https://api.stock.naver.com/marketindex/${cat}/${code}`);
-  const i = j.closePrice != null ? j : j.metalsInfo || j.energyInfo || j;
+  const i = await marketIndex(cat, code);
   return {
     code,
     name,
@@ -109,8 +131,7 @@ async function loadCmdty(code) {
 }
 
 async function loadFx(code) {
-  const j = await getJSON(`https://api.stock.naver.com/marketindex/exchange/${code}`);
-  const i = j.exchangeInfo;
+  const i = await marketIndex('exchange', code);
   return {
     code,
     name: FXS[code][0],
@@ -128,9 +149,18 @@ async function loadIndices() {
   const fxCodes = Object.keys(FXS);
   const cmCodes = Object.keys(CMDTY);
   // 한 곳이 실패해도 나머지는 보여준다. 전부 실패할 때만 에러(→ 직전 값 사용)
+  // 지수: polling 서버 → 안 되면 종목별 basic 주소(국내 m.stock, 해외 api.stock)
+  const basic = (codes, host) => Promise.all(codes.map((c) =>
+    getJSON(`${host}/${encodeURIComponent(c)}/basic`).then((d) => ({ ...d, itemCode: c })))).then((datas) => ({ datas }));
   const [dom, world, ...rest] = await Promise.all([
-    getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ').catch(() => null),
-    getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI').catch(() => null),
+    firstOk(
+      () => getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ', 5000),
+      () => basic(['KOSPI', 'KOSDAQ'], 'https://m.stock.naver.com/api/index'),
+    ).catch(() => null),
+    firstOk(
+      () => getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI', 5000),
+      () => basic(['.INX', '.IXIC', '.DJI'], 'https://api.stock.naver.com/index'),
+    ).catch(() => null),
     ...fxCodes.map((c) => loadFx(c).catch(() => null)),
     ...cmCodes.map((c) => loadCmdty(c).catch(() => null)),
   ]);
@@ -573,6 +603,29 @@ export default {
       if (pathname === '/api/market') {
         const r = await cached('market', 30000, loadMarket);
         return json({ ...r.data, fetchedAt: r.at });
+      }
+      // 진단: 이 요청을 처리한 클라우드플레어 데이터센터와 각 원본 서버 응답 상태
+      if (pathname === '/api/diag') {
+        const probe = async (name, u) => {
+          const t = Date.now();
+          try {
+            const res = await fetch(u, { headers: UA, signal: AbortSignal.timeout(8000) });
+            return { name, status: res.status, ms: Date.now() - t };
+          } catch (e) {
+            return { name, status: String(e.name || e.message || e), ms: Date.now() - t };
+          }
+        };
+        const list = await Promise.all([
+          probe('네이버 polling(국내 지수)', 'https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI'),
+          probe('네이버 polling(해외 지수)', 'https://polling.finance.naver.com/api/realtime/worldstock/index/.INX'),
+          probe('네이버 api.stock(환율)', 'https://api.stock.naver.com/marketindex/exchange/FX_USDKRW'),
+          probe('네이버 m.stock(지수 예비)', 'https://m.stock.naver.com/api/index/KOSPI/basic'),
+          probe('네이버 m.stock(거래대금)', 'https://m.stock.naver.com/api/stocks/priceTop/all?page=1&pageSize=1'),
+          probe('코인게코', 'https://api.coingecko.com/api/v3/ping'),
+          probe('SEC', 'https://data.sec.gov/submissions/CIK0001067983.json'),
+        ]);
+        const cf = request.cf || {};
+        return json({ colo: cf.colo, country: cf.country, city: cf.city, at: new Date().toISOString(), upstream: list });
       }
       if (pathname === '/api/13f') {
         const key = url.searchParams.get('m');
