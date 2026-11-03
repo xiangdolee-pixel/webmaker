@@ -1,11 +1,11 @@
 # xms — 업체별 홈페이지 관리(CMS)
 
-각 업체가 **자기 홈페이지 주소/admin/** 에서 회원 · 게시판 · 메뉴를 관리한다. 기준 CMS 의 메뉴 · 동작을 그대로 옮겼다.
+각 업체가 **자기 홈페이지 주소/xms/** 에서 회원 · 게시판 · 메뉴를 관리한다. 기준 CMS 의 메뉴 · 동작을 그대로 옮겼다.
 Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `site` 열(= xim 사이트 ID = WebMaker2 폴더 이름).
 
 ## 1차에 들어간 것
 
-| 관리 화면 (/admin/) | 방문자 화면 |
+| 관리 화면 (/xms/) | 방문자 화면 |
 |---|---|
 | 저장 공간 (xim 의 용량 표시) | `/member/login` · `/member/signup` · `/member/mypage` |
 | 회원관리: 가입회원(찾기 · 필수 항목 빈 회원 · 등급 필터, 등급 바꾸기, 로그인 막기/풀기, 비밀번호 재발급 6자리, 탈퇴, 엑셀 내려받기) · 탈퇴회원 · 등급 이름(1~10) · 가입 항목(기본 6개 + 직접 추가: 입력/숫자/날짜/리스트선택/선택/다중선택, 끌어서 순서) · 이용약관 / 개인정보 처리방침(버전 발행) | `/member/terms` · `/member/privacy` |
@@ -32,7 +32,7 @@ Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `sit
 
 ```
 고객 사이트 Worker (xim/_worker/site-worker.js — build.mjs 가 모든 사이트에 붙임)
-  /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  →  xms (Cms 엔트리, X-Xim-Site 헤더)
+  /xms/(관리 화면) · /admin/(→ /xms/) · /xms/* · /xms-api/* · /member/* · /board/*  →  xms (Cms 엔트리, X-Xim-Site 헤더)
   정지 확인 → xim Engine
 xms Worker
   _worker/index.js     라우터 (Cms 엔트리)          _worker/lib.js   세션 · 권한 · 설정 · HTML 정리(HTMLRewriter)

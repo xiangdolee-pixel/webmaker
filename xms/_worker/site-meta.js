@@ -51,7 +51,8 @@ export const siteOrigin = (s, slug) => {
   return d ? `https://${d}` : `https://${slug}.xiangdolee.workers.dev`;
 };
 export function defaultRobots() {
-  return 'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /xms-api/\nDisallow: /member/';
+  // /xms/ = 관리 화면 (파비콘 · 공유 그림 · 올린 사진은 /xms/file · /xms/upload 라 열어 둔다)
+  return 'User-agent: *\nAllow: /\nAllow: /xms/file/\nAllow: /xms/upload/\nDisallow: /xms/$\nDisallow: /admin/\nDisallow: /xms-api/\nDisallow: /member/';
 }
 export function robotsTxt(seo, origin) {
   const body = (seo.robots || defaultRobots()).split(/\r?\n/).filter((l) => !/^\s*sitemap\s*:/i.test(l)).join('\n').trim();

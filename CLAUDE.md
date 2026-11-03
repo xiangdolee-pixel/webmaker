@@ -105,7 +105,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 - 회원가입 = 이메일 인증(6자리 번호) → 정보 입력, 아이디 = 이메일. 인증 메일은 **그 사이트 도메인의 `noreply@<도메인>`** 으로 보낸다(Cloudflare Email Service). xim 에서 사이트의 **대표 도메인**을 저장하면 xim 이 Cloudflare Email Sending 에 자동 등록한다(xim 비밀값 `CF_MAIL_TOKEN`: Zone Read · DNS Edit · Email Sending Edit · Account Turnstile Edit). 같은 때에 사이트별 봇 확인(Turnstile) 위젯도 만들어 가입 인증번호 받기 앞에 붙인다(키는 xim DB sites.turnstile_*). 카드의 "메일 · 봇확인" 표시를 누르면 다시 등록). 등록 전에는 예비 주소 noreply@plators.com 으로 나간다. 이 PC 에서 직접: `node deploy.mjs --mail <폴더>`.
 
-- `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
+- `xms/` = 업체가 `사이트주소/xms/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
 - 기능 기준은 사용자 PC 의 기준 CMS 소스(경로는 Claude 메모리 xim-project 에 있다). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
 - 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "xms" 버튼 = 운영자 대신 들어가기(1분 입장권).
 
@@ -122,7 +122,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 ## 모든 홈페이지 공통: 로그인 · 계정 버튼 (사용자 지시 2026-11-03, xim 관할 모든 서비스)
 
 - 서비스(홈페이지)와 xms 는 **같은 로그인(SSO)** — 같은 주소의 `xms_sess` 쿠키. 홈페이지에서 로그인하면 관리 화면도, 관리 화면에서 로그인하면 홈페이지도 로그인돼 있다.
-- **관리 화면(/admin/, xms)은 레벨1(관리자)만.** 다른 등급은 홈페이지 로그인은 되지만 관리 화면은 막힌다.
+- **관리 화면(/xms/)은 레벨1(관리자)만.** 다른 등급은 홈페이지 로그인은 되지만 관리 화면은 막힌다.
 - 로그인하면 헤더에 **사람 모양 동그라미 버튼** → 누르면 `관리` · `유지보수 요청`(레벨1만) / `내 정보` / `로그아웃`. 로그인 전에는 `로그인` 링크.
 - 구현: 공통 사이트 Worker 가 모든 html 에 `/xms/js/account.js` 를 자동으로 넣는다. 자리(`<span data-xms-account></span>`)는 build.mjs 가 헤더 메뉴 바로 뒤에 자동으로 넣지만, **모바일에서도 늘 보이도록 디자인할 때 헤더 안(햄버거 옆)에 직접 두는 게 가장 좋다.** 헤더 `<nav>` 가 없으면 화면 오른쪽 위에 떠 있는 버튼으로 나온다.
 - 색: 자리 요소에 `--xa-bg`(동그라미) · `--xa-fg`(사람) CSS 변수로 사이트 색에 맞춘다. 로그인 링크 글자는 `.xa-login` 으로 사이트 메뉴 글꼴에 맞춘다. 예: `sjccc/css/style.css` 의 `.gnb-account`.

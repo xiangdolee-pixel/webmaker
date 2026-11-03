@@ -48,7 +48,7 @@
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
     // 운영자 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
-    menu.innerHTML = `${admin ? '<a role="menuitem" href="/admin/">관리</a><a role="menuitem" href="/admin/#/requests">유지보수 요청</a>' : ''}
+    menu.innerHTML = `${admin ? '<a role="menuitem" href="/xms/">관리</a><a role="menuitem" href="/xms/#/requests">유지보수 요청</a>' : ''}
       ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
       <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
     document.body.append(menu);

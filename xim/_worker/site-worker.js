@@ -6,8 +6,8 @@
 //                                         "assets": { "run_worker_first": true } }
 //
 // 하는 일
-//   xim 에서 정지된 사이트                         → "서비스 일시 중단" 화면 (/admin/ 은 정지 중에도 열린다)
-//   /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  → xms (업체 관리 화면 · 회원 · 게시판)
+//   xim 에서 정지된 사이트                         → "서비스 일시 중단" 화면 (/xms/ 관리 화면은 정지 중에도 열린다)
+//   /xms/(관리 화면) · /xms/* · /xms-api/* · /admin/(→ /xms/) · /member/* · /board/*  → xms (업체 관리 화면 · 회원 · 게시판)
 //   그 밖                                          → 이 폴더의 정적 파일 (html 이면 공통 계정 버튼 스크립트를 넣어서)
 //   계정 버튼 자리: 헤더 안에 <span data-xms-account></span> (없으면 오른쪽 위에 떠 있음)
 //   메뉴 자리: <nav data-xms-menu> 안의 원래 메뉴 링크에 data-xms-item → xms 메뉴 목록(맨 위 단계)으로 바뀐다.

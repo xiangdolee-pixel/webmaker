@@ -284,7 +284,7 @@ function toggleSite(site, btn) {
 function adminsDialog(site) {
   openDialog(`
     <h2>${esc(site.name)} 관리자 계정</h2>
-    <p class="meta">업체 담당자가 <b>사이트 주소/admin/</b> 에서 이 계정으로 로그인해 회원·게시판·메뉴를 관리합니다 (xms 관리자 등급 회원).</p>
+    <p class="meta">업체 담당자가 <b>사이트 주소/xms/</b> 에서 이 계정으로 로그인해 회원·게시판·메뉴를 관리합니다 (xms 관리자 등급 회원).</p>
     <div class="sub-list" data-list></div>
     <form>
       <div class="row2">

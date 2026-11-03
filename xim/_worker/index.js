@@ -352,7 +352,7 @@ async function ximApi(request, env, url) {
     return json({ ok: true });
   }
 
-  // 업체 관리자 계정 = xms 회원 중 등급 1 (사이트주소/admin/ 으로 로그인)
+  // 업체 관리자 계정 = xms 회원 중 등급 1 (사이트주소/xms/ 로 로그인)
   m = path.match(/^\/api\/sites\/(\d+)\/admins$/);
   if (m) {
     const site = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();
@@ -397,7 +397,7 @@ async function ximApi(request, env, url) {
     const token = randomHex(32);
     await env.XMS_DB.prepare('DELETE FROM staff_tickets WHERE expires_at < ?').bind(now()).run();
     await env.XMS_DB.prepare('INSERT INTO staff_tickets (token, site, expires_at) VALUES (?, ?, ?)').bind(token, site.slug, now() + 60000).run();
-    return json({ url: `${siteUrl(site)}/admin/?staff=${token}` });
+    return json({ url: `${siteUrl(site)}/xms/?staff=${token}` });
   }
 
   // 수정요청
