@@ -1,12 +1,11 @@
 # Security Policy
 
-이 저장소는 webchon 서비스의 디자인/퍼블리싱 소스를 관리합니다. (Classic ASP, JavaScript, CSS)
+이 저장소는 홈페이지 제작 소스(HTML · CSS · JavaScript · Cloudflare Workers)를 관리합니다.
 
 ## 취약점 신고
 
 보안 취약점을 발견하신 경우 공개 이슈로 등록하지 마시고 아래로 연락해 주세요.
 
-- 이메일: master@webchon.com
 - 이메일: real21c@gmail.com
 
 신고 시 다음 정보를 포함해 주시면 빠른 대응에 도움이 됩니다.

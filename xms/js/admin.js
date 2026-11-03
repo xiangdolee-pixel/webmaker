@@ -53,10 +53,10 @@ function showApp() {
   $('#app').hidden = false;
   const s = INFO.site;
   document.title = `${s.name} 관리`;
-  $('#who').textContent = INFO.me.staff ? '웹촌 직원' : `${INFO.me.name} 님`;
+  $('#who').textContent = INFO.me.staff ? '운영자' : `${INFO.me.name} 님`;
   if (INFO.me.staff) {
     $('#staff-bar').hidden = false;
-    $('#staff-bar').textContent = `웹촌 직원이 ${s.name} 관리 화면에 대신 들어와 있습니다 — 여기서 하는 모든 작업은 기록에 남습니다.`;
+    $('#staff-bar').textContent = `운영자가 ${s.name} 관리 화면에 대신 들어와 있습니다 — 여기서 하는 모든 작업은 기록에 남습니다.`;
     $('#adm').classList.add('staff');
   }
   renderSide();
@@ -599,7 +599,7 @@ async function menuPage(id) {
 const REQ_LABEL = { new: ['접수', 'warn'], doing: ['진행 중', 'blue'], done: ['완료', 'green'] };
 async function requestsPage() {
   const list = await api('/requests');
-  main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 웹촌에 요청합니다. 처리되면 아래에 답변이 붙습니다.')}
+  main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 운영자에게 요청합니다. 처리되면 아래에 답변이 붙습니다.')}
     <form class="panel pad" id="rform"><label class="field"><span>제목</span><input class="input" name="title" maxlength="120" required placeholder="예) 메인 사진 교체 부탁드립니다"></label>
       <label class="field"><span>내용</span><textarea class="input" name="body" maxlength="5000" placeholder="바꾸고 싶은 곳과 내용을 적어 주세요."></textarea></label>
       <p class="err" role="alert"></p><div class="actions end"><button class="btn primary" type="submit">요청 보내기</button></div></form>
@@ -622,10 +622,10 @@ function storagePage() {
   const pct = s.quota_mb ? Math.min(100, Math.round((s.used_mb / s.quota_mb) * 100)) : 0;
   main.innerHTML = `${head('사이트', '저장 공간', `${Math.round(s.used_mb)}MB / ${s.quota_mb}MB 사용 중입니다.`)}
     <div class="panel pad"><div class="quota-bar"><i style="width:${pct}%"></i></div>
-    <p class="meta gap">${pct >= 100 ? '저장 공간이 가득 찼습니다. 웹촌에 늘려 달라고 요청하세요.' : pct >= 90 ? '저장 공간이 거의 찼습니다. 필요하면 웹촌에 늘려 달라고 요청하세요.' : '사진·파일 올리기 기능이 생기면 여기에서 쓴 만큼 보입니다.'}</p></div>`;
+    <p class="meta gap">${pct >= 100 ? '저장 공간이 가득 찼습니다. 운영자에게 늘려 달라고 요청하세요.' : pct >= 90 ? '저장 공간이 거의 찼습니다. 필요하면 운영자에게 늘려 달라고 요청하세요.' : '사진·파일 올리기 기능이 생기면 여기에서 쓴 만큼 보입니다.'}</p></div>`;
 }
 function accountPage() {
-  main.innerHTML = `${head('내 계정', '비밀번호 변경', INFO.me.staff ? '웹촌 직원으로 들어온 화면에서는 바꿀 수 없습니다.' : `${esc(INFO.me.login_id)} 계정의 비밀번호를 바꿉니다.`)}
+  main.innerHTML = `${head('내 계정', '비밀번호 변경', INFO.me.staff ? '운영자로 들어온 화면에서는 바꿀 수 없습니다.' : `${esc(INFO.me.login_id)} 계정의 비밀번호를 바꿉니다.`)}
     <form class="panel pad" id="pform"${INFO.me.staff ? ' hidden' : ''}>
       <label class="field"><span>지금 비밀번호</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>
       <label class="field"><span>새 비밀번호</span><input class="input" type="password" name="next" autocomplete="new-password" minlength="8" required><small>8자 이상</small></label>
@@ -647,7 +647,7 @@ async function auditPage(qs) {
   const d = await api(`/audit?page=${page}`);
   main.innerHTML = `${head('내 계정', '관리 로그', '이 관리 화면에서 한 일이 순서대로 남습니다. 지울 수 없습니다.')}
     <div class="panel">${d.rows.length ? `<table class="tbl cardy"><thead><tr><th>시각</th><th>주체</th><th>행위</th><th>대상</th></tr></thead><tbody>
-      ${d.rows.map((r) => `<tr><td>${fmtDate(r.created_at, true)}</td><td data-l="주체">${r.actor_kind === 'staff' ? '<span class="tag warn">웹촌 직원</span>' : esc(r.actor_name)}</td>
+      ${d.rows.map((r) => `<tr><td>${fmtDate(r.created_at, true)}</td><td data-l="주체">${r.actor_kind === 'staff' ? '<span class="tag warn">운영자</span>' : esc(r.actor_name)}</td>
         <td data-l="행위">${esc(ACTIONS[r.action] || r.action)}</td><td data-l="대상">${esc(r.target)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</td></tr>`).join('')}</tbody></table>`
     : empty('아직 기록이 없습니다', '회원·게시판·메뉴를 바꾸면 여기에 남습니다.')}</div>
     ${pager(d.page, d.size, d.total, (n) => `#/audit?page=${n}`)}`;

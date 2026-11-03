@@ -368,7 +368,7 @@ async function ximApi(request, env, url) {
     return json({ ok: true });
   }
 
-  // 관리 화면 열기 — 웹촌 직원으로 업체 관리 화면에 대신 들어가는 1분짜리 입장권
+  // 관리 화면 열기 — 운영자로 업체 관리 화면에 대신 들어가는 1분짜리 입장권
   m = path.match(/^\/api\/sites\/(\d+)\/staff-ticket$/);
   if (m && method === 'POST') {
     const site = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();

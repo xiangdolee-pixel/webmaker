@@ -91,7 +91,7 @@ export async function whoAmI(db, request, site) {
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return { kind: 'guest', level: 0 };
   const s = await db.prepare('SELECT * FROM sessions WHERE token = ? AND site = ? AND expires_at > ?').bind(token, site, now()).first();
   if (!s) return { kind: 'guest', level: 0 };
-  if (s.kind === 'staff') return { kind: 'staff', level: 1, token, name: '웹촌 직원' };
+  if (s.kind === 'staff') return { kind: 'staff', level: 1, token, name: '운영자' };
   const m = await db.prepare("SELECT * FROM members WHERE id = ? AND site = ? AND status = 'ACTIVE'").bind(s.member_id, site).first();
   if (!m) return { kind: 'guest', level: 0 };
   return { kind: 'member', member: m, level: m.level, token, name: m.name };
@@ -102,7 +102,7 @@ export const isAdmin = (me) => me.level === 1;
 export const ALL_LEVELS = 511;
 export const levelBit = (lv) => 1 << (lv - 1);
 export function canBy(mask, guestOk, me, write = false) {
-  if (me.level === 1) return true; // 관리자 · 웹촌 직원은 언제나
+  if (me.level === 1) return true; // 관리자 · 운영자는 언제나
   if (!me.level) return !!guestOk;
   if (me.level === 10) return write ? false : !!(mask & levelBit(9));
   return !!(mask & levelBit(me.level));
@@ -151,7 +151,7 @@ export async function saveSettings(db, site, patch) {
 
 export async function audit(db, site, me, request, action, target = '', detail = '') {
   await db.prepare('INSERT INTO audit_log (site, actor_kind, actor_name, action, target, detail, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(site, me.kind === 'staff' ? 'staff' : 'admin', me.kind === 'staff' ? '웹촌 직원' : `${me.member.name}(${me.member.login_id})`,
+    .bind(site, me.kind === 'staff' ? 'staff' : 'admin', me.kind === 'staff' ? '운영자' : `${me.member.name}(${me.member.login_id})`,
       action, String(target).slice(0, 200), String(detail).slice(0, 1000), clientIp(request), now()).run();
 }
 
@@ -190,7 +190,7 @@ export async function sanitizeHtml(input) {
 export const plainText = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&[a-z#0-9]+;/gi, (e) =>
   ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" }[e] || ' ')).replace(/\s+/g, ' ').trim();
 
-// ───────── 이용약관 · 개인정보 처리방침 기본 문안 (Webchon CMS 와 같은 원문, docs/*.txt) ─────────
+// ───────── 이용약관 · 개인정보 처리방침 기본 문안 (docs/*.txt) ─────────
 // 사이트에 아직 발행된 문서가 없으면 사이트 이름을 끼운 기본 문안을 v1 로 자동 발행한다(사용자 지시 2026-11-03).
 // 원문의 을(를)·이(가) 표기는 그대로 둔다 — 조사를 계산해 법적 문장을 바꾸지 않는다.
 function docHtml(txt, siteName) {

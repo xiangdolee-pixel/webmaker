@@ -10,7 +10,8 @@
   --brand: #2f5fd0;
   --brand-ink: #fff;
   --brand-soft: #eaf0fd;
-  --top: #6b1d34; /* 위쪽 막대 · 선택 표시 — 와인색 (사용자 지시) */
+  --top: #4a2d96; /* 선택 표시 · 저장 막대 — 보라 (사용자 지시) */
+  --top-grad: linear-gradient(100deg, #2c1f6b 0%, #4a2d96 45%, #7b3fc4 100%); /* 위쪽 막대 — 보라색 그라데이션 */
   --ok: #1a8a5c;
   --ok-soft: #e2f4ec;
   --warn: #a86400;
@@ -136,7 +137,7 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 /* ═════════════ 관리자 화면 ═════════════ */
 .adm-top {
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 6px; height: 54px; padding: 0 12px 0 8px;
-  background: var(--top); color: #fff;
+  background: var(--top-grad); color: #fff;
 }
 .adm-top .logo { margin-right: auto; font-weight: 800; font-size: 17px; letter-spacing: -.02em; }
 .adm-top a, .adm-top button.t { display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border: 0; background: none; color: #d6dbe6; font-size: 14px; text-decoration: none; cursor: pointer; border-radius: 6px; }

@@ -1,4 +1,4 @@
-// xms 관리자 API (/xms-api/admin/*) — 등급 1(관리자) 또는 xim 에서 대신 들어온 웹촌 직원만
+// xms 관리자 API (/xms-api/admin/*) — 등급 1(관리자) 또는 xim 에서 대신 들어온 운영자만
 import {
   DAY, now, bad, forbidden, notFound, json, str, body, audit, isAdmin, siteSettings, saveSettings, BUILTIN_FIELDS,
   MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
@@ -26,7 +26,7 @@ export async function adminApi(ctx) {
     const { levelNames } = await siteSettings(db, site);
     return json({
       site: { slug: site, name: s?.name || site, domain: s?.domain || '', quota_mb: s?.quota_mb ?? 0, used_mb: s?.used_mb ?? 0, status: s?.status },
-      me: me.kind === 'staff' ? { staff: true, name: '웹촌 직원' } : { staff: false, name: me.member.name, login_id: me.member.login_id },
+      me: me.kind === 'staff' ? { staff: true, name: '운영자' } : { staff: false, name: me.member.name, login_id: me.member.login_id },
       levelNames,
     });
   }
@@ -311,7 +311,7 @@ export async function adminApi(ctx) {
     if (!title) throw bad('제목을 넣어 주세요.');
     const s = await ximSite(env, site);
     const t = now();
-    const who = me.kind === 'staff' ? '웹촌 직원' : `${me.member.name}(${me.member.login_id})`;
+    const who = me.kind === 'staff' ? '운영자' : `${me.member.name}(${me.member.login_id})`;
     await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)')
       .bind(s.id, title, str(raw.body, 5000), 'new', who, t, t).run();
     await audit(db, site, me, request, 'REQUEST_CREATE', title);
@@ -320,7 +320,7 @@ export async function adminApi(ctx) {
 
   // ───── 내 계정 · 관리 로그 ─────
   if (path === '/account/password' && method === 'POST') {
-    if (me.kind !== 'member') throw forbidden('웹촌 직원으로 들어온 화면에서는 바꿀 수 없습니다.');
+    if (me.kind !== 'member') throw forbidden('운영자로 들어온 화면에서는 바꿀 수 없습니다.');
     const raw = await body(request);
     const ok = sameText(await hashPassword(String(raw.current ?? '').slice(0, 200), me.member.pw_salt), me.member.pw_hash);
     if (!ok) throw bad('지금 비밀번호가 맞지 않습니다.');

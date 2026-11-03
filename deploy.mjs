@@ -5,7 +5,7 @@
 //   node deploy.mjs --whoami   지금 로그인된 계정 확인
 //   node deploy.mjs --wrangler <명령…>   xiangdolee 계정으로 wrangler 명령 실행(D1 · secret 등)
 //
-// design 리포가 쓰는 master@webchon.com 로그인과 섞이지 않도록
+// design 리포가 쓰는 다른 계정(7ce9…) 로그인과 섞이지 않도록
 // wrangler 로그인 정보를 사용자 폴더의 .wrangler-xiangdolee 에 따로 둔다(리포 밖 — 공개 리포라 절대 안에 두지 않음).
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';

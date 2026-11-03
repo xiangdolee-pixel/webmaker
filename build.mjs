@@ -79,7 +79,7 @@ if (tooBig.length) fail(`25MB 가 넘는 파일은 올릴 수 없습니다: ${to
 
 // Worker 이름: 영문 소문자 · 숫자 · 하이픈만. 대시보드 Project name 과 같아야 한다
 const name = slug.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
-// WebMaker2 는 반드시 xiangdolee@gmail.com 계정(f225…)으로만 올린다 — design 의 master@webchon.com 계정 아님
+// WebMaker2 는 반드시 xiangdolee@gmail.com 계정(f225…)으로만 올린다 — design 리포의 다른 계정(7ce9…) 아님
 const config = {
   name,
   account_id: 'f225d506d8cf6ddf97704a36c69f5ce7',

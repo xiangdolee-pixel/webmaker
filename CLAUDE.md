@@ -65,8 +65,8 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 ## Cloudflare 배포: 폴더 하나 = Worker 하나
 
-- **계정: 반드시 xiangdolee@gmail.com 의 Cloudflare 계정**(account id `f225d506d8cf6ddf97704a36c69f5ce7`, https://dash.cloudflare.com/f225d506d8cf6ddf97704a36c69f5ce7/workers-and-pages). design 의 master@webchon.com 계정(`7ce9…`, master-7ce.workers.dev)에는 절대 올리지 않는다. (사용자 지시, 2026-11-03 "매우 중요")
-- 그래서 `npx wrangler deploy` 를 그냥 치지 않는다(기본 로그인이 master@webchon.com). **항상 `node deploy.mjs <폴더>`** — xiangdolee 전용 로그인(`%USERPROFILE%\.wrangler-xiangdolee`, 리포 밖)으로 빌드 + 배포한다. `build.mjs` 가 wrangler.jsonc 에 account_id 를 박아 두어 다른 계정으로는 올라가지 않는다.
+- **계정: 반드시 xiangdolee@gmail.com 의 Cloudflare 계정**(account id `f225d506d8cf6ddf97704a36c69f5ce7`, https://dash.cloudflare.com/f225d506d8cf6ddf97704a36c69f5ce7/workers-and-pages). design 리포의 다른 계정(`7ce9…`, master-7ce.workers.dev)에는 절대 올리지 않는다. (사용자 지시, 2026-11-03 "매우 중요")
+- 그래서 `npx wrangler deploy` 를 그냥 치지 않는다(기본 로그인이 design 리포의 다른 계정). **항상 `node deploy.mjs <폴더>`** — xiangdolee 전용 로그인(`%USERPROFILE%\.wrangler-xiangdolee`, 리포 밖)으로 빌드 + 배포한다. `build.mjs` 가 wrangler.jsonc 에 account_id 를 박아 두어 다른 계정으로는 올라가지 않는다.
 - 로그인이 풀렸으면 `node deploy.mjs --login` (브라우저 승인 필요 — 엣지에 xiangdolee 계정이 로그인돼 있음, 계정 고르는 화면에서 xiangdolee 를 고르라고 사용자에게 한 줄로 안내). 확인은 `node deploy.mjs --whoami`.
 - "배포해줘" 요청을 받으면 Claude 가 직접 배포하고 주소를 알려준다.
 - 리포 루트(`E:\ws\WebMaker2`)에서 한 줄:
@@ -98,8 +98,12 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 ## xms (업체별 CMS)
 
 - `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
-- 기능 기준은 Webchon CMS 소스 `E:\ws\webchon-pilot\cms` (+ backend). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
-- 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "관리 화면 열기" = 웹촌 직원 대신 들어가기(1분 입장권).
+- 기능 기준은 사용자 PC 의 기준 CMS 소스(경로는 Claude 메모리 xim-project 에 있다). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
+- 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "관리 화면 열기" = 운영자 대신 들어가기(1분 입장권).
+
+## 용어 금지 (사용자 지시 2026-11-03, "명심해")
+
+- 이 리포 · xim · xms · 고객 사이트 어디에도(화면 문구 · 코드 · 주석 · 문서 · 데이터 · 커밋 메시지) 그 회사 이름(한글·영문)을 넣지 않는다. 대신 들어가는 사람은 "운영자" 라고 쓴다.
 
 ## 모든 홈페이지 공통: 로그인 · 계정 버튼 (사용자 지시 2026-11-03, xim 관할 모든 서비스)
 

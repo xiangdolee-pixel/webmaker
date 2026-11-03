@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS menus (
 );
 CREATE INDEX IF NOT EXISTS idx_menus_site ON menus(site, parent_id, sort);
 
--- 로그인 세션. kind = member(회원 · 관리자) | staff(웹촌 직원이 xim 에서 대신 들어옴)
+-- 로그인 세션. kind = member(회원 · 관리자) | staff(운영자가 xim 에서 대신 들어옴)
 CREATE TABLE IF NOT EXISTS sessions (
   token      TEXT PRIMARY KEY,
   site       TEXT NOT NULL,
