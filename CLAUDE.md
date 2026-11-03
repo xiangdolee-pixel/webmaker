@@ -82,3 +82,10 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 - Worker 삭제처럼 되돌릴 수 없는 작업은 먼저 묻는다.
 - 첫 화면: index.html 이 없으면 landing.html(또는 html 이 하나뿐이면 그 파일).
 - 서버 기능이 필요한 폴더는 `<폴더>/_worker/index.js`(+ `bindings.json` 에 D1 · KV 연결)를 두면 build.mjs 가 정적 파일과 함께 Worker 로 올린다. `_worker/` 는 웹에 공개되지 않는다. 비밀값은 `npx wrangler secret put` (리포에 두지 않음).
+
+## xim (고객 사이트 통합 관리)
+
+- `xim/` = 운영자 관리 화면 + 공용 엔진(Worker `xim`, D1 `xim`). 구조 · 연결 방법 · 운영 명령은 `xim/README.md`.
+- 새 고객 사이트를 만들면 xim 에 등록하고 `xim/_worker/site-worker.js` 를 `<폴더>/_worker/index.js` 로 복사 + `bindings.json` 을 넣어 연결한다(정지 · /admin · 수정요청이 붙는다).
+- "xim 요청 처리해줘" → `node deploy.mjs --wrangler d1 execute xim --remote --json --command "..."` 로 처리할 수정요청(status != 'done')을 읽고, 해당 폴더를 고쳐 배포한 뒤 요청 상태 · 답변을 갱신한다.
+- 배포 순서: xim 이 먼저 있어야 고객 사이트 배포가 된다(서비스 바인딩).

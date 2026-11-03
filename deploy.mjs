@@ -3,6 +3,7 @@
 //   node deploy.mjs <폴더>     빌드(build.mjs) + 배포
 //   node deploy.mjs --login    xiangdolee 계정으로 wrangler 로그인(최초 1회, 브라우저에서 승인)
 //   node deploy.mjs --whoami   지금 로그인된 계정 확인
+//   node deploy.mjs --wrangler <명령…>   xiangdolee 계정으로 wrangler 명령 실행(D1 · secret 등)
 //
 // design 리포가 쓰는 master@webchon.com 로그인과 섞이지 않도록
 // wrangler 로그인 정보를 사용자 폴더의 .wrangler-xiangdolee 에 따로 둔다(리포 밖 — 공개 리포라 절대 안에 두지 않음).
@@ -28,11 +29,12 @@ function run(cmd, args) {
 
 const arg = process.argv[2];
 if (!arg) {
-  console.error('사용법: node deploy.mjs <폴더> | --login | --whoami');
+  console.error('사용법: node deploy.mjs <폴더> | --login | --whoami | --wrangler <명령…>');
   process.exit(1);
 }
 if (arg === '--login') run('npx', ['wrangler', 'login']);
 else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
+else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
 else {
   run('node', ['build.mjs', arg]);
   run('npx', ['wrangler', 'deploy']);

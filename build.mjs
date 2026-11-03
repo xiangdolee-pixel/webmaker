@@ -96,7 +96,12 @@ if (fs.existsSync(WORKER)) {
   config.main = `./${slug}/_worker/index.js`;
   config.assets.binding = 'ASSETS';
   const extra = path.join(SRC, '_worker', 'bindings.json');
-  if (fs.existsSync(extra)) Object.assign(config, JSON.parse(fs.readFileSync(extra, 'utf8')));
+  if (fs.existsSync(extra)) {
+    const b = JSON.parse(fs.readFileSync(extra, 'utf8'));
+    // assets 설정(run_worker_first 등)은 덮어쓰지 않고 합친다
+    if (b.assets) { Object.assign(config.assets, b.assets); delete b.assets; }
+    Object.assign(config, b);
+  }
   console.log(`[build] ${slug}/_worker/index.js 를 Worker 로 함께 올립니다.`);
 }
 fs.writeFileSync(
