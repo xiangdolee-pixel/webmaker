@@ -143,7 +143,7 @@ function connectDialog() {
     <h2>GitHub에서 연결</h2>
     <p class="meta">webmaker 저장소에 올라간 홈페이지 폴더 주소를 넣으면 로그인 · 관리 화면 · 회원 · 게시판 · 메뉴를 붙이고, xim 에 등록하고, Cloudflare 에 배포합니다. 1~2분 걸립니다.</p>
     <form>
-      <label class="field"><span>폴더 주소</span><input class="input" name="url" required placeholder="https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc" autocomplete="off">
+      <label class="field"><span>폴더 주소</span><input class="input" name="url" required placeholder="https://github.com/xiangdolee-pixel/webmaker2/tree/main/sjccc" autocomplete="off">
         <small>폴더 이름만 넣어도 됩니다 (예: sjccc). 이미 연결된 사이트를 다시 넣으면 최신 내용으로 다시 배포합니다.</small></label>
       <p class="err" role="alert"></p>
       <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">연결 시작</button></div>

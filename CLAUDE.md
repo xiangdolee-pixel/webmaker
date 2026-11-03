@@ -1,4 +1,4 @@
-# WebMaker2 (webmaker 리포) — 작업 규칙
+# WebMaker2 (webmaker2 리포) — 작업 규칙
 
 **E:\ws\WebMaker\design 과 똑같은 규칙으로 작업한다.** (사용자 지시, 2026-11-03 "매우 중요")
 다른 점은 딱 하나: **GitHub 푸시는 Claude 가 한다** (아래 Git).
@@ -56,7 +56,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 1. 폴더별로 시안 작업 → 로컬 미리보기로 확인 (`서버시작.bat` → http://localhost:8732 , design 의 8731 과 겹치지 않게)
 2. git 은 `main` 에서 바로 커밋 (아래 Git)
-3. 작업이 끝나면 **Claude 가 바로 push** — https://github.com/xiangdolee-pixel/webmaker
+3. 작업이 끝나면 **Claude 가 바로 push** — https://github.com/xiangdolee-pixel/webmaker2
 4. "클라우드플레어에 배포해줘" / "○○ 배포해줘" → **그 폴더 하나만** Workers 로 배포 (아래 배포)
 
 ## Git: main 하나로 작업 (trunk-based)
@@ -97,7 +97,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
   - deploy.mjs: 처음이면 xim 에 사이트 등록(이름 = index.html `<title>`), 헤더 메뉴 링크를 xms 메뉴 목록으로 한 번 가져온다. 그 뒤 메뉴 · 게시판은 업체가 xms 에서 고친다.
   - 빠지는 폴더: xim · xms 자신, 자기 서버 Worker(`_worker/index.js`)가 있는 폴더(예: xip), `.xim-off` 파일을 둔 폴더.
   - 헤더 메뉴 중 버튼 모양(class 에 cta · btn · button)은 xms 메뉴로 바뀌지 않고 그대로 남는다(예: "후원하기").
-  - **웹에서(xim "GitHub에서 연결")**: 폴더 주소(https://github.com/xiangdolee-pixel/webmaker/tree/main/<폴더>)를 넣으면 xim 이 GitHub Actions `.github/workflows/xim-connect.yml` 을 실행 → 위와 똑같이 `node deploy.mjs <폴더>` (Cloudflare API 토큰 = 저장소 비밀값 `CLOUDFLARE_API_TOKEN`, xim 쪽 = Worker 비밀값 `GITHUB_TOKEN`: webmaker 저장소 Actions 읽기·쓰기 전용 토큰).
+  - **웹에서(xim "GitHub에서 연결")**: 폴더 주소(https://github.com/xiangdolee-pixel/webmaker2/tree/main/<폴더>)를 넣으면 xim 이 GitHub Actions `.github/workflows/xim-connect.yml` 을 실행 → 위와 똑같이 `node deploy.mjs <폴더>` (Cloudflare API 토큰 = 저장소 비밀값 `CLOUDFLARE_API_TOKEN`, xim 쪽 = Worker 비밀값 `GITHUB_TOKEN`: webmaker2 저장소 Actions 읽기·쓰기 전용 토큰).
 - "xim 요청 처리해줘" → `node deploy.mjs --wrangler d1 execute xim --remote --json --command "..."` 로 처리할 수정요청(status != 'done')을 읽고, 해당 폴더를 고쳐 배포한 뒤 요청 상태 · 답변을 갱신한다.
 - 배포 순서: xim · xms 가 먼저 있어야 고객 사이트 배포가 된다(서비스 바인딩).
 

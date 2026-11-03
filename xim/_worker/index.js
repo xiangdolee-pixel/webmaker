@@ -465,19 +465,19 @@ async function siteUsage(env) {
 }
 
 // ───────── GitHub (webmaker 저장소) ─────────
-const REPO = 'xiangdolee-pixel/webmaker';
+const REPO = 'xiangdolee-pixel/webmaker2';
 const WORKFLOW = 'xim-connect.yml';
-// https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc(/…) 또는 그냥 sjccc → 폴더 이름
+// https://github.com/xiangdolee-pixel/webmaker2/tree/main/sjccc(/…) 또는 그냥 sjccc → 폴더 이름
 function repoFolder(input) {
   let s = input.trim().replace(/[?#].*$/, '');
   const m = s.match(/^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/]+)\/([^/]+)(?:\/(?:tree|blob)\/([^/]+)\/([^/]+))?/i);
   if (m) {
     if (`${m[1]}/${m[2]}`.toLowerCase() !== REPO) throw bad(`${REPO} 저장소의 폴더 주소만 넣을 수 있습니다.`);
-    if (!m[4]) throw bad('저장소 주소 뒤에 폴더까지 넣어 주세요. 예) https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc');
+    if (!m[4]) throw bad('저장소 주소 뒤에 폴더까지 넣어 주세요. 예) https://github.com/xiangdolee-pixel/webmaker2/tree/main/sjccc');
     if (m[3] !== 'main') throw bad('main 브랜치의 폴더만 연결할 수 있습니다.');
     s = decodeURIComponent(m[4]);
   }
-  if (!/^[A-Za-z0-9._-]+$/.test(s) || s.startsWith('.')) throw bad('폴더 주소를 확인해 주세요. 예) https://github.com/xiangdolee-pixel/webmaker/tree/main/sjccc');
+  if (!/^[A-Za-z0-9._-]+$/.test(s) || s.startsWith('.')) throw bad('폴더 주소를 확인해 주세요. 예) https://github.com/xiangdolee-pixel/webmaker2/tree/main/sjccc');
   if (['xim', 'xms', 'dist', 'node_modules'].includes(s.toLowerCase())) throw bad('그 폴더는 연결할 수 없습니다.');
   return s;
 }
