@@ -160,7 +160,7 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 6px; height: 54px; padding: 0 12px 0 8px;
   background: var(--top-grad); color: #fff;
 }
-.adm-top .logo { margin-right: auto; font-weight: 800; font-size: 17px; letter-spacing: -.02em; }
+.adm-top .logo { margin-right: auto; font-weight: 800; font-size: 26px; line-height: 1; letter-spacing: -.04em; }
 .adm-top a, .adm-top button.t { display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border: 0; background: none; color: #d6dbe6; font-size: 14px; text-decoration: none; cursor: pointer; border-radius: 6px; }
 .adm-top a:hover, .adm-top button.t:hover { color: #fff; background: rgba(255, 255, 255, .08); }
 .adm-top .who { display: none; color: #aab2c2; font-size: 14px; padding: 0 6px; }
