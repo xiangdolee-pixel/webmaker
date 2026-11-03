@@ -360,7 +360,7 @@ async function otpOnDialog() {
     <p class="meta center">QR 을 못 찍으면 앱에서 "설정 키 입력" → <code class="key">${esc(setup.secret.replace(/(.{4})/g, '$1 ').trim())}</code></p>
     <form>
       <label class="field"><span>OTP 번호 6자리</span>
-        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required placeholder="000000"></label>
+        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000"></label>
       <p class="err" role="alert"></p>
       <div class="dlg-foot"><button class="btn" type="button" data-close>취소</button><button class="btn primary" type="submit">등록</button></div>
     </form>`, (dlg) => {
@@ -383,7 +383,7 @@ function otpOffDialog() {
     <p class="meta">해제하면 비밀번호만으로 로그인됩니다. 확인을 위해 지금 앱에 보이는 번호를 넣어 주세요.</p>
     <form>
       <label class="field"><span>OTP 번호 6자리</span>
-        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required placeholder="000000"></label>
+        <input class="input otp-input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000"></label>
       <p class="err" role="alert"></p>
       <div class="dlg-foot"><button class="btn" type="button" data-close>취소</button><button class="btn danger" type="submit">해제</button></div>
     </form>`, (dlg) => {
