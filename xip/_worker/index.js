@@ -66,8 +66,11 @@ async function cached(key, ttlMs, loader) {
   return pending;
 }
 
-async function getJSON(url) {
-  const res = await fetch(url, { headers: UA, cf: { cacheTtl: 0 } });
+// 바깥 요청은 반드시 시간 제한을 둔다. 한 곳(예: 네이버)이 답을 안 하면
+// 같은 값을 기다리는 모든 요청이 함께 멈춰 버리기 때문 (2026-11-03 xip.plators.com 지수 안 뜸)
+const TIMEOUT = 8000;
+async function getJSON(url, ms = TIMEOUT) {
+  const res = await fetch(url, { headers: UA, cf: { cacheTtl: 0 }, signal: AbortSignal.timeout(ms) });
   if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
   return res.json();
 }
@@ -120,21 +123,28 @@ async function loadFx(code) {
   };
 }
 
+let lastIdx = null; // 직전에 받은 지수·환율·원자재 (부분 실패 때 채움)
 async function loadIndices() {
   const fxCodes = Object.keys(FXS);
   const cmCodes = Object.keys(CMDTY);
+  // 한 곳이 실패해도 나머지는 보여준다. 전부 실패할 때만 에러(→ 직전 값 사용)
   const [dom, world, ...rest] = await Promise.all([
-    getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ'),
-    getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI'),
+    getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ').catch(() => null),
+    getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI').catch(() => null),
     ...fxCodes.map((c) => loadFx(c).catch(() => null)),
     ...cmCodes.map((c) => loadCmdty(c).catch(() => null)),
   ]);
-  const fxs = rest.slice(0, fxCodes.length).filter(Boolean);
-  const cm = rest.slice(fxCodes.length).filter(Boolean);
-  const items = [...(dom.datas || []), ...(world.datas || [])].map(normIndex);
+  // 이번에 못 받은 항목은 직전 값으로 채운다(화면에서 칸이 사라지지 않게)
+  const keep = (list, codes, prev) => codes.map((c, i) => list[i] || (prev || []).find((x) => x.code === c)).filter(Boolean);
+  const fxs = keep(rest.slice(0, fxCodes.length), fxCodes, lastIdx && lastIdx.fxs);
+  const cm = keep(rest.slice(fxCodes.length), cmCodes, lastIdx && lastIdx.cmdty);
+  if (!dom && !world && !fxs.length && !cm.length) throw new Error('naver unreachable');
+  let items = [...((dom && dom.datas) || []), ...((world && world.datas) || [])].map(normIndex);
+  if (lastIdx) for (const p of lastIdx.items) if (!items.some((x) => x.code === p.code)) items.push(p);
   const order = Object.keys(INDEX_NAMES);
   items.sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
   const usd = fxs.find((f) => f.code === 'FX_USDKRW');
+  lastIdx = { items, cmdty: cm, fxs };
   return {
     items,
     cmdty: cm,
@@ -284,7 +294,7 @@ const MANAGERS = {
 const SEC_UA = { 'User-Agent': 'xip-dashboard/1.0 (https://xip.xiangdolee.workers.dev)', Accept: 'application/json, text/xml' };
 
 async function secFetch(url, as) {
-  const res = await fetch(url, { headers: SEC_UA });
+  const res = await fetch(url, { headers: SEC_UA, signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`sec ${res.status}`);
   return as === 'text' ? res.text() : res.json();
 }
