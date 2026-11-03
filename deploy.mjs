@@ -41,6 +41,7 @@ if (!arg) {
 if (arg === '--login') run('npx', ['wrangler', 'login']);
 else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
 else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
+else if (arg === '--mail-token') run('npx', ['wrangler', 'secret', 'put', 'CF_MAIL_TOKEN', '--name', 'xim']); // 대표 도메인 메일 등록용 토큰을 xim 에 (붙여넣기만)
 else if (arg === '--mail') await mailFor(process.argv[3] || '', true); // 예) node deploy.mjs --mail sjccc  (또는 도메인)
 else {
   // 배포용은 .deploy/<폴더> 에 따로 빌드한다 — 로컬 미리보기(dist · wrangler.jsonc)를 다른 작업이 동시에 고쳐도 섞이지 않게
