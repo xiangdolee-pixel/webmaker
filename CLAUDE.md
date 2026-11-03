@@ -103,7 +103,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 ## xms (업체별 CMS)
 
-- 회원가입 = 이메일 인증(6자리 번호) → 정보 입력, 아이디 = 이메일. 인증 메일은 **그 사이트 도메인의 `noreply@<도메인>`** 으로 보낸다(Cloudflare Email Service). xim 에서 사이트의 **대표 도메인**을 저장하면 xim 이 Cloudflare Email Sending 에 자동 등록한다(xim 비밀값 `CF_MAIL_TOKEN`: Zone Read · DNS Edit · Email Sending Edit, 카드의 "메일 …" 표시를 누르면 다시 등록). 등록 전에는 예비 주소 noreply@plators.com 으로 나간다. 이 PC 에서 직접: `node deploy.mjs --mail <폴더>`.
+- 회원가입 = 이메일 인증(6자리 번호) → 정보 입력, 아이디 = 이메일. 인증 메일은 **그 사이트 도메인의 `noreply@<도메인>`** 으로 보낸다(Cloudflare Email Service). xim 에서 사이트의 **대표 도메인**을 저장하면 xim 이 Cloudflare Email Sending 에 자동 등록한다(xim 비밀값 `CF_MAIL_TOKEN`: Zone Read · DNS Edit · Email Sending Edit · Account Turnstile Edit). 같은 때에 사이트별 봇 확인(Turnstile) 위젯도 만들어 가입 인증번호 받기 앞에 붙인다(키는 xim DB sites.turnstile_*). 카드의 "메일 · 봇확인" 표시를 누르면 다시 등록). 등록 전에는 예비 주소 noreply@plators.com 으로 나간다. 이 PC 에서 직접: `node deploy.mjs --mail <폴더>`.
 
 - `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
 - 기능 기준은 사용자 PC 의 기준 CMS 소스(경로는 Claude 메모리 xim-project 에 있다). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
