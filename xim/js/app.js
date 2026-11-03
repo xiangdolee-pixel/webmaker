@@ -395,8 +395,8 @@ async function renderRequests() {
   const box = $('#req-list');
   box.innerHTML = list.map((r) => `
     <article class="card item clickable" data-id="${r.id}" tabindex="0">
-      <div class="item-head"><h3>${esc(r.title)}</h3>${badge(r.status)}</div>
-      <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>${fmtDate(r.created_at)}</span></div>
+      <div class="item-head"><h3>${esc(r.title)}${r.msg_count ? ` <small class="req-count">[${r.msg_count}]</small>` : ''}${r.last_side === 'site' ? ' <span class="badge new">새 글</span>' : ''}</h3>${badge(r.status)}</div>
+      <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>처음 ${fmtDate(r.created_at)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at)}</span>` : ''}</div>
     </article>`).join('') || '<div class="card empty">해당하는 요청이 없습니다.</div>';
   box.querySelectorAll('[data-id]').forEach((el) => {
     const r = list.find((x) => x.id === +el.dataset.id);
@@ -405,40 +405,83 @@ async function renderRequests() {
   });
 }
 
-// 요청 본문: xms 에디터로 쓴 것은 HTML(xms 가 정리해서 저장), 예전 것은 글자. 사진 · 첨부는 그 사이트 주소로.
-function requestBody(r) {
-  const site = r.site_url || '';
-  const body = !r.body ? '<p class="meta">(내용 없음)</p>'
-    : r.body.trim().startsWith('<') ? `<div class="req-html">${r.body.replace(/(src|href)="\/xms\//g, `$1="${site}/xms/`)}</div>`
-      : `<p class="pre body-text">${esc(r.body)}</p>`;
-  const atts = (r.attachments || []).length
-    ? `<div class="req-atts"><b>첨부</b>${r.attachments.map((a) => `<a href="${esc(site)}/xms/upload/${esc(a.id)}?dl=1" target="_blank" rel="noopener">${esc(a.name)}</a>`).join('')}</div>` : '';
-  return body + atts;
+// 요청 하나: 처음 요청 → 운영자 답변 → 업체가 다시 … 시간 순서. 맨 아래에서 상태와 함께 답변(사진 · 파일 가능)
+function msgAtts(site, atts) {
+  if (!atts?.length) return '';
+  const isImg = (a) => a.kind === 'IMAGE' || /^image\//.test(a.mime || '');
+  const img = atts.filter(isImg);
+  const files = atts.filter((a) => !isImg(a));
+  return `${img.length ? `<div class="msg-imgs">${img.map((a) => `<a href="${esc(site)}/xms/upload/${esc(a.id)}" target="_blank" rel="noopener"><img src="${esc(site)}/xms/upload/${esc(a.id)}" alt="${esc(a.name)}" loading="lazy"></a>`).join('')}</div>` : ''}
+    ${files.length ? `<div class="req-atts">${files.map((a) => `<a href="${esc(site)}/xms/upload/${esc(a.id)}?dl=1" target="_blank" rel="noopener">${esc(a.name)}</a>`).join('')}</div>` : ''}`;
 }
+const msgItem = (site, side, who, at, bodyHtml, atts, status) => `<li class="msg ${side}">
+  <div class="msg-head"><b>${esc(who)}</b>${side === 'op' ? '<span class="badge doing">운영자</span>' : '<span class="badge active">업체</span>'}<time>${fmtDate(at)}</time>${status ? `<span>→ ${badge(status)}</span>` : ''}</div>
+  ${bodyHtml}${msgAtts(site, atts)}</li>`;
 
-function requestDialog(r) {
+async function requestDialog(row) {
+  const r = await api(`/requests/${row.id}`);
+  const site = r.site_url || '';
   let status = r.status;
+  const files = [];
+  const firstBody = !r.body ? '<p class="meta">(내용 없음)</p>'
+    : r.body.trim().startsWith('<') ? `<div class="req-html">${r.body.replace(/(src|href)="\/xms\//g, `$1="${site}/xms/`)}</div>`
+      : `<p class="pre">${esc(r.body)}</p>`;
+  const text = (t) => (t ? `<p class="pre">${esc(t)}</p>` : '');
+  const legacy = r.reply && !r.messages.some((x) => x.side === 'op') ? msgItem(site, 'op', '운영자', r.updated_at, text(r.reply), [], '') : '';
   openDialog(`
     <h2>${esc(r.title)}</h2>
-    <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>${fmtDate(r.created_at)}</span></div>
-    ${requestBody(r)}
-    <form>
+    <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.requester || '')}</span><span>처음 ${fmtDate(r.created_at)}</span></div>
+    <ol class="thread">
+      ${msgItem(site, 'site', r.requester || '업체', r.created_at, firstBody, r.attachments, '')}
+      ${legacy}
+      ${r.messages.map((x) => msgItem(site, x.side, x.author, x.created_at, text(x.body), x.attachments, x.status)).join('')}
+    </ol>
+    <form class="thread-form">
       <div class="field"><span>상태</span><div class="tabs" data-status></div></div>
-      <label class="field"><span>답변 (업체 관리자에게 보입니다)</span><textarea class="input" name="reply">${esc(r.reply)}</textarea></label>
+      <label class="field"><span>답변 (업체 관리자에게 보입니다)</span><textarea class="input" name="body" rows="4" maxlength="10000" placeholder="처리한 내용이나 물어볼 것을 적어 주세요."></textarea></label>
+      <div class="att-row"><button type="button" class="btn sm" data-pick>사진 · 파일 붙이기</button><span class="att-chips" data-chips></span></div>
       <p class="err" role="alert"></p>
-      <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">저장</button></div>
+      <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">보내기</button></div>
     </form>`, (dlg) => {
     pillTabs(dlg.querySelector('[data-status]'), [['new', '접수'], ['doing', '진행 중'], ['done', '완료']], status, (v) => { status = v; });
     const form = dlg.querySelector('form');
+    const chips = dlg.querySelector('[data-chips]');
+    const drawChips = () => {
+      chips.innerHTML = files.map((f, i) => `<span class="chip">${f.kind === 'IMAGE' ? `<img src="${esc(site)}/xms/upload/${esc(f.id)}" alt="">` : ''}${esc(f.name)}<button type="button" data-x="${i}" aria-label="빼기">✕</button></span>`).join('');
+    };
+    chips.addEventListener('click', (e) => { const x = e.target.closest('[data-x]'); if (x) { files.splice(+x.dataset.x, 1); drawChips(); } });
+    dlg.querySelector('[data-pick]').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.multiple = true;
+      input.onchange = async () => {
+        for (const f of input.files) {
+          try {
+            toast(`${f.name} 올리는 중…`);
+            const res = await fetch(`/api/requests/${r.id}/upload`, {
+              method: 'POST', credentials: 'same-origin',
+              headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name) },
+              body: f,
+            });
+            const out = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(out?.error || '올리지 못했습니다.');
+            files.push(out);
+            drawChips();
+          } catch (er) { toast(er.message); }
+        }
+      };
+      input.click();
+    });
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
-        await api(`/requests/${r.id}`, { method: 'PUT', data: { status, reply: form.reply.value } });
+        await api(`/requests/${r.id}/messages`, { method: 'POST', data: { status, body: form.body.value, attachments: files.map((f) => f.id) } });
         dlg.close();
-        toast('저장했습니다.');
+        toast('보냈습니다.');
         render();
       });
     });
+    // 맨 아래(최근 글)부터 보이게
+    requestAnimationFrame(() => { const t = dlg.querySelector('.thread'); t?.lastElementChild?.scrollIntoView({ block: 'nearest' }); });
   });
 }
 

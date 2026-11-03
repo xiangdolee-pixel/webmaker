@@ -638,7 +638,7 @@ async function requestsPage(qs) {
     <div class="panel">${shown.length ? `<table class="tbl cardy req-tbl"><thead><tr><th class="c-no">번호</th><th>제목</th><th class="c-st">상태</th><th>요청한 사람</th><th class="c-d">등록일</th></tr></thead><tbody>
       ${shown.map((r, i) => `<tr data-go="#/requests/${r.id}">
         <td class="c-no num" data-l="번호">${rows.length - (page - 1) * REQ_PAGE - i}</td>
-        <td class="c-t"><a href="#/requests/${r.id}">${esc(r.title)}</a>${r.attachments?.length ? ` <span class="req-clip" title="첨부 ${r.attachments.length}개">${ATT_ICON}</span>` : ''}${r.reply ? ' <span class="tag green req-reply">답변</span>' : ''}</td>
+        <td class="c-t"><a href="#/requests/${r.id}">${esc(r.title)}</a>${r.attachments?.length ? ` <span class="req-clip" title="첨부 ${r.attachments.length}개">${ATT_ICON}</span>` : ''}${r.msg_count ? ` <span class="req-count" title="주고받은 글">[${r.msg_count}]</span>` : ''}${r.last_side === 'op' || (!r.msg_count && r.reply) ? ' <span class="tag green req-reply">답변</span>' : ''}</td>
         <td class="c-st" data-l="상태"><span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span></td>
         <td data-l="요청한 사람">${esc(r.requester || '')}</td>
         <td class="c-d" data-l="등록일">${fmtDate(r.created_at)}</td></tr>`).join('')}</tbody></table>`
@@ -648,23 +648,58 @@ async function requestsPage(qs) {
   main.querySelectorAll('tr[data-go]').forEach((tr) => tr.addEventListener('click', (e) => { if (!e.target.closest('a')) go(tr.dataset.go); }));
 }
 
-// 요청 보기 — 본문 · 첨부 · 답변
+// 요청 보기 — 처음 요청 → 운영자 답변 → 다시 요청 … 을 시간 순서로 쌓고, 맨 아래에서 이어 쓴다
+const reqAttsHtml = (atts) => {
+  if (!atts?.length) return '';
+  const img = atts.filter((a) => a.kind === 'IMAGE' || /^image\//.test(a.mime || ''));
+  const files = atts.filter((a) => !img.includes(a));
+  return `${img.length ? `<div class="msg-imgs">${img.map((a) => `<a href="/xms/upload/${esc(a.id)}" target="_blank" rel="noopener"><img src="/xms/upload/${esc(a.id)}" alt="${esc(a.name)}" loading="lazy"></a>`).join('')}</div>` : ''}
+    ${files.length ? `<div class="post-files">${files.map((a) => `<a href="/xms/upload/${esc(a.id)}?dl=1">${esc(a.name)} <small>${size(a.size)}</small></a>`).join('')}</div>` : ''}`;
+};
+const reqMsg = (side, who, at, bodyHtml, atts, status) => `<li class="msg ${side}">
+    <div class="msg-head"><b>${esc(who)}</b>${side === 'op' ? '<span class="tag blue">운영자</span>' : ''}<time>${fmtDate(at, true)}</time>${status ? `<span class="tag ${REQ_LABEL[status][1]}">→ ${REQ_LABEL[status][0]}</span>` : ''}</div>
+    ${bodyHtml}${reqAttsHtml(atts)}</li>`;
 async function requestView(id) {
-  const r = (await api('/requests')).find((x) => x.id === id);
-  if (!r) {
+  let r;
+  try { r = await api(`/requests/${id}`); } catch {
     main.innerHTML = `${head('사이트', '수정 요청')}<div class="panel">${empty('요청을 찾을 수 없습니다', '지워졌거나 없는 요청입니다.', '<a class="btn" href="#/requests">목록으로</a>')}</div>`;
     return;
   }
-  const body = r.body ? (r.body.trim().startsWith('<') ? `<div class="prose req-body">${r.body}</div>` : `<p class="pre">${esc(r.body)}</p>`) : '<p class="meta">내용 없음</p>';
+  const first = r.body ? (r.body.trim().startsWith('<') ? `<div class="prose req-body">${r.body}</div>` : `<p class="pre">${esc(r.body)}</p>`) : '';
+  const text = (t) => (t ? `<p class="pre">${esc(t)}</p>` : '');
+  // 예전 방식(답변 한 칸)으로 단 답변도 그 자리에
+  const legacy = r.reply && !r.messages.some((x) => x.side === 'op') ? reqMsg('op', '운영자', r.updated_at, text(r.reply), [], '') : '';
   main.innerHTML = `${head('사이트', '수정 요청')}
     <article class="panel pad req-view">
       <div class="req-view-head"><span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span><h2>${esc(r.title)}</h2>
-        <p class="meta"><span>${esc(r.requester || '')}</span><span>등록 ${fmtDate(r.created_at, true)}</span>${r.updated_at && r.updated_at !== r.created_at ? `<span>바뀜 ${fmtDate(r.updated_at, true)}</span>` : ''}</p></div>
-      ${body}
-      ${r.attachments?.length ? `<div class="post-files"><b>첨부</b>${r.attachments.map((a) => `<a href="/xms/upload/${esc(a.id)}?dl=1">${esc(a.name)} <small>${size(a.size)}</small></a>`).join('')}</div>` : ''}
-      <section class="req-answer${r.reply ? ' has' : ''}"><h3>운영자 답변</h3>${r.reply ? `<p class="pre">${esc(r.reply)}</p>` : '<p class="meta">아직 답변이 없습니다. 처리되면 여기에 답변이 붙습니다.</p>'}</section>
-    </article>
-    <div class="actions gap"><a class="btn" href="#/requests">목록으로</a><a class="btn primary right" href="#/requests/new">새 요청 쓰기</a></div>`;
+        <p class="meta"><span>${esc(r.requester || '')}</span><span>처음 요청 ${fmtDate(r.created_at, true)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at, true)}</span>` : ''}</p></div>
+      <ol class="thread">
+        ${reqMsg('site', r.requester || '요청', r.created_at, first || '<p class="meta">내용 없음</p>', r.attachments, '')}
+        ${legacy}
+        ${r.messages.map((x) => reqMsg(x.side, x.author, x.created_at, text(x.body), x.attachments, x.status)).join('')}
+      </ol>
+      <form class="thread-form" id="mform">
+        <label class="field"><span>이어서 쓰기 ${r.status === 'done' ? '<small class="meta-inline">— 완료된 요청에 쓰면 다시 접수됩니다</small>' : ''}</span>
+          <textarea class="input" name="body" rows="4" maxlength="10000" placeholder="아직 안 된 곳, 더 바꿀 곳을 적어 주세요."></textarea></label>
+        <div class="attach" data-attach>
+          <div class="attach-btns"><button type="button" class="pill-btn" data-add="IMAGE">${IMG_ICON}이미지</button><button type="button" class="pill-btn" data-add="FILE">${ATT_ICON}파일</button></div>
+          <div class="attach-list" data-list></div></div>
+        <p class="err" role="alert"></p>
+        <div class="actions"><a class="btn" href="#/requests">목록으로</a><button class="btn primary right" type="submit">보내기</button></div>
+      </form>
+    </article>`;
+  const form = $('#mform');
+  const attach = mountAttach($('[data-attach]', form), { target: '@request' });
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+      const out = await api(`/requests/${r.id}/messages`, { method: 'POST', data: { body: form.body.value, attachments: attach.ids() } });
+      dirty = false;
+      toast(out.status !== r.status ? '보냈습니다. 요청이 다시 접수됐습니다.' : '보냈습니다.');
+      route();
+    });
+  });
 }
 
 // 요청 쓰기

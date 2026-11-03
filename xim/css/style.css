@@ -113,7 +113,6 @@ textarea.input { min-height: 120px; resize: vertical; }
 .clickable:hover { border-color: #c9ced8; transform: translateY(-1px); }
 .empty { padding: 40px 16px; text-align: center; color: var(--mute); }
 .pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
-.body-text { margin: 14px 0 18px; }
 .item h2 { margin: 0 0 6px; font-size: 20px; }
 .section-gap { margin-top: 28px; }
 .reply { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--brand-soft); }
@@ -190,6 +189,24 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 .req-html { margin: 14px 0 18px; line-height: 1.7; overflow-wrap: anywhere; }
 .req-html img { max-width: 100%; height: auto; border-radius: 8px; }
 .req-html iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; }
+/* 수정요청: 주고받은 글 */
+.req-count { color: var(--brand); font-size: 14px; font-weight: 700; }
+.thread { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+.msg { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.msg.op { background: #f2f6ff; border-color: #d9e3fb; margin-left: 32px; }
+.msg.site { margin-right: 32px; }
+.msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 6px; font-size: 14px; }
+.msg-head time { color: var(--mute, #8d94a2); font-size: 13px; }
+.msg .req-html, .msg .pre { margin: 0; }
+.msg-imgs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.msg-imgs a { display: block; width: 104px; height: 104px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.msg-imgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thread-form { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.att-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 8px; }
+.att-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 99px; background: #f1f3f6; font-size: 13px; }
+.chip img { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; }
+.chip button { border: 0; background: none; cursor: pointer; color: var(--mute, #8d94a2); }
 .req-atts { display: grid; gap: 4px; margin: -6px 0 16px; padding: 10px 12px; border-radius: 10px; background: #f6f7fa; font-size: 14px; }
 
 /* 전체 사용량 막대 */

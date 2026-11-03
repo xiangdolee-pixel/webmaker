@@ -321,8 +321,39 @@ export async function adminApi(ctx) {
   // ───── 수정 요청 (xim 으로 보낸다) ─────
   if (path === '/requests' && method === 'GET') {
     const s = await ximSite(env, site);
-    const { results } = await env.XIM_DB.prepare('SELECT id, title, body, status, reply, requester, attachments, created_at, updated_at FROM requests WHERE site_id = ? ORDER BY id DESC LIMIT 100').bind(s.id).all();
+    const { results } = await env.XIM_DB.prepare(`SELECT r.id, r.title, r.status, r.reply, r.requester, r.attachments, r.created_at, r.updated_at,
+        (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id) AS msg_count,
+        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side
+      FROM requests r WHERE r.site_id = ? ORDER BY r.id DESC LIMIT 300`).bind(s.id).all();
     return json(results.map((r) => ({ ...r, attachments: JSON.parse(r.attachments || '[]') })));
+  }
+  // 요청 하나 + 주고받은 글 (요청 → 운영자 답변 → 다시 요청 … 시간 순서)
+  if ((m = path.match(/^\/requests\/(\d+)$/)) && method === 'GET') {
+    const s = await ximSite(env, site);
+    const r = await env.XIM_DB.prepare('SELECT * FROM requests WHERE id = ? AND site_id = ?').bind(+m[1], s.id).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    const { results } = await env.XIM_DB.prepare('SELECT id, side, author, body, attachments, status, created_at FROM request_messages WHERE request_id = ? ORDER BY id').bind(r.id).all();
+    return json({ ...r, attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
+  }
+  // 이어서 쓰기 (업체 관리자): 완료된 요청에 쓰면 다시 '접수' 로
+  if ((m = path.match(/^\/requests\/(\d+)\/messages$/)) && method === 'POST') {
+    const s = await ximSite(env, site);
+    const r = await env.XIM_DB.prepare('SELECT id, title, status FROM requests WHERE id = ? AND site_id = ?').bind(+m[1], s.id).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    const raw = await body(request);
+    const text = str(raw.body, 10000);
+    const atts = await requestAtts(db, site, raw.attachments);
+    if (!text && !atts.length) throw bad('내용을 적거나 파일을 붙여 주세요.');
+    const t = now();
+    const who = me.kind === 'staff' ? '운영자' : `${me.member.name}(${me.member.login_id})`;
+    const next = r.status === 'done' ? 'new' : r.status;
+    await env.XIM_DB.batch([
+      env.XIM_DB.prepare("INSERT INTO request_messages (request_id, side, author, body, attachments, status, created_at) VALUES (?, 'site', ?, ?, ?, ?, ?)")
+        .bind(r.id, who, text, JSON.stringify(atts), next !== r.status ? next : '', t),
+      env.XIM_DB.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').bind(next, t, r.id),
+    ]);
+    await audit(db, site, me, request, 'REQUEST_MESSAGE', r.title);
+    return json({ ok: true, status: next });
   }
   if (path === '/requests' && method === 'POST') {
     const raw = await body(request);
@@ -333,12 +364,7 @@ export async function adminApi(ctx) {
     const who = me.kind === 'staff' ? '운영자' : `${me.member.name}(${me.member.login_id})`;
     // 본문은 에디터 HTML (정리해서), 첨부는 이 사이트에 올라간 파일만
     const html = await sanitizeHtml(String(raw.body ?? '').slice(0, 100000));
-    const ids = (Array.isArray(raw.attachments) ? raw.attachments : []).map(String).filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 30);
-    let atts = [];
-    if (ids.length) {
-      const { results: ups } = await db.prepare(`SELECT id, name, size, kind FROM uploads WHERE site = ? AND id IN (${ids.map(() => '?').join(',')})`).bind(site, ...ids).all();
-      atts = ids.map((id) => ups.find((u) => u.id === id)).filter(Boolean);
-    }
+    const atts = await requestAtts(db, site, raw.attachments);
     await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)')
       .bind(s.id, title, html, 'new', who, JSON.stringify(atts), t, t).run();
     await audit(db, site, me, request, 'REQUEST_CREATE', title);
@@ -546,6 +572,14 @@ async function insertMenu(db, site, n) {
   const r = await db.prepare('INSERT INTO menus (site, parent_id, title, menu_type, path, board_id, sort, visible, read_levels, allow_guest_read) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
     .bind(site, n.parent_id, n.title, n.menu_type, n.path, n.board_id, (max?.s || 0) + 1, n.read_levels, n.allow_guest_read).run();
   return r.meta.last_row_id;
+}
+
+// 수정 요청에 붙인 파일: 이 사이트에 올라간 것만, 보낸 차례대로 [{ id, name, size, kind, mime }]
+async function requestAtts(db, site, list) {
+  const ids = (Array.isArray(list) ? list : []).map(String).filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 30);
+  if (!ids.length) return [];
+  const { results: ups } = await db.prepare(`SELECT id, name, size, kind, mime FROM uploads WHERE site = ? AND id IN (${ids.map(() => '?').join(',')})`).bind(site, ...ids).all();
+  return ids.map((id) => ups.find((u) => u.id === id)).filter(Boolean);
 }
 
 async function ximSite(env, site) {

@@ -240,10 +240,20 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .req-view-head { padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .req-view-head h2 { margin: 8px 0 6px; font-size: 22px; }
 .req-view-head .meta { margin: 0; }
-.req-answer { margin-top: 22px; padding: 16px 18px; border-radius: var(--radius-sm); background: var(--line-2); }
-.req-answer.has { background: var(--ok-soft, #e6f6ee); }
-.req-answer h3 { margin: 0 0 6px; font-size: 15px; }
-.req-answer p { margin: 0; }
+/* 주고받은 글 */
+.req-count { color: var(--brand); font-size: 13px; font-weight: 700; }
+.thread { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.msg { position: relative; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); }
+.msg.op { background: #f2f6ff; border-color: #d9e3fb; margin-left: clamp(0px, 6vw, 48px); }
+.msg.site { margin-right: clamp(0px, 6vw, 48px); }
+.msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 8px; font-size: 14px; }
+.msg-head time { color: var(--mute); font-size: 13px; }
+.msg-head .tag { margin: 0; }
+.msg > p:last-child, .msg .prose > :last-child { margin-bottom: 0; }
+.msg-imgs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.msg-imgs a { display: block; width: 120px; height: 120px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.msg-imgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thread-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 .handle { cursor: grab; touch-action: none; user-select: none; color: var(--mute); font-size: 18px; padding: 4px 6px; border: 0; background: none; }
 .dragging { background: var(--surface); box-shadow: 0 14px 34px -12px rgba(20, 26, 40, .45), 0 0 0 1px var(--line); cursor: grabbing; }
 tr.dragging td { background: var(--surface); }

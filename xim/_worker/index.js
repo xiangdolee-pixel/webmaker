@@ -23,6 +23,7 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 const bad = (msg) => new HttpError(400, msg);
+const notFound = (msg = '찾을 수 없습니다.') => new HttpError(404, msg);
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -405,12 +406,66 @@ async function ximApi(request, env, url) {
     const status = url.searchParams.get('status');
     const where = STATUSES.includes(status) ? 'WHERE r.status = ?' : '';
     const stmt = db.prepare(`
-      SELECT r.*, s.slug, s.domain, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name
+      SELECT r.*, s.slug, s.domain, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name,
+        (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id) AS msg_count,
+        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side
       FROM requests r JOIN sites s ON s.id = r.site_id LEFT JOIN site_admins a ON a.id = r.admin_id
       ${where} ORDER BY (r.status = 'done'), r.id DESC LIMIT 200`);
     const { results } = await (where ? stmt.bind(status) : stmt).all();
     // 요청 본문의 사진 · 첨부는 그 사이트 주소에 있다 → xim 에서 볼 수 있게 사이트 주소를 붙여 준다
     return json(results.map((r) => ({ ...r, site_url: siteUrl({ slug: r.slug, domain: r.domain }), attachments: JSON.parse(r.attachments || '[]') })));
+  }
+  // 요청 하나 + 주고받은 글
+  m = path.match(/^\/api\/requests\/(\d+)$/);
+  if (m && method === 'GET') {
+    const r = await db.prepare(`SELECT r.*, s.slug, s.domain, s.name AS site_name FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?`).bind(+m[1]).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    const { results } = await db.prepare('SELECT id, side, author, body, attachments, status, created_at FROM request_messages WHERE request_id = ? ORDER BY id').bind(r.id).all();
+    return json({ ...r, site_url: siteUrl(r), attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
+  }
+  // 운영자 답변: 글 · 파일(없어도 됨) + 상태
+  m = path.match(/^\/api\/requests\/(\d+)\/messages$/);
+  if (m && method === 'POST') {
+    const r = await db.prepare('SELECT r.id, r.status, s.slug FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?').bind(+m[1]).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    const raw = await body(request);
+    const status = STATUSES.includes(raw.status) ? raw.status : r.status;
+    const text = str(raw.body, 10000);
+    const ids = (Array.isArray(raw.attachments) ? raw.attachments : []).map(String).filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 30);
+    let atts = [];
+    if (ids.length) {
+      const { results: ups } = await env.XMS_DB.prepare(`SELECT id, name, size, kind, mime FROM uploads WHERE site = ? AND id IN (${ids.map(() => '?').join(',')})`).bind(r.slug, ...ids).all();
+      atts = ids.map((id) => ups.find((u) => u.id === id)).filter(Boolean);
+    }
+    if (!text && !atts.length && status === r.status) throw bad('답변을 적거나 파일을 붙이거나 상태를 바꿔 주세요.');
+    const t = now();
+    await db.batch([
+      db.prepare("INSERT INTO request_messages (request_id, side, author, body, attachments, status, created_at) VALUES (?, 'op', '운영자', ?, ?, ?, ?)")
+        .bind(r.id, text, JSON.stringify(atts), status !== r.status ? status : '', t),
+      db.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').bind(status, t, r.id),
+    ]);
+    return json({ ok: true, status });
+  }
+  // 운영자가 답변에 붙일 파일 → 그 사이트 xms 저장소(R2 + xms uploads)로. 주소는 사이트주소/xms/upload/<id>
+  m = path.match(/^\/api\/requests\/(\d+)\/upload$/);
+  if (m && method === 'POST') {
+    const r = await db.prepare('SELECT s.slug FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?').bind(+m[1]).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    if (!env.FILES) throw bad('파일 저장소(R2)가 연결돼 있지 않습니다.');
+    const mime = (request.headers.get('Content-Type') || 'application/octet-stream').split(';')[0].trim().toLowerCase();
+    let name = '';
+    try { name = decodeURIComponent(request.headers.get('X-File-Name') || ''); } catch { name = ''; }
+    name = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120) || 'file';
+    const buf = await request.arrayBuffer();
+    if (!buf.byteLength) throw bad('빈 파일입니다.');
+    if (buf.byteLength > 20 * 1024 * 1024) throw bad('파일이 너무 큽니다 (20MB 까지).');
+    const kind = /^image\/(png|jpeg|gif|webp)$/.test(mime) ? 'IMAGE' : 'FILE';
+    const id = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const key = `${r.slug}/${id}`;
+    await env.FILES.put(key, buf, { httpMetadata: { contentType: mime } });
+    await env.XMS_DB.prepare('INSERT INTO uploads (id, site, post_id, kind, name, mime, size, data, r2_key, created_by, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, NULL, ?, NULL, ?)')
+      .bind(id, r.slug, kind, name, mime, buf.byteLength, key, now()).run();
+    return json({ id, name, size: buf.byteLength, kind, mime });
   }
   m = path.match(/^\/api\/requests\/(\d+)$/);
   if (m && method === 'PUT') {

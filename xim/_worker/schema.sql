@@ -50,6 +50,19 @@ CREATE TABLE IF NOT EXISTS requests (
 );
 CREATE INDEX IF NOT EXISTS idx_requests_site ON requests(site_id, created_at);
 
+-- 수정 요청에 주고받은 글 (업체 관리자 site ↔ 운영자 op). 파일은 그 사이트 xms 저장소에 있다.
+CREATE TABLE IF NOT EXISTS request_messages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id  INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+  side        TEXT NOT NULL,              -- site | op
+  author      TEXT NOT NULL DEFAULT '',
+  body        TEXT NOT NULL DEFAULT '',   -- 글자 (줄바꿈 그대로)
+  attachments TEXT NOT NULL DEFAULT '[]', -- [{ id, name, size, kind, mime }]
+  status      TEXT NOT NULL DEFAULT '',   -- 이 글로 바뀐 상태 (없으면 '')
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_request_messages ON request_messages(request_id, id);
+
 -- 로그인 세션. kind = xim(운영자) | site(업체 관리자)
 CREATE TABLE IF NOT EXISTS sessions (
   token       TEXT PRIMARY KEY,
