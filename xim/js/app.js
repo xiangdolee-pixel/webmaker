@@ -97,10 +97,10 @@ async function renderTiles() {
   // Workers 유료(Paid) 기준: D1 은 DB 하나 최대 10GB · 계정 전체 5GB 까지 요금에 포함(넘으면 GB당 월 $0.75), R2 는 10GB 까지 무료(넘으면 GB당 월 $0.015)
   + (s.storage ? `<div class="card tile wide-tile"><div class="meters-head"><b class="meters-title">전체 사용량</b><span>Cloudflare Workers 유료 요금제 기준</span></div>
       <div class="meters">${[
-    ['xms DB', '업체 회원 · 글 · 메뉴 등 — DB 하나 최대 10GB', s.storage.xms_db, 10 * 1073741824, 'm1'],
-    ['xim DB', '고객 · 사이트 · 요청 · 감시 — 최대 10GB', s.storage.xim_db, 10 * 1073741824, 'm2'],
-    ['DB 합계', '요금에 포함 5GB · 넘으면 GB당 월 $0.75', s.storage.xms_db + s.storage.xim_db, 5 * 1073741824, 'm1'],
-    ['R2 파일', '사진 · 첨부 — 무료 10GB · 넘으면 GB당 월 $0.015', s.storage.r2, 10 * 1073741824, 'm3'],
+    ['xms DB', '업체 회원 · 글 · 메뉴 · DB 하나 최대 10GB', s.storage.xms_db, 10 * 1073741824, 'm1'],
+    ['xim DB', '고객 · 사이트 · 요청 · 감시 · 최대 10GB', s.storage.xim_db, 10 * 1073741824, 'm2'],
+    ['DB 합계', '요금에 포함 5GB · 넘으면 GB당 월 $0.75', s.storage.xms_db + s.storage.xim_db, 5 * 1073741824, 'm4'],
+    ['R2 파일', '사진 · 첨부 · 무료 10GB · 넘으면 GB당 월 $0.015', s.storage.r2, 10 * 1073741824, 'm3'],
   ].map(([name, sub, used, limit, cls]) => meter(name, sub, used, limit, cls)).join('')}</div></div>` : '');
 }
 
@@ -135,9 +135,10 @@ function meter(name, sub, used, limit, cls) {
   const pctText = pct === 0 ? '0%' : pct < 0.1 ? '0.1% 미만' : pct < 10 ? `${pct.toFixed(1)}%` : `${Math.round(pct)}%`;
   const limitText = limit >= 1073741824 ? `${limit / 1073741824}GB` : `${limit / 1048576}MB`;
   return `<div class="meter ${cls}${pct >= 90 ? ' hot' : ''}">
-    <div class="meter-top"><b>${name}</b><small>${sub}</small><span class="meter-num"><b>${mb(used)}</b> / ${limitText}</span></div>
+    <div class="m-head"><span class="m-name">${name}</span><span class="m-pct">${pctText}</span></div>
+    <div class="m-val"><strong>${mb(used)}</strong><span>/ ${limitText}</span></div>
     <div class="meter-bar" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct.toFixed(2)}"><i style="width:${Math.min(100, Math.max(pct, used ? 0.8 : 0))}%"></i></div>
-    <div class="meter-pct">${pctText}</div>
+    <p class="m-sub">${sub}</p>
   </div>`;
 }
 
