@@ -88,4 +88,10 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 - `xim/` = 운영자 관리 화면 + 공용 엔진(Worker `xim`, D1 `xim`). 구조 · 연결 방법 · 운영 명령은 `xim/README.md`.
 - 새 고객 사이트를 만들면 xim 에 등록하고 `xim/_worker/site-worker.js` 를 `<폴더>/_worker/index.js` 로 복사 + `bindings.json` 을 넣어 연결한다(정지 · /admin · 수정요청이 붙는다).
 - "xim 요청 처리해줘" → `node deploy.mjs --wrangler d1 execute xim --remote --json --command "..."` 로 처리할 수정요청(status != 'done')을 읽고, 해당 폴더를 고쳐 배포한 뒤 요청 상태 · 답변을 갱신한다.
-- 배포 순서: xim 이 먼저 있어야 고객 사이트 배포가 된다(서비스 바인딩).
+- 배포 순서: xim · xms 가 먼저 있어야 고객 사이트 배포가 된다(서비스 바인딩).
+
+## xms (업체별 CMS)
+
+- `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
+- 기능 기준은 Webchon CMS 소스 `E:\ws\webchon-pilot\cms` (+ backend). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
+- 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "관리 화면 열기" = 웹촌 직원 대신 들어가기(1분 입장권).
