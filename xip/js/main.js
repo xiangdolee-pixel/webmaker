@@ -419,6 +419,48 @@
     return getJSON('/api/all?top=' + topMarket).then(function (d) { applyAll(d); }).catch(indicesFailed);
   }
 
+  /* 서버가 밀어주기(웹소켓 /ws): 연결돼 있는 동안은 묻지 않고 기다리기만 한다.
+     끊기면 다시 붙고, 그 사이에는 /api/all 로 직접 묻는다 */
+  var hub = null, hubLive = false, hubRetry = 0, hubTimer = null, hubPing = null;
+  function connectHub() {
+    if (hub || document.hidden || typeof WebSocket === 'undefined') return;
+    var sock;
+    try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch (e) { return retryHub(); }
+    hub = sock;
+    sock.onopen = function () {
+      if (hub !== sock) return;
+      hubLive = true;
+      hubRetry = 0;
+      clearInterval(hubPing);
+      hubPing = setInterval(function () { try { sock.send('ping'); } catch (e) {} }, 60000);
+    };
+    sock.onmessage = function (ev) {
+      if (ev.data === 'pong') return;
+      var m;
+      try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m && m.t === 'all') applyAll(m.d);
+    };
+    sock.onclose = function () {
+      if (hub !== sock) return;
+      hub = null;
+      hubLive = false;
+      clearInterval(hubPing);
+      retryHub();
+    };
+    sock.onerror = function () { try { sock.close(); } catch (e) {} };
+  }
+  function retryHub() {
+    clearTimeout(hubTimer);
+    hubRetry++;
+    if (!document.hidden) hubTimer = setTimeout(connectHub, Math.min(30000, 1000 * Math.pow(2, Math.min(hubRetry, 5))));
+  }
+  function closeHub() {
+    clearTimeout(hubTimer);
+    clearInterval(hubPing);
+    hubLive = false;
+    if (hub) { var s = hub; hub = null; try { s.close(); } catch (e) {} }
+  }
+
   /* ---------- 거래대금 상위 ---------- */
   var topMarket = 'kr';
   var topRows = {};
@@ -1183,8 +1225,16 @@
   }
   function start() {
     stop();
-    // 지수·환율·원자재 + 거래대금 + 휴장/서킷브레이커를 한 번에: 국내나 미국 장중이면 7초, 아니면 30초
-    timers.push(loop(loadAll, function () { return marketOpen('kr') || marketOpen('us') ? INDEX_EVERY : 30000; }));
+    // 지수·환율·원자재 + 거래대금 + 휴장/서킷브레이커: 웹소켓(/ws)이 밀어준다.
+    // 웹소켓이 안 붙어 있을 때만 /api/all 로 직접 묻는다(장중 7초, 아니면 30초)
+    connectHub();
+    timers.push(closeHub);
+    var first = true;
+    timers.push(loop(function () {
+      if (hubLive && !first) return null;
+      first = false;
+      return loadAll();
+    }, function () { return hubLive ? 15000 : marketOpen('kr') || marketOpen('us') ? INDEX_EVERY : 30000; }));
     timers.push(loop(loadCoins, function () { return COINS_EVERY; }));
     var h = setInterval(renderHours, 30000);
     timers.push(function () { clearInterval(h); });

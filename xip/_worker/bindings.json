@@ -1,3 +1,7 @@
 {
-  "placement": { "mode": "smart" }
+  "placement": { "mode": "smart" },
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "Hub" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }]
 }

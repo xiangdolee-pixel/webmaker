@@ -5,8 +5,11 @@
 //   /api/market  : 국내·미국 휴장일(조기폐장 포함) + 서킷브레이커 발동 여부·시각 (30초)
 //   /api/13f     : 유명 투자자 최신 13F 에서 새로 산·늘린 미국 주식 (?m=buffett|ackman|druck|tepper, SEC EDGAR)
 //   /api/chart   : 지수·환율·원자재·종목 차트 (?kind=index|fx|cmdty|stock&code=…&range=1d|1w|1m|1y|10y|all)
+//   /api/all     : 위 지수·거래대금·휴장/서킷브레이커를 한 번에 (?top=kr|us) — 웹소켓이 안 될 때 쓰는 예비
+//   /ws          : 웹소켓. Hub(Durable Object) 하나가 값을 받아 바뀔 때만 모든 화면에 밀어준다
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
+import { DurableObject } from 'cloudflare:workers';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
@@ -614,10 +617,90 @@ async function swr(ctx, key, ttlMs, maxStaleMs, loader) {
   return refresh();
 }
 
+/* ---------- Hub: 서버가 밀어주기 (Durable Object + 웹소켓, hibernation) ----------
+   - 접속한 화면이 하나라도 있으면 알람으로 주기적으로 값을 받는다(장중 5초, 아니면 30초)
+   - 바뀐 게 있을 때만 모든 화면에 보낸다 → 접속자 수와 상관없이 네이버 호출 수가 같다
+   - 아무도 없으면 알람을 멈추고 쉰다 */
+function zoneOpen(tz, open, close) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+  const min = (Number(p.hour) % 24) * 60 + Number(p.minute);
+  return !['Sat', 'Sun'].includes(p.weekday) && min >= open && min < close;
+}
+const krOpen = () => zoneOpen('Asia/Seoul', 540, 930);
+const usOpen = () => zoneOpen('America/New_York', 570, 960);
+// 비교용: 받은 시각처럼 매번 바뀌는 값은 빼고 본다
+const sameKey = (d) => JSON.stringify(d, (k, v) => (k === 'fetchedAt' || k === 'stale' ? undefined : v));
+
+export class Hub extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.last = null;      // 마지막으로 보낸 값
+    this.lastKey = '';
+    this.savedAt = 0;
+  }
+
+  async fetch(request) {
+    if (request.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    // 들어오자마자 지금 값을 준다(저장본 → 없으면 바로 받기)
+    if (!this.last) this.last = (await this.ctx.storage.get('snap')) || null;
+    let sent = false;
+    if (!this.last || Date.now() - (this.last.at || 0) > 20000) sent = await this.refresh().catch(() => false);
+    if (this.last && !sent) server.send(JSON.stringify({ t: 'all', d: this.last }));
+    if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + 2000);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws, msg) {
+    if (msg === 'ping') ws.send('pong');
+  }
+  async webSocketClose(ws) {
+    // 1006 같은 예약 코드는 되돌려 보낼 수 없어 항상 1000 으로 닫는다
+    try { ws.close(1000, 'bye'); } catch (e) { /* 이미 닫힘 */ }
+  }
+  async webSocketError() {}
+
+  async alarm() {
+    if (!this.ctx.getWebSockets().length) return; // 아무도 없으면 멈춘다
+    try { await this.refresh(); } catch (e) { /* 다음 알람에 다시 */ }
+    await this.ctx.storage.setAlarm(Date.now() + (krOpen() || usOpen() ? 5000 : 30000));
+  }
+
+  async refresh() {
+    const [ind, kr, us, mkt] = await Promise.all([
+      cached('indices', 4000, loadIndices),
+      cached('top:kr', krOpen() ? 8000 : 300000, () => loadTop('kr')).catch(() => null),
+      cached('top:us', usOpen() ? 8000 : 300000, () => loadTop('us')).catch(() => null),
+      cached('market', 30000, loadMarket).catch(() => null),
+    ]);
+    const d = {
+      at: Date.now(),
+      indices: { ...ind.data, fetchedAt: ind.at },
+      top: { kr: kr ? kr.data : (this.last && this.last.top.kr), us: us ? us.data : (this.last && this.last.top.us) },
+      market: mkt ? mkt.data : this.last && this.last.market,
+    };
+    const key = sameKey({ ...d, at: 0 });
+    if (key === this.lastKey) { this.last.at = d.at; return false; } // 바뀐 게 없으면 보내지 않는다
+    this.lastKey = key;
+    this.last = d;
+    const msg = JSON.stringify({ t: 'all', d });
+    for (const ws of this.ctx.getWebSockets()) {
+      try { ws.send(msg); } catch (e) { /* 끊긴 화면 */ }
+    }
+    // 저장본은 30초에 한 번만 (쓰기 횟수 절약). 잠들었다 깨도 바로 보여주기 위해
+    if (Date.now() - this.savedAt > 30000) { this.savedAt = Date.now(); await this.ctx.storage.put('snap', d); }
+    return true; // 모든 화면에 보냈음
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
+    if (pathname === '/ws' && env.HUB) {
+      return env.HUB.get(env.HUB.idFromName('main')).fetch(request);
+    }
     try {
       // 한 번에: 지수·환율·원자재 + 거래대금(?top=kr|us) + 휴장·서킷브레이커
       if (pathname === '/api/all') {
