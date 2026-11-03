@@ -44,7 +44,7 @@
     <section class="sec sec-tiles" style="--rows: 5">
       <div class="sec-head">
         <h2 class="sec-title">주요 지수</h2>
-        <span class="sec-note">네이버 증권 기준 · 누르면 차트</span>
+        <span class="sec-note">네이버 증권 기준 · 누르면 차트 · <i class="dot-open"></i>장중</span>
       </div>
       <div class="tile-grid idx-grid" id="indices">
         <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
@@ -128,7 +128,10 @@
         </div>
       </div>
       <div class="card list-card">
-        <p class="f13-info" id="f13-info">불러오는 중…</p>
+        <div class="f13-bar">
+          <label class="f13-pick"><span class="sr">보고서 분기</span><select id="f13-q" aria-label="13F 보고서 연도·분기"><option>최신</option></select></label>
+          <p class="f13-info" id="f13-info">불러오는 중…</p>
+        </div>
         <div class="list-head f-row">
           <span class="c-rank">#</span>
           <span class="c-name">종목</span>
@@ -149,6 +152,7 @@
     <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="ch-name">
       <div class="ch-head">
         <img class="ch-icon" id="ch-icon" alt="" width="36" height="36" hidden>
+        <span class="ch-glyph" id="ch-glyph" hidden></span>
         <div class="ch-title">
           <h3 id="ch-name"></h3>
           <span id="ch-sub"></span>
@@ -166,12 +170,15 @@
         <button type="button" role="tab" data-range="1w">1주</button>
         <button type="button" role="tab" data-range="1m">1달</button>
         <button type="button" role="tab" data-range="1y">1년</button>
+        <button type="button" role="tab" data-range="10y">10년</button>
+        <button type="button" role="tab" data-range="all">전체</button>
       </div>
       <div class="ch-plot" id="ch-plot">
         <canvas id="ch-canvas"></canvas>
         <div class="ch-tip" id="ch-tip" hidden><b></b><span></span></div>
         <div class="ch-msg" id="ch-msg"></div>
       </div>
+      <p class="ch-note" id="ch-note"></p>
       <dl class="ch-stats" id="ch-stats">
         <div><dt>기간 고가</dt><dd id="st-high">—</dd></div>
         <div><dt>기간 저가</dt><dd id="st-low">—</dd></div>

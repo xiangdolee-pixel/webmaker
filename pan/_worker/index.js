@@ -3,7 +3,7 @@
 //   /api/coins   : 코인게코 시가총액 상위 20위 (브라우저 직접 호출이 실패할 때 쓰는 예비)
 //   /api/top     : 거래대금 상위 20 종목 (?market=kr|us) — 국내는 ETF 제외, 미국은 나스닥+뉴욕+아멕스 합쳐 정렬
 //   /api/13f     : 유명 투자자 최신 13F 에서 새로 산·늘린 미국 주식 (?m=buffett|ackman|druck|tepper, SEC EDGAR)
-//   /api/chart   : 지수·원자재·종목 차트 (?kind=index|cmdty|stock&code=…&range=1d|1w|1m|1y)
+//   /api/chart   : 지수·환율·원자재·종목 차트 (?kind=index|fx|cmdty|stock&code=…&range=1d|1w|1m|1y|10y|all)
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
 
@@ -190,35 +190,43 @@ function lastDay(points) {
   return points.filter((p) => p.k.slice(0, 8) === d);
 }
 
-async function indexChart(code, range) {
-  const seg = DOMESTIC[code] ? 'domestic' : 'foreign';
-  const base = `https://api.stock.naver.com/chart/${seg}/index/${encodeURIComponent(code)}`;
-  const q = (unit, back) => getJSON(`${base}/${unit}?startDateTime=${kstStamp(back)}&endDateTime=${kstStamp(-DAY)}`).then(toPoints);
+// 네이버 지수·종목 차트 공통. 1일=분, 1주=10분(없으면 일), 1달·1년=일, 10년=주, 전체=월(국내 1990년~, 미국 2010년~)
+async function naverSeries(base, range, what) {
+  const q = (unit, back) => getJSON(`${base}/${unit}?startDateTime=${back === 'all' ? '190001010000' : kstStamp(back)}&endDateTime=${kstStamp(-DAY)}`).then(toPoints);
   if (range === '1d') {
     const pts = lastDay(await q('minute', 7 * DAY));
-    return pts.length ? { points: pts } : { points: [], note: '이 지수는 하루 단위 차트를 받을 수 없어요. 1주 이상을 골라 주세요.' };
+    return pts.length ? { points: pts } : { points: [], note: `이 ${what}는 하루 단위 차트를 받을 수 없어요. 1주 이상을 골라 주세요.` };
   }
   if (range === '1w') {
-    const pts = await q('minute10', 8 * DAY);
+    const pts = await q('minute10', 8 * DAY).catch(() => []);
     if (pts.length) return { points: pts.filter((p) => p.k >= kstStamp(7 * DAY)) };
     return { points: await q('day', 10 * DAY) };
   }
   if (range === '1m') return { points: await q('day', 31 * DAY) };
-  return { points: await q('day', 366 * DAY) };
+  if (range === '1y') return { points: await q('day', 366 * DAY) };
+  if (range === '10y') return { points: await q('week', 3653 * DAY) };
+  const pts = await q('month', 'all');
+  return { points: pts, note: pts.length ? `${pts[0].t.slice(0, 4)}년부터 (네이버 제공 범위)` : '' };
+}
+
+async function indexChart(code, range) {
+  const seg = DOMESTIC[code] ? 'domestic' : 'foreign';
+  return naverSeries(`https://api.stock.naver.com/chart/${seg}/index/${encodeURIComponent(code)}`, range, '지수');
 }
 
 async function cmdtyChart(code, range) {
   const fx = !!FXS[code];
   const cat = fx ? 'exchange' : CMDTY[code][0];
   const info = fx ? 'marketindex' : 'futures';
-  const type = { '1d': 'day', '1w': 'areaMonth', '1m': 'areaMonth', '1y': 'areaYear' }[range];
+  // 네이버는 환율·원자재를 10년(주 단위)까지만 준다 → '전체'도 10년
+  const type = { '1d': 'day', '1w': 'areaMonth', '1m': 'areaMonth', '1y': 'areaYear', '10y': 'areaYearTen', all: 'areaYearTen' }[range];
   const j = await getJSON(
     `https://m.stock.naver.com/front-api/chart/pricesByPeriod?reutersCode=${code}&category=${cat}&chartInfoType=${info}&scriptChartType=${type}`,
   );
   let pts = toPoints(j.result && j.result.priceInfos);
   if (range === '1d') pts = lastDay(pts);
   if (range === '1w') pts = pts.slice(-6);
-  return { points: pts };
+  return { points: pts, note: range === 'all' ? '네이버는 환율·원자재를 10년까지만 제공해요' : '' };
 }
 
 /* ---------- 거래대금 상위 종목 ---------- */
@@ -261,19 +269,7 @@ async function loadTop(market) {
 
 async function stockChart(code, range) {
   const seg = /^\d{6}$/.test(code) ? 'domestic' : 'foreign';
-  const base = `https://api.stock.naver.com/chart/${seg}/item/${encodeURIComponent(code)}`;
-  const q = (unit, back) => getJSON(`${base}/${unit}?startDateTime=${kstStamp(back)}&endDateTime=${kstStamp(-DAY)}`).then(toPoints);
-  if (range === '1d') {
-    const pts = lastDay(await q('minute', 7 * DAY));
-    return pts.length ? { points: pts } : { points: [], note: '이 종목은 하루 단위 차트를 받을 수 없어요. 1주 이상을 골라 주세요.' };
-  }
-  if (range === '1w') {
-    const pts = await q('minute10', 8 * DAY).catch(() => []);
-    if (pts.length) return { points: pts.filter((p) => p.k >= kstStamp(7 * DAY)) };
-    return { points: await q('day', 10 * DAY) };
-  }
-  if (range === '1m') return { points: await q('day', 31 * DAY) };
-  return { points: await q('day', 366 * DAY) };
+  return naverSeries(`https://api.stock.naver.com/chart/${seg}/item/${encodeURIComponent(code)}`, range, '종목');
 }
 
 /* ---------- 13F (SEC EDGAR) : 최신 보고서와 직전 보고서를 비교해 새로 산·늘린 종목 ---------- */
@@ -325,15 +321,38 @@ async function loadFiling(cik, acc) {
   return parseInfoTable(await secFetch(`${dir}/${xmls[0].name}`, 'text'));
 }
 
-async function load13f(key) {
+// '2026-06-30' → '2026Q2'
+const quarterOf = (d) => `${d.slice(0, 4)}Q${Math.ceil(Number(d.slice(5, 7)) / 3)}`;
+
+// 투자자의 13F 보고서 목록(최신 순). 같은 분기는 가장 최근 제출본 하나만
+async function periods13f(key) {
+  const r0 = await cached(`sub:${key}`, 6 * 3600e3, async () => {
+    const m = MANAGERS[key];
+    const sub = await secFetch(`https://data.sec.gov/submissions/CIK${String(m.cik).padStart(10, '0')}.json`);
+    const r = sub.filings.recent;
+    const seen = new Set();
+    const list = [];
+    for (let i = 0; i < r.form.length; i++) {
+      // 2013년 2분기 이전 13F 는 XML 정보표가 없는 옛 형식이라 뺀다
+      if (r.form[i] !== '13F-HR' || !r.reportDate[i] || r.reportDate[i] < '2013-06-30') continue;
+      const q = quarterOf(r.reportDate[i]);
+      if (seen.has(q)) continue;
+      seen.add(q);
+      list.push({ q, acc: r.accessionNumber[i], report: r.reportDate[i], filed: r.filingDate[i] });
+    }
+    list.sort((a, b) => (a.report < b.report ? 1 : -1));
+    return list;
+  });
+  return r0.data;
+}
+
+async function load13f(key, q) {
   const m = MANAGERS[key];
-  const sub = await secFetch(`https://data.sec.gov/submissions/CIK${String(m.cik).padStart(10, '0')}.json`);
-  const r = sub.filings.recent;
-  const list = [];
-  for (let i = 0; i < r.form.length && list.length < 2; i++) {
-    if (r.form[i] === '13F-HR') list.push({ acc: r.accessionNumber[i], report: r.reportDate[i], filed: r.filingDate[i] });
-  }
-  if (!list.length) throw new Error('no 13F');
+  const all = await periods13f(key);
+  if (!all.length) throw new Error('no 13F');
+  let i = q ? all.findIndex((p) => p.q === q) : 0;
+  if (i < 0) i = 0;
+  const list = [all[i], all[i + 1]].filter(Boolean);
   const [cur, prev] = await Promise.all([loadFiling(m.cik, list[0].acc), list[1] ? loadFiling(m.cik, list[1].acc) : {}]);
   const total = Object.values(cur).reduce((s, x) => s + x.value, 0);
   const buys = [];
@@ -352,6 +371,9 @@ async function load13f(key) {
   buys.sort((a, b) => b.bought - a.bought);
   return {
     key,
+    q: list[0].q,
+    periods: all.map((p) => ({ q: p.q, report: p.report, filed: p.filed })),
+    hasPrev: !!list[1],
     who: m.who,
     fund: m.fund,
     report: list[0].report,
@@ -392,20 +414,23 @@ export default {
       if (pathname === '/api/13f') {
         const key = url.searchParams.get('m');
         if (!MANAGERS[key]) return json({ error: 'bad manager' }, 400);
-        const r = await cached(`13f:${key}`, 6 * 3600e3, () => load13f(key));
+        const q = url.searchParams.get('q') || '';
+        if (q && !/^\d{4}Q[1-4]$/.test(q)) return json({ error: 'bad quarter' }, 400);
+        // 최신(분기 지정 없음)은 6시간마다 새 보고서 확인, 지난 분기는 바뀌지 않으니 하루
+        const r = await cached(`13f:${key}:${q}`, q ? 24 * 3600e3 : 6 * 3600e3, () => load13f(key, q));
         return json({ ...r.data, fetchedAt: r.at });
       }
       if (pathname === '/api/chart') {
         const kind = url.searchParams.get('kind');
         const code = url.searchParams.get('code');
         const range = url.searchParams.get('range');
-        if (!['1d', '1w', '1m', '1y'].includes(range)) return json({ error: 'bad range' }, 400);
+        if (!['1d', '1w', '1m', '1y', '10y', 'all'].includes(range)) return json({ error: 'bad range' }, 400);
         let loader;
         if (kind === 'index' && INDEX_NAMES[code]) loader = () => indexChart(code, range);
         else if ((kind === 'cmdty' && CMDTY[code]) || (kind === 'fx' && FXS[code])) loader = () => cmdtyChart(code, range);
         else if (kind === 'stock' && /^(\d{6}|[A-Za-z0-9-]{1,10}(\.[A-Z]{1,2})?)$/.test(code || '')) loader = () => stockChart(code, range);
         else return json({ error: 'bad code' }, 400);
-        const r = await cached(`chart:${kind}:${code}:${range}`, range === '1d' ? 30000 : 300000, loader);
+        const r = await cached(`chart:${kind}:${code}:${range}`, range === '1d' ? 30000 : range === '10y' || range === 'all' ? 6 * 3600e3 : 300000, loader);
         return json({ ...r.data, fetchedAt: r.at });
       }
     } catch (err) {
