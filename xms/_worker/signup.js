@@ -74,7 +74,8 @@ export async function sendSignupCode({ env, request, site }, raw, info = {}) {
   const email = normEmail(raw.email);
   if (!EMAIL_RE.test(email)) throw bad('이메일 주소를 확인해 주세요.');
   await checkTurnstile(env, request, raw.turnstile, (await turnstileKeys(env, site)).secret);
-  const dup = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(login_id) = ? OR lower(email) = ?) AND status != 'WITHDRAWN' LIMIT 1").bind(site, email, email).first();
+  const dup = await db.prepare('SELECT status FROM members WHERE site = ? AND (lower(login_id) = ? OR (lower(email) = ? AND status != \'WITHDRAWN\')) ORDER BY status = \'WITHDRAWN\' LIMIT 1').bind(site, email, email).first();
+  if (dup?.status === 'WITHDRAWN') throw bad('탈퇴한 이메일입니다. 다시 가입하려면 사이트 관리자에게 문의해 주세요.');
   if (dup) throw bad('이미 가입한 이메일입니다. 로그인해 주세요.');
   const cur = await db.prepare('SELECT sent_at FROM signup_codes WHERE site = ? AND email = ?').bind(site, email).first();
   if (cur && now() - cur.sent_at < RESEND_GAP) throw bad(`방금 보냈습니다. ${Math.ceil((RESEND_GAP - (now() - cur.sent_at)) / 1000)}초 뒤에 다시 받을 수 있습니다.`);

@@ -500,7 +500,8 @@ export async function publicApi(ctx) {
     const docs = await latestDocs(db, site, env);
     if (docs.TERMS && !raw.agree_terms) throw bad('이용약관에 동의해 주세요.');
     if (docs.PRIVACY && !raw.agree_privacy) throw bad('개인정보 처리방침에 동의해 주세요.');
-    const dup = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(login_id) = ? OR lower(email) = ?) AND status != 'WITHDRAWN' LIMIT 1").bind(site, loginId, loginId).first();
+    const dup = await db.prepare('SELECT status FROM members WHERE site = ? AND (lower(login_id) = ? OR (lower(email) = ? AND status != \'WITHDRAWN\')) ORDER BY status = \'WITHDRAWN\' LIMIT 1').bind(site, loginId, loginId).first();
+    if (dup?.status === 'WITHDRAWN') throw bad('탈퇴한 이메일입니다. 다시 가입하려면 사이트 관리자에게 문의해 주세요.');
     if (dup) throw bad('이미 가입한 이메일입니다. 로그인해 주세요.');
     const p = await newPassword(pw);
     const t = now();

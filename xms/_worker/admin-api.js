@@ -87,6 +87,19 @@ export async function adminApi(ctx) {
     return json({ ok: true });
   }
 
+  // 탈퇴회원 기록 삭제 → 그 아이디(이메일)로 다시 가입할 수 있다. 쓴 글 · 댓글은 글쓴이 이름 그대로 남는다.
+  if ((m = path.match(/^\/members\/(\d+)$/)) && method === 'DELETE') {
+    const t = await db.prepare("SELECT id, name, login_id FROM members WHERE id = ? AND site = ? AND status = 'WITHDRAWN'").bind(+m[1], site).first();
+    if (!t) throw bad('탈퇴한 회원만 삭제할 수 있습니다.');
+    await db.batch([
+      db.prepare('DELETE FROM member_agreements WHERE member_id = ?').bind(t.id),
+      db.prepare('DELETE FROM sessions WHERE member_id = ?').bind(t.id),
+      db.prepare('DELETE FROM members WHERE id = ?').bind(t.id),
+    ]);
+    await audit(db, site, me, request, 'MEMBER_DELETE', `${t.name}(${t.login_id})`, '탈퇴회원 기록 삭제');
+    return json({ ok: true });
+  }
+
   // ───── 등급 이름 ─────
   if (path === '/levels' && method === 'GET') {
     const { levelNames } = await siteSettings(db, site);

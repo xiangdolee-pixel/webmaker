@@ -238,12 +238,22 @@ async function withdrawnPage(qs) {
   main.innerHTML = `${head('회원', '탈퇴회원', qs.get('q') ? `조건에 맞는 탈퇴회원 ${d.total}명입니다.` : `탈퇴한 회원 ${d.all}명의 기록입니다.`)}
     <form class="search" id="wsearch"><input class="input" name="q" value="${esc(qs.get('q') || '')}" placeholder="이름, 아이디로 찾기"><button class="btn primary" type="submit">찾기</button>
       ${qs.get('q') ? '<a class="btn" href="#/members/withdrawn">조건 지우기</a>' : ''}<a class="btn green right" href="/xms-api/admin/members/export?${exportQs}">엑셀로 내려받기</a></form>
-    <div class="panel">${d.rows.length ? `<table class="tbl cardy"><thead><tr><th>이름</th><th>아이디</th><th>탈퇴일</th><th>탈퇴사유</th></tr></thead><tbody>
-      ${d.rows.map((m) => `<tr><td><b>${esc(m.name)}</b></td><td data-l="아이디">${esc(m.login_id)}</td><td data-l="탈퇴일">${fmtDate(m.withdrawn_at)}</td>
-        <td data-l="탈퇴사유">${m.withdraw_reason ? esc(m.withdraw_reason) : '<span class="dash">적혀 있지 않음</span>'}</td></tr>`).join('')}</tbody></table>`
+    <div class="panel">${d.rows.length ? `<table class="tbl cardy"><thead><tr><th>이름</th><th>아이디</th><th>탈퇴일</th><th>탈퇴사유</th><th></th></tr></thead><tbody>
+      ${d.rows.map((m) => `<tr data-id="${m.id}" data-who="${esc(`${m.name}(${m.login_id})`)}"><td><b>${esc(m.name)}</b></td><td data-l="아이디">${esc(m.login_id)}</td><td data-l="탈퇴일">${fmtDate(m.withdrawn_at)}</td>
+        <td data-l="탈퇴사유">${m.withdraw_reason ? esc(m.withdraw_reason) : '<span class="dash">적혀 있지 않음</span>'}</td>
+        <td class="c-act"><button type="button" class="btn sm danger" data-del>삭제</button></td></tr>`).join('')}</tbody></table>`
     : empty('탈퇴한 회원이 없습니다', '회원이 탈퇴하면 여기에 기록이 남습니다.')}</div>
     ${pager(d.page, d.size, d.total, (n) => { const p = new URLSearchParams(qs); p.set('page', n); return `#/members/withdrawn?${p}`; })}`;
   $('#wsearch').addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); go(`#/members/withdrawn${q ? `?q=${encodeURIComponent(q)}` : ''}`); });
+  // 삭제: 기록이 지워지고 그 아이디(이메일)로 다시 가입할 수 있다
+  $$('[data-del]').forEach((b) => { b.onclick = (e) => {
+    const tr = e.currentTarget.closest('tr');
+    confirmInline(e.currentTarget, `<b>${esc(tr.dataset.who)}</b> 님의 탈퇴 기록을 지웁니다. 지우면 이 아이디(이메일)로 다시 가입할 수 있고, 되돌릴 수 없습니다. 쓴 글과 댓글은 그대로 남습니다.`, '삭제', async () => {
+      await api(`/members/${tr.dataset.id}`, { method: 'DELETE' });
+      toast('삭제했습니다. 이제 그 아이디로 다시 가입할 수 있습니다.');
+      route();
+    });
+  }; });
 }
 
 // ───────── 등급 이름 ─────────
