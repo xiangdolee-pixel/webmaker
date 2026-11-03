@@ -2,6 +2,8 @@
 //   저장: env.FILES(R2) 바인딩이 있으면 R2, 없으면 D1 uploads.data(base64, 한 파일 1.4MB 까지)
 //   주소: /xms/upload/<id>  (내려받기는 ?dl=1). id 는 추측할 수 없는 임의 값.
 //   용량: 사이트 전체 크기를 xim sites.used_mb 에 적고, quota_mb 를 넘으면 받지 않는다.
+//   주인: post_id > 0 = 그 글, post_id < 0 = 수정 요청(-요청번호), NULL = 아직 저장 안 한 글쓰기 중.
+//   지우기(저장 공간 아끼기, 사용자 지시 2026-11-03): 글에서 빼거나 글을 지우면 파일(R2)도 지운다. 저장 안 하고 하루 지난 것도 지운다.
 import { now, bad, forbidden, notFound, json, randomHex, HttpError, canBy } from './lib.js';
 
 const D1_MAX = 1400000;
@@ -42,6 +44,7 @@ export async function uploadApi(ctx) {
   const used = await usage(env, site);
   if (site_?.quota_mb && used + buf.byteLength > site_.quota_mb * 1024 * 1024) throw bad('저장 공간이 가득 찼습니다. 운영자에게 늘려 달라고 요청하세요.');
 
+  if (Math.random() < 0.2) await purgeOrphans(env, site).catch(() => {}); // 가끔 묵은 파일 정리
   const id = randomHex(16);
   let data = null; let r2Key = null;
   if (env.FILES) {
@@ -57,6 +60,51 @@ export async function uploadApi(ctx) {
     .bind(id, site, kind, name, mime, buf.byteLength, data, r2Key, me.kind === 'member' ? me.member.id : null, now()).run();
   await env.XIM_DB.prepare('UPDATE sites SET used_mb = ? WHERE slug = ?').bind(Math.round(((used + buf.byteLength) / 1048576) * 10) / 10, site).run();
   return json({ id, url: `/xms/upload/${id}`, name, size: buf.byteLength, mime, kind });
+}
+
+// 글 · 요청 본문에서 올린 파일 번호 찾기 (/xms/upload/<id>)
+export const uploadIdsIn = (...texts) => [...new Set(texts.join(' ').match(/\/xms\/upload\/([0-9a-f]{32})/g)?.map((x) => x.slice(-32)) || [])];
+
+// 고른 파일 지우기: R2 · DB 둘 다, 사이트 사용량도 다시 적는다
+export async function removeUploads(env, site, where, binds = []) {
+  const { results } = await env.DB.prepare(`SELECT id, r2_key FROM uploads WHERE site = ? AND (${where})`).bind(site, ...binds).all();
+  if (!results.length) return 0;
+  const keys = results.map((u) => u.r2_key).filter(Boolean);
+  for (let i = 0; i < keys.length; i += 500) if (env.FILES) await env.FILES.delete(keys.slice(i, i + 500));
+  const ids = results.map((u) => u.id);
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    await env.DB.prepare(`DELETE FROM uploads WHERE site = ? AND id IN (${part.map(() => '?').join(',')})`).bind(site, ...part).run();
+  }
+  const used = await usage(env, site);
+  await env.XIM_DB.prepare('UPDATE sites SET used_mb = ? WHERE slug = ?').bind(Math.round((used / 1048576) * 10) / 10, site).run();
+  return results.length;
+}
+
+// 글 저장 뒤: 본문에 남은 그림 · 첨부만 그 글 것으로 두고, 빠진 것은 지운다
+export async function syncPostFiles(env, site, postId, html, attIds, me) {
+  await attachToPost(env, site, postId, attIds, me, true);
+  const keep = [...new Set([...uploadIdsIn(html), ...(Array.isArray(attIds) ? attIds.map(String) : [])])].filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 300);
+  const inline = uploadIdsIn(html);
+  if (inline.length) {
+    await env.DB.prepare(`UPDATE uploads SET post_id = ? WHERE site = ? AND kind = 'INLINE' AND (post_id IS NULL OR post_id = ?) AND id IN (${inline.map(() => '?').join(',')})`)
+      .bind(postId, site, postId, ...inline).run();
+  }
+  await removeUploads(env, site, `post_id = ?${keep.length ? ` AND id NOT IN (${keep.map(() => '?').join(',')})` : ''}`, [postId, ...keep]);
+}
+
+// 글을 지우면 그 글 파일도
+export const removePostFiles = (env, site, postIds) => (postIds.length
+  ? removeUploads(env, site, `post_id IN (${postIds.map(() => '?').join(',')})`, postIds) : 0);
+
+// 올리고 저장하지 않은 채 하루 지난 파일 (글쓰기를 그만둔 것)
+export const purgeOrphans = (env, site) => removeUploads(env, site, 'post_id IS NULL AND created_at < ?', [now() - 86400000]);
+
+// 수정 요청에 쓴 파일 = post_id -요청번호
+export async function claimForRequest(env, site, requestId, ids) {
+  const list = [...new Set(ids)].filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 100);
+  if (!list.length) return;
+  await env.DB.prepare(`UPDATE uploads SET post_id = ? WHERE site = ? AND post_id IS NULL AND id IN (${list.map(() => '?').join(',')})`).bind(-requestId, site, ...list).run();
 }
 
 // GET /xms/upload/<id>[?dl=1]
@@ -84,9 +132,9 @@ export async function serveUpload(env, site, id, download) {
 }
 
 // 글 저장 때: 첨부 목록(id 차례대로)을 그 글에 붙이고, 빠진 것은 떼어 낸다
-export async function attachToPost(env, site, postId, ids, me) {
+export async function attachToPost(env, site, postId, ids, me, keepOwner = false) {
   const list = (Array.isArray(ids) ? ids : []).map(String).filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 50);
-  const stmts = [env.DB.prepare("UPDATE uploads SET post_id = NULL WHERE site = ? AND post_id = ? AND kind != 'INLINE'").bind(site, postId)];
+  const stmts = keepOwner ? [] : [env.DB.prepare("UPDATE uploads SET post_id = NULL WHERE site = ? AND post_id = ? AND kind != 'INLINE'").bind(site, postId)];
   list.forEach((id, i) => stmts.push(env.DB.prepare(`UPDATE uploads SET post_id = ?, sort = ? WHERE id = ? AND site = ? AND kind != 'INLINE'
     AND (post_id IS NULL OR post_id = ?) AND (created_by IS ? OR ? = 1)`).bind(postId, i, id, site, postId, me.kind === 'member' ? me.member.id : null, me.level === 1 ? 1 : 0)));
   await env.DB.batch(stmts);

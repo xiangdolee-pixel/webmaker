@@ -701,7 +701,13 @@ async function requestView(id) {
         <p class="err" role="alert"></p>
         <div class="actions"><a class="btn" href="#/requests">목록으로</a><button class="btn primary right" type="submit">보내기</button></div>
       </form>
-    </article>`;
+    </article>
+    <div class="actions gap"><button type="button" class="btn danger right" data-del>이 요청 삭제</button></div>`;
+  $('[data-del]').onclick = (e) => confirmInline(e.currentTarget, `<b>${esc(r.title)}</b> 요청을 지웁니다. 주고받은 글과 붙인 사진 · 파일도 함께 지워지고 되돌릴 수 없습니다.`, '삭제', async () => {
+    await api(`/requests/${r.id}`, { method: 'DELETE' });
+    toast('요청을 지웠습니다.');
+    go('#/requests');
+  });
   const form = $('#mform');
   const attach = mountAttach($('[data-attach]', form), { target: '@request' });
   form.addEventListener('input', () => { dirty = true; });

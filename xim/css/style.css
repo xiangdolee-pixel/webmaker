@@ -207,6 +207,8 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 .msg-imgs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .msg-imgs a { display: block; width: 104px; height: 104px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
 .msg-imgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bar .bar-right { margin-left: auto; }
+.btn.danger.fill { background: var(--danger, #c63a3a); border-color: var(--danger, #c63a3a); color: #fff; }
 .req-read { padding: 20px 22px; }
 .req-read .item-head h3 { font-size: 20px; }
 .bar .req-title { margin-left: 4px; }

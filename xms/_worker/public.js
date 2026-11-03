@@ -4,7 +4,7 @@ import {
   createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
-import { postAttachments, attachToPost } from './uploads.js';
+import { postAttachments, syncPostFiles, removePostFiles } from './uploads.js';
 import { sendSignupCode, verifySignupCode, takeTicket, turnstileKeys } from './signup.js';
 
 const LOCK_AFTER = 5;
@@ -456,6 +456,7 @@ export async function publicApi(ctx) {
     if (!SQL[raw.action]) throw bad('할 일을 알 수 없습니다.');
     const q = `UPDATE posts SET ${SQL[raw.action]} WHERE board_id = ? AND deleted_at IS NULL AND id IN (${ids.map(() => '?').join(',')})`;
     const r = await db.prepare(q).bind(...(raw.action === 'delete' ? [now()] : []), b.id, ...ids).run();
+    if (raw.action === 'delete') await removePostFiles(env, site, ids);
     const label = { hide: '숨김', show: '보이기', delete: '삭제' }[raw.action];
     await audit(db, site, me, request, 'POSTS_MANAGE', b.name, `${label} ${r.meta.changes}개`);
     return json({ ok: true, changed: r.meta.changes });
@@ -597,7 +598,7 @@ export async function publicApi(ctx) {
     const r = await db.prepare(`INSERT INTO posts (site, board_id, title, content_html, blocks, is_notice, is_secret, writer_id, writer_name, published_at, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(site, b.id, v.title, v.content, v.blocks, v.is_notice, v.is_secret,
       me.kind === 'member' ? me.member.id : null, v.writer_name, v.published_at ?? t, t, t).run();
-    await attachToPost(env, site, r.meta.last_row_id, raw.attachments, me);
+    await syncPostFiles(env, site, r.meta.last_row_id, v.content, raw.attachments, me);
     return json({ id: r.meta.last_row_id });
   }
   if ((m = path.match(/^\/posts\/(\d+)$/))) {
@@ -610,11 +611,12 @@ export async function publicApi(ctx) {
       const v = await postValues({ ...b, opt: boardOptions(JSON.parse(b.options || '{}')) }, me, raw, p);
       await db.prepare('UPDATE posts SET title = ?, content_html = ?, blocks = ?, is_notice = ?, is_secret = ?, published_at = ?, updated_at = ? WHERE id = ?')
         .bind(v.title, v.content, v.blocks, v.is_notice, v.is_secret, v.published_at ?? p.published_at, now(), p.id).run();
-      await attachToPost(env, site, p.id, raw.attachments, me);
+      await syncPostFiles(env, site, p.id, v.content, raw.attachments, me); // 글에서 뺀 그림 · 첨부는 저장 공간에서도 지운다
       return json({ ok: true });
     }
     if (method === 'DELETE') {
       await db.prepare('UPDATE posts SET deleted_at = ? WHERE id = ?').bind(now(), p.id).run();
+      await removePostFiles(env, site, [p.id]);
       return json({ ok: true });
     }
   }

@@ -427,6 +427,13 @@ async function ximApi(request, env, url) {
     await db.prepare('UPDATE requests SET op_seen_at = ? WHERE id = ?').bind(now(), r.id).run(); // 운영자가 읽음
     return json({ ...r, site_url: siteUrl(r), attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
   }
+  // 요청 지우기 (운영자)
+  if (m && method === 'DELETE') {
+    const r = await db.prepare('SELECT s.slug FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?').bind(+m[1]).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    await deleteRequest(db, env.XMS_DB, env.FILES, +m[1], r.slug);
+    return json({ ok: true });
+  }
   // 운영자 답변: 글 · 파일(없어도 됨) + 상태
   m = path.match(/^\/api\/requests\/(\d+)\/messages$/);
   if (m && method === 'POST') {
@@ -467,8 +474,8 @@ async function ximApi(request, env, url) {
     const id = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
     const key = `${r.slug}/${id}`;
     await env.FILES.put(key, buf, { httpMetadata: { contentType: mime } });
-    await env.XMS_DB.prepare('INSERT INTO uploads (id, site, post_id, kind, name, mime, size, data, r2_key, created_by, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, NULL, ?, NULL, ?)')
-      .bind(id, r.slug, kind, name, mime, buf.byteLength, key, now()).run();
+    await env.XMS_DB.prepare('INSERT INTO uploads (id, site, post_id, kind, name, mime, size, data, r2_key, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, ?)')
+      .bind(id, r.slug, -(+m[1]), kind, name, mime, buf.byteLength, key, now()).run();
     return json({ id, name, size: buf.byteLength, kind, mime });
   }
   m = path.match(/^\/api\/requests\/(\d+)$/);
@@ -592,6 +599,25 @@ async function mailRegister(env, id, domain) {
   const message = `메일: ${mail.message} · ${bot.message}`;
   await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ? WHERE id = ?').bind(status, message.slice(0, 300), id).run();
   return { status, message };
+}
+
+// 수정 요청 지우기: 주고받은 글 · 붙인 파일(R2 + xms uploads)까지 함께
+async function deleteRequest(ximDb, xmsDb, files, requestId, slug) {
+  const r = await ximDb.prepare('SELECT attachments FROM requests WHERE id = ?').bind(requestId).first();
+  if (!r) return false;
+  const { results } = await ximDb.prepare('SELECT attachments FROM request_messages WHERE request_id = ?').bind(requestId).all();
+  const ids = [r, ...results].flatMap((x) => { try { return JSON.parse(x.attachments || '[]'); } catch { return []; } }).map((a) => a.id).filter((id) => /^[0-9a-f]{32}$/.test(id));
+  {
+    const { results: ups } = await xmsDb.prepare(`SELECT id, r2_key FROM uploads WHERE site = ? AND (post_id = ?${ids.length ? ` OR id IN (${ids.map(() => '?').join(',')})` : ''})`).bind(slug, -requestId, ...ids).all();
+    const keys = ups.map((u) => u.r2_key).filter(Boolean);
+    if (keys.length && files) await files.delete(keys);
+    if (ups.length) await xmsDb.prepare(`DELETE FROM uploads WHERE site = ? AND id IN (${ups.map(() => '?').join(',')})`).bind(slug, ...ups.map((u) => u.id)).run();
+  }
+  await ximDb.batch([
+    ximDb.prepare('DELETE FROM request_messages WHERE request_id = ?').bind(requestId),
+    ximDb.prepare('DELETE FROM requests WHERE id = ?').bind(requestId),
+  ]);
+  return true;
 }
 
 function siteFields(raw) {

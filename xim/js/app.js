@@ -1,5 +1,5 @@
 // xim 운영자 화면
-import { $, esc, makeApi, fmtDate, badge, toast, pillTabs, formData, openDialog, busy } from './common.js';
+import { $, esc, makeApi, fmtDate, badge, toast, pillTabs, slideTabs, formData, openDialog, busy } from './common.js';
 import { qrSvg } from './qr.js';
 
 const api = makeApi('/api');
@@ -110,9 +110,11 @@ function navBadge(n) {
   const b = $('#nav [data-v="requests"]');
   if (!b) return;
   let i = b.querySelector('.nav-num');
-  if (!n) { i?.remove(); return; }
-  if (!i) { i = document.createElement('i'); i.className = 'nav-num'; b.append(i); }
-  i.textContent = n;
+  const before = i ? i.textContent : '';
+  if (!n) i?.remove();
+  else { if (!i) { i = document.createElement('i'); i.className = 'nav-num'; b.append(i); } i.textContent = n; }
+  // 숫자가 생기거나 없어지면 탭 폭이 바뀐다 → 고른 탭 배경을 다시 맞춘다
+  if (before !== (n ? String(n) : '')) requestAnimationFrame(() => slideTabs($('#nav')));
 }
 
 // 막대 하나: 이름 · 쓴 양 / 한도 · % — 아주 적어도 막대 끝이 보이게 최소 폭을 둔다
@@ -489,7 +491,7 @@ async function renderRequestView(id) {
   const text = (t) => (t ? `<p class="pre">${esc(t)}</p>` : '');
   const legacy = r.reply && !r.messages.some((x) => x.side === 'op') ? msgItem(site, 'op', '운영자', r.updated_at, text(r.reply), [], '') : '';
   view.innerHTML = `
-    <div class="bar"><button type="button" class="btn" data-back>← 목록</button><h2 class="req-title">수정요청</h2></div>
+    <div class="bar"><button type="button" class="btn" data-back>← 목록</button><h2 class="req-title">수정요청</h2><button type="button" class="btn danger bar-right" data-del>요청 삭제</button></div>
     <article class="card item req-read">
       <div class="item-head"><h3>${esc(r.title)}</h3>${badge(r.status)}</div>
       <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.requester || '')}</span><span>처음 ${fmtDate(r.created_at)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at)}</span>` : ''}</div>
@@ -507,6 +509,17 @@ async function renderRequestView(id) {
       </form>
     </article>`;
   view.querySelectorAll('[data-back]').forEach((b) => { b.onclick = closeRequest; });
+  view.querySelector('[data-del]').onclick = () => openDialog(`<h2>요청 삭제</h2>
+      <p><b>${esc(r.title)}</b> 요청을 지웁니다. 주고받은 글과 붙인 사진 · 파일도 함께 지워지고 되돌릴 수 없습니다. 업체 화면에서도 사라집니다.</p>
+      <p class="err" role="alert"></p>
+      <div class="dlg-foot"><button class="btn" type="button" data-close>취소</button><button class="btn danger fill" type="button" data-yes>삭제</button></div>`, (dlg) => {
+    dlg.querySelector('[data-yes]').onclick = (e) => busy(e.currentTarget, dlg.querySelector('.err'), async () => {
+      await api(`/requests/${r.id}`, { method: 'DELETE' });
+      dlg.close();
+      toast('요청을 지웠습니다.');
+      closeRequest();
+    });
+  });
   pillTabs(view.querySelector('[data-status]'), [['new', '접수'], ['doing', '진행 중'], ['done', '완료']], status, (v) => { status = v; });
   const form = view.querySelector('.thread-form');
   const chips = view.querySelector('[data-chips]');

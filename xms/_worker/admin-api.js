@@ -1,4 +1,5 @@
 // xms 관리자 API (/xms-api/admin/*) — 등급 1(관리자) 또는 xim 에서 대신 들어온 운영자만
+import { removePostFiles, claimForRequest, uploadIdsIn } from './uploads.js';
 import {
   DAY, now, bad, forbidden, notFound, json, str, body, audit, isAdmin, siteSettings, saveSettings, BUILTIN_FIELDS,
   MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
@@ -188,6 +189,8 @@ export async function adminApi(ctx) {
     const old = now() - 30 * DAY;
     const { results: gone } = await db.prepare('SELECT id FROM boards WHERE site = ? AND deleted_at IS NOT NULL AND deleted_at < ?').bind(site, old).all();
     for (const b of gone) {
+      const { results: ps } = await db.prepare('SELECT id FROM posts WHERE board_id = ?').bind(b.id).all();
+      for (let i = 0; i < ps.length; i += 90) await removePostFiles(env, site, ps.slice(i, i + 90).map((x) => x.id));
       await db.batch([
         db.prepare('DELETE FROM comments WHERE post_id IN (SELECT id FROM posts WHERE board_id = ?)').bind(b.id),
         db.prepare('DELETE FROM posts WHERE board_id = ?').bind(b.id),
@@ -343,6 +346,15 @@ export async function adminApi(ctx) {
     await env.XIM_DB.prepare('UPDATE requests SET site_seen_at = ? WHERE id = ?').bind(now(), r.id).run(); // 업체가 읽음
     return json({ ...r, attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
   }
+  // 요청 지우기 (업체 관리자 — 자기 사이트 요청만)
+  if ((m = path.match(/^\/requests\/(\d+)$/)) && method === 'DELETE') {
+    const s = await ximSite(env, site);
+    const r = await env.XIM_DB.prepare('SELECT id, title FROM requests WHERE id = ? AND site_id = ?').bind(+m[1], s.id).first();
+    if (!r) throw notFound('요청을 찾을 수 없습니다.');
+    await deleteRequest(env.XIM_DB, db, env.FILES, r.id, site);
+    await audit(db, site, me, request, 'REQUEST_DELETE', r.title);
+    return json({ ok: true });
+  }
   // 이어서 쓰기 (업체 관리자): 완료된 요청에 쓰면 다시 '접수' 로
   if ((m = path.match(/^\/requests\/(\d+)\/messages$/)) && method === 'POST') {
     const s = await ximSite(env, site);
@@ -360,6 +372,7 @@ export async function adminApi(ctx) {
         .bind(r.id, who, text, JSON.stringify(atts), next !== r.status ? next : '', t),
       env.XIM_DB.prepare('UPDATE requests SET status = ?, updated_at = ?, site_seen_at = ? WHERE id = ?').bind(next, t, t, r.id),
     ]);
+    await claimForRequest(env, site, r.id, atts.map((a) => a.id));
     await audit(db, site, me, request, 'REQUEST_MESSAGE', r.title);
     return json({ ok: true, status: next });
   }
@@ -373,8 +386,9 @@ export async function adminApi(ctx) {
     // 본문은 에디터 HTML (정리해서), 첨부는 이 사이트에 올라간 파일만
     const html = await sanitizeHtml(String(raw.body ?? '').slice(0, 100000));
     const atts = await requestAtts(db, site, raw.attachments);
-    await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at, site_seen_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)')
+    const ins = await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at, site_seen_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)')
       .bind(s.id, title, html, 'new', who, JSON.stringify(atts), t, t, t).run();
+    await claimForRequest(env, site, ins.meta.last_row_id, [...atts.map((a) => a.id), ...uploadIdsIn(html)]);
     await audit(db, site, me, request, 'REQUEST_CREATE', title);
     return json({ ok: true });
   }
@@ -580,6 +594,25 @@ async function insertMenu(db, site, n) {
   const r = await db.prepare('INSERT INTO menus (site, parent_id, title, menu_type, path, board_id, sort, visible, read_levels, allow_guest_read) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
     .bind(site, n.parent_id, n.title, n.menu_type, n.path, n.board_id, (max?.s || 0) + 1, n.read_levels, n.allow_guest_read).run();
   return r.meta.last_row_id;
+}
+
+// 수정 요청 지우기: 주고받은 글 · 붙인 파일(R2 + xms uploads)까지 함께
+async function deleteRequest(ximDb, xmsDb, files, requestId, slug) {
+  const r = await ximDb.prepare('SELECT attachments FROM requests WHERE id = ?').bind(requestId).first();
+  if (!r) return false;
+  const { results } = await ximDb.prepare('SELECT attachments FROM request_messages WHERE request_id = ?').bind(requestId).all();
+  const ids = [r, ...results].flatMap((x) => { try { return JSON.parse(x.attachments || '[]'); } catch { return []; } }).map((a) => a.id).filter((id) => /^[0-9a-f]{32}$/.test(id));
+  {
+    const { results: ups } = await xmsDb.prepare(`SELECT id, r2_key FROM uploads WHERE site = ? AND (post_id = ?${ids.length ? ` OR id IN (${ids.map(() => '?').join(',')})` : ''})`).bind(slug, -requestId, ...ids).all();
+    const keys = ups.map((u) => u.r2_key).filter(Boolean);
+    if (keys.length && files) await files.delete(keys);
+    if (ups.length) await xmsDb.prepare(`DELETE FROM uploads WHERE site = ? AND id IN (${ups.map(() => '?').join(',')})`).bind(slug, ...ups.map((u) => u.id)).run();
+  }
+  await ximDb.batch([
+    ximDb.prepare('DELETE FROM request_messages WHERE request_id = ?').bind(requestId),
+    ximDb.prepare('DELETE FROM requests WHERE id = ?').bind(requestId),
+  ]);
+  return true;
 }
 
 // 수정 요청에 붙인 파일: 이 사이트에 올라간 것만, 보낸 차례대로 [{ id, name, size, kind, mime }]
