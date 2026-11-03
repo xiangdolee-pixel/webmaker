@@ -22,7 +22,9 @@
   </header>
 
   <main class="wrap">
-    <section class="sec">
+   <div class="dash">
+   <div class="col col-a">
+    <section class="sec sec-hours">
       <div class="hours" id="hours">
         <div class="card hr" id="hr-kr">
           <div class="hr-top"><b>국내 증시</b><em class="badge close" data-st>—</em></div>
@@ -39,7 +41,7 @@
       </div>
     </section>
 
-    <section class="sec">
+    <section class="sec sec-tiles" style="--rows: 5">
       <div class="sec-head">
         <h2 class="sec-title">주요 지수</h2>
         <span class="sec-note">네이버 증권 기준 · 누르면 차트</span>
@@ -49,7 +51,7 @@
       </div>
     </section>
 
-    <section class="sec">
+    <section class="sec sec-tiles" style="--rows: 4">
       <div class="sec-head">
         <h2 class="sec-title">환율</h2>
         <span class="sec-note">네이버 증권 · 하나은행 고시 기준</span>
@@ -59,7 +61,7 @@
       </div>
     </section>
 
-    <section class="sec">
+    <section class="sec sec-tiles" style="--rows: 6">
       <div class="sec-head">
         <h2 class="sec-title">원자재</h2>
         <span class="sec-note">네이버 증권 기준 · 선물 · 약 10분 지연</span>
@@ -69,7 +71,9 @@
       </div>
     </section>
 
-    <section class="sec">
+   </div>
+   <div class="col col-b">
+    <section class="sec sec-list">
       <div class="sec-head">
         <h2 class="sec-title">거래대금 상위 종목</h2>
         <div class="seg seg-sm" id="top-seg" role="tablist">
@@ -92,7 +96,9 @@
       </div>
     </section>
 
-    <section class="sec">
+   </div>
+   <div class="col col-c">
+    <section class="sec sec-list">
       <div class="sec-head">
         <h2 class="sec-title">코인 시가총액 TOP 20</h2>
         <span class="sec-note"><em class="badge live">실시간</em> 바이낸스 · <em class="badge slow">1분</em> 코인게코 · 원화 업비트</span>
@@ -108,8 +114,34 @@
         <ol class="coin-list" id="coins"></ol>
       </div>
     </section>
+   </div>
+   <div class="col col-d">
+    <section class="sec sec-list">
+      <div class="sec-head">
+        <h2 class="sec-title">13F 매수 종목</h2>
+        <div class="seg seg-sm" id="f13-seg" role="tablist">
+          <span class="seg-ind" aria-hidden="true"></span>
+          <button type="button" role="tab" data-m="buffett" class="on">버핏</button>
+          <button type="button" role="tab" data-m="ackman">애크먼</button>
+          <button type="button" role="tab" data-m="druck">드러켄밀러</button>
+          <button type="button" role="tab" data-m="tepper">테퍼</button>
+        </div>
+      </div>
+      <div class="card list-card">
+        <p class="f13-info" id="f13-info">불러오는 중…</p>
+        <div class="list-head f-row">
+          <span class="c-rank">#</span>
+          <span class="c-name">종목</span>
+          <span class="f-amt">매수 금액</span>
+          <span class="f-wt">보유 비중</span>
+        </div>
+        <ol class="coin-list" id="f13"></ol>
+      </div>
+    </section>
+   </div>
+   </div>
 
-    <p class="foot">지수·원자재·종목: 네이버 증권 (국내 거래대금 상위는 ETF·ETN 제외, 미국은 나스닥·뉴욕·아멕스 합산) · 코인 순위·시가총액: CoinGecko · 달러 실시간 가격: Binance · 원화: 업비트 원화 시세(업비트에 없는 코인은 ≈ 업비트 USDT 시세로 환산) · 원/달러: 하나은행 고시<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
+    <p class="foot">지수·원자재·종목: 네이버 증권 (국내 거래대금 상위는 ETF·ETN 제외, 미국은 나스닥·뉴욕·아멕스 합산) · 코인 순위·시가총액: CoinGecko · 달러 실시간 가격: Binance · 원화: 업비트 원화 시세(업비트에 없는 코인은 ≈ 업비트 USDT 시세로 환산) · 원/달러: 하나은행 고시 · 13F: 미국 SEC EDGAR(분기 말 기준, 45일 안에 제출 · 최신 보고서와 직전 보고서 비교, 옵션 제외)<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
   </main>
 
   <div class="sheet" id="sheet" hidden>

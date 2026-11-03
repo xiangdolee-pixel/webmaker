@@ -2,6 +2,7 @@
 //   /api/indices : 네이버 증권 지수 5종 + 원자재 6종 + 환율 4종(달러·엔·위안·유로)
 //   /api/coins   : 코인게코 시가총액 상위 20위 (브라우저 직접 호출이 실패할 때 쓰는 예비)
 //   /api/top     : 거래대금 상위 20 종목 (?market=kr|us) — 국내는 ETF 제외, 미국은 나스닥+뉴욕+아멕스 합쳐 정렬
+//   /api/13f     : 유명 투자자 최신 13F 에서 새로 산·늘린 미국 주식 (?m=buffett|ackman|druck|tepper, SEC EDGAR)
 //   /api/chart   : 지수·원자재·종목 차트 (?kind=index|cmdty|stock&code=…&range=1d|1w|1m|1y)
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
@@ -275,6 +276,94 @@ async function stockChart(code, range) {
   return { points: await q('day', 366 * DAY) };
 }
 
+/* ---------- 13F (SEC EDGAR) : 최신 보고서와 직전 보고서를 비교해 새로 산·늘린 종목 ---------- */
+const MANAGERS = {
+  buffett: { cik: 1067983, who: '워런 버핏', fund: '버크셔 해서웨이' },
+  ackman: { cik: 1336528, who: '빌 애크먼', fund: '퍼싱 스퀘어' },
+  druck: { cik: 1536411, who: '스탠리 드러켄밀러', fund: '듀케인 패밀리오피스' },
+  tepper: { cik: 1656456, who: '데이비드 테퍼', fund: '아팔루사' },
+};
+const SEC_UA = { 'User-Agent': 'pan-dashboard/1.0 (https://pan.xiangdolee.workers.dev)', Accept: 'application/json, text/xml' };
+
+async function secFetch(url, as) {
+  const res = await fetch(url, { headers: SEC_UA });
+  if (!res.ok) throw new Error(`sec ${res.status}`);
+  return as === 'text' ? res.text() : res.json();
+}
+
+const xmlTag = (block, tag) => {
+  const m = block.match(new RegExp(`<(?:\\w+:)?${tag}>([^<]*)</(?:\\w+:)?${tag}>`));
+  return m ? m[1].trim() : '';
+};
+
+// 정보표(XML) → cusip 별 합계 (옵션 put/call 은 뺀다)
+function parseInfoTable(xml) {
+  const out = {};
+  const blocks = xml.split(/<(?:\w+:)?infoTable>/).slice(1);
+  for (const b of blocks) {
+    if (xmlTag(b, 'putCall')) continue;
+    if (xmlTag(b, 'sshPrnamtType') && xmlTag(b, 'sshPrnamtType') !== 'SH') continue;
+    const cusip = xmlTag(b, 'cusip');
+    if (!cusip) continue;
+    const o = out[cusip] || (out[cusip] = { cusip, name: xmlTag(b, 'nameOfIssuer'), cls: xmlTag(b, 'titleOfClass'), shares: 0, value: 0 });
+    o.shares += Number(xmlTag(b, 'sshPrnamt')) || 0;
+    o.value += Number(xmlTag(b, 'value')) || 0;
+  }
+  // 규정상 달러 단위인데 천 달러 단위로 내는 곳이 있다(드러켄밀러 등) → 주당 평가액 중앙값이 2달러 미만이면 ×1000
+  const per = Object.values(out).filter((x) => x.shares).map((x) => x.value / x.shares).sort((a, b) => a - b);
+  if (per.length && per[Math.floor(per.length / 2)] < 2) Object.values(out).forEach((x) => { x.value *= 1000; });
+  return out;
+}
+
+async function loadFiling(cik, acc) {
+  const dir = `https://www.sec.gov/Archives/edgar/data/${cik}/${acc.replace(/-/g, '')}`;
+  const idx = await secFetch(`${dir}/index.json`);
+  const xmls = (idx.directory.item || []).filter((f) => /\.xml$/i.test(f.name) && !/primary_doc/i.test(f.name));
+  if (!xmls.length) throw new Error('no info table');
+  // 정보표가 여러 개면 가장 큰 파일
+  xmls.sort((a, b) => (Number(b.size) || 0) - (Number(a.size) || 0));
+  return parseInfoTable(await secFetch(`${dir}/${xmls[0].name}`, 'text'));
+}
+
+async function load13f(key) {
+  const m = MANAGERS[key];
+  const sub = await secFetch(`https://data.sec.gov/submissions/CIK${String(m.cik).padStart(10, '0')}.json`);
+  const r = sub.filings.recent;
+  const list = [];
+  for (let i = 0; i < r.form.length && list.length < 2; i++) {
+    if (r.form[i] === '13F-HR') list.push({ acc: r.accessionNumber[i], report: r.reportDate[i], filed: r.filingDate[i] });
+  }
+  if (!list.length) throw new Error('no 13F');
+  const [cur, prev] = await Promise.all([loadFiling(m.cik, list[0].acc), list[1] ? loadFiling(m.cik, list[1].acc) : {}]);
+  const total = Object.values(cur).reduce((s, x) => s + x.value, 0);
+  const buys = [];
+  for (const c of Object.values(cur)) {
+    const p = prev[c.cusip];
+    if (!p) buys.push({ type: 'new', ...c, prevShares: 0 });
+    else if (c.shares > p.shares) buys.push({ type: 'add', ...c, prevShares: p.shares });
+  }
+  // 산 금액(늘린 주식 수 × 이번 분기 주당 평가액) 큰 순
+  buys.forEach((b) => {
+    const per = b.shares ? b.value / b.shares : 0;
+    b.bought = (b.shares - b.prevShares) * per;
+    b.weight = total ? (b.value / total) * 100 : 0;
+    b.changePct = b.prevShares ? ((b.shares - b.prevShares) / b.prevShares) * 100 : null;
+  });
+  buys.sort((a, b) => b.bought - a.bought);
+  return {
+    key,
+    who: m.who,
+    fund: m.fund,
+    report: list[0].report,
+    filed: list[0].filed,
+    prevReport: list[1] ? list[1].report : null,
+    holdings: Object.keys(cur).length,
+    total,
+    buys: buys.slice(0, 20),
+    buyCount: buys.length,
+  };
+}
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -299,6 +388,12 @@ export default {
         const market = url.searchParams.get('market') === 'us' ? 'us' : 'kr';
         const r = await cached(`top:${market}`, 8000, () => loadTop(market));
         return json({ ...r.data, fetchedAt: r.at, stale: r.stale });
+      }
+      if (pathname === '/api/13f') {
+        const key = url.searchParams.get('m');
+        if (!MANAGERS[key]) return json({ error: 'bad manager' }, 400);
+        const r = await cached(`13f:${key}`, 6 * 3600e3, () => load13f(key));
+        return json({ ...r.data, fetchedAt: r.at });
       }
       if (pathname === '/api/chart') {
         const kind = url.searchParams.get('kind');

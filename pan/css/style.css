@@ -128,12 +128,22 @@ button { font: inherit; color: inherit; }
 .s-val small { display: block; font-size: 13px; font-weight: 400; color: var(--sub); }
 .s-mchg { display: none; }
 .v-short { display: none; }
+/* 13F */
+.f-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 84px; align-items: center; gap: 10px; padding: 0 18px; }
+.f-amt, .f-wt { text-align: right; white-space: nowrap; }
+.f-amt { font-size: 17px; font-weight: 700; }
+.f-wt { font-size: 15px; color: var(--dark); }
+.f-sub { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-sub.new { color: var(--up); }
+.f-sub.add { color: var(--live); }
+.f13-info { padding: 10px 18px; font-size: 14px; color: var(--sub); border-bottom: 1px solid var(--line); }
+.f13-info b { color: var(--text); }
 .list-note { padding: 12px 18px; font-size: 14px; color: var(--sub); border-top: 1px solid var(--line); }
 .list-note:empty { display: none; }
 
 /* 알약 탭: 떠 있는 배경 하나가 미끄러진다 */
 .seg { position: relative; display: inline-flex; padding: 4px; border-radius: 999px; background: var(--panel-2); }
-.seg button { position: relative; z-index: 1; border: 0; background: none; padding: 8px 18px; border-radius: 999px; font-size: 16px; font-weight: 700; color: var(--sub); cursor: pointer; transition: color .35s var(--ease); }
+.seg button { white-space: nowrap; position: relative; z-index: 1; border: 0; background: none; padding: 8px 18px; border-radius: 999px; font-size: 16px; font-weight: 700; color: var(--sub); cursor: pointer; transition: color .35s var(--ease); }
 .seg button.on { color: #fff; }
 .seg-ind { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px; background: var(--dark); transition: transform .35s var(--ease), width .35s var(--ease); }
 .seg.no-ind button.on { background: var(--dark); }
@@ -237,6 +247,12 @@ button { font: inherit; color: inherit; }
   .ch-stats dd { font-size: 14px; white-space: normal; word-break: break-all; }
   .s-val small, .v-full { display: none; }
   .v-short { display: inline; }
+  .f-row { grid-template-columns: 20px minmax(0, 1fr) auto 46px; gap: 8px; padding: 8px 12px; }
+  .f-row .s-name { white-space: normal; font-size: 15px; line-height: 1.3; }
+  .f-amt { font-size: 15px; }
+  .f-wt { font-size: 13px; }
+  .f-sub { font-size: 13px; }
+  .f13-info { padding: 10px 12px; font-size: 13px; }
 }
 
 @media (max-width: 359px) {
@@ -251,6 +267,119 @@ button { font: inherit; color: inherit; }
   .c-chg { font-size: 14px; }
   .c-name img { width: 24px; height: 24px; }
   .ch-stats dd { font-size: 14px; }
+}
+
+/* ---------- 넓은 PC: 한 화면 대시보드 (스크롤 없이) ---------- */
+@media (min-width: 1200px) and (min-height: 680px) {
+  :root { --topH: 50px; --dgap: 10px; }
+  body { overflow: hidden; }
+  .top-in { min-height: var(--topH); max-width: none; padding: 0 14px; }
+  .logo { font-size: 20px; }
+  .top-meta { font-size: 15px; }
+  main.wrap { max-width: none; padding: var(--dgap) 12px; height: calc(100vh - var(--topH) - 1px); }
+  .dash { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .9fr); gap: 12px; height: 100%; }
+  .col { display: flex; flex-direction: column; gap: var(--dgap); min-height: 0; min-width: 0; }
+  .foot { display: none; }
+  .sec { margin: 0; min-height: 0; }
+  .sec-head { margin-bottom: 6px; flex-wrap: nowrap; }
+  .sec-title { font-size: 18px; white-space: nowrap; }
+  .sec-note { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .seg-sm button { padding: 4px 11px; font-size: 14px; }
+  .col-d .sec-head { flex-wrap: wrap; row-gap: 4px; }
+  .col-d .seg-sm button { padding: 4px 9px; font-size: 13px; }
+
+  /* 장 시간: 두 칸을 나란히, 작게 */
+  .sec-hours { flex: none; }
+  .hours { gap: 8px; }
+  .hr { padding: 8px 12px; }
+  .hr-top b { font-size: 15px; }
+  .hr-main { margin-top: 2px; font-size: 19px; }
+  .hr-main small { font-size: 12px; }
+  .hr-sub { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hr-left { margin-top: 2px; font-size: 13px; }
+
+  /* 지수·환율·원자재: 카드 대신 한 줄씩 */
+  .sec-tiles { flex: var(--rows) 1 0; display: flex; flex-direction: column; }
+  .tile-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; grid-auto-rows: minmax(0, 1fr); gap: 0; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .tile { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(118px, auto); align-items: center; gap: 10px; padding: 0 12px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; min-height: 0; }
+  .tile:last-child { border-bottom: 0; }
+  .tile-top { justify-content: flex-start; min-width: 0; }
+  .tile-name { font-size: 16px; }
+  .tile-top .badge { font-size: 11px; padding: 3px 5px; }
+  .tile-price, .cm-grid .tile-price { margin: 0; font-size: 19px; text-align: right; }
+  .tile-chg { font-size: 14px; text-align: right; }
+  .tile-time { display: none; }
+  .skel { min-height: 0; border-radius: 0; }
+
+  /* 표: 20줄이 남은 높이를 나눠 갖는다 */
+  .sec-list { flex: 1; display: flex; flex-direction: column; }
+  .list-card { flex: 1; min-height: 0; display: flex; flex-direction: column; border-radius: 12px; }
+  .list-head { min-height: 32px; }
+  .list-head span { font-size: 12px; }
+  .coin-list { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(30px, 1fr); overflow-y: auto; }
+  .coin-list > li { min-height: 0; }
+  .coin-row, .st-row, .f-row { gap: 8px; padding: 0 10px; }
+  .coin-row { grid-template-columns: 22px minmax(0, 1fr) auto 64px 70px; }
+  .st-row { grid-template-columns: 22px minmax(0, 1fr) auto 118px 74px; }
+  .f-row { grid-template-columns: 22px minmax(0, 1fr) auto 58px; }
+  .s-vol, .c-full { display: none; }
+  .c-rank { font-size: 13px; }
+  .c-name { gap: 8px; }
+  .c-name img { width: 22px; height: 22px; }
+  .c-sym, .s-name { font-size: 15px; }
+  .c-price { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; }
+  .c-usd { font-size: 16px; }
+  .c-krw { font-size: 12px; }
+  .c-chg, .s-chg { font-size: 14px; }
+  .c-cap { font-size: 12px; }
+  .c-src { display: none; }
+  .s-val { font-size: 13px; }
+  .s-val small, .v-full { display: none; }
+  .v-short { display: inline; }
+  .st-row { grid-template-columns: 22px minmax(0, 1fr) auto 118px 52px; }
+  .list-note { padding: 4px 10px; font-size: 12px; }
+  .f13-info { padding: 6px 10px; font-size: 12px; }
+  .f-amt { font-size: 14px; }
+  .f-wt { font-size: 13px; }
+  .f-sub { font-size: 12px; }
+  .hr-main { font-size: 17px; white-space: nowrap; }
+  .hr-main small { font-size: 11px; }
+}
+
+/* 높이가 넉넉하면 원화는 달러 아래 줄로 */
+@media (min-width: 1200px) and (min-height: 1000px) {
+  .c-price { display: block; }
+}
+
+/* 1800px 보다 좁으면: 시가총액·전일대비 금액 빼고 등락률만 */
+@media (min-width: 1200px) and (max-width: 1799px) and (min-height: 680px) {
+  .coin-row { grid-template-columns: 22px minmax(0, 1fr) auto 62px; }
+  .c-cap { display: none; }
+  .st-row { grid-template-columns: 22px minmax(0, 1fr) auto 52px; }
+  .s-chg { display: none; }
+  .st-row .c-price { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; }
+  .s-mchg { display: inline; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .tile { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
+/* 큰 화면이면 글자를 조금 더 키운다 */
+@media (min-width: 1600px) and (min-height: 860px) {
+  .tile-name { font-size: 17px; }
+  .tile-price, .cm-grid .tile-price { font-size: 21px; }
+  .tile-chg, .c-chg, .s-chg { font-size: 15px; }
+  .c-sym, .s-name { font-size: 16px; }
+  .c-usd { font-size: 17px; }
+  .c-krw { font-size: 13px; }
+  .f-amt { font-size: 15px; }
+  .c-name img { width: 26px; height: 26px; }
+}
+
+/* 1200~1499: 13F 칸은 아래로 (그때만 페이지 스크롤) */
+@media (min-width: 1200px) and (max-width: 1499px) and (min-height: 680px) {
+  body { overflow: auto; }
+  main.wrap { height: auto; }
+  .dash { grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 1.12fr); grid-template-rows: calc(100vh - var(--topH) - 21px) 560px; height: auto; }
+  .col-d { grid-column: 1 / -1; }
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }

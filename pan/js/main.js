@@ -363,6 +363,62 @@
     loadTop();
   });
 
+  /* ---------- 13F 매수 종목 ---------- */
+  var f13Cache = {};
+  var f13Key = 'buffett';
+  function titleCase(s) {
+    return String(s || '').toLowerCase().replace(/\b([a-z])/g, function (m) { return m.toUpperCase(); })
+      .replace(/\b(Inc|Corp|Co|Ltd|Plc|Hldgs|Hldg|Grp|Sa|Nv|Ag|Se|Lp|Llc|Adr|Etf)\b/g, function (m) { return m.length <= 3 ? m.toUpperCase().replace('INC', 'Inc').replace('LTD', 'Ltd') : m; });
+  }
+  function fmtUsdKor(n) { return '$' + fmtKorShort(n); }
+  function render13f(d) {
+    if (d.key !== f13Key) return;
+    var q = d.report ? d.report.slice(0, 4) + '년 ' + Math.ceil(+d.report.slice(5, 7) / 3) + '분기' : '';
+    $('f13-info').innerHTML = '';
+    var b = document.createElement('b');
+    b.textContent = d.who + ' · ' + d.fund;
+    $('f13-info').appendChild(b);
+    $('f13-info').appendChild(document.createTextNode(' — ' + q + ' 보고서 (' + d.report + ' 기준, ' + d.filed + ' 제출) · 보유 ' + d.holdings + '종목 · ' + fmtUsdKor(d.total) + ' · 매수 ' + d.buyCount + '종목'));
+    var el = $('f13');
+    el.innerHTML = '';
+    var names = {};
+    d.buys.forEach(function (x) { names[x.name] = (names[x.name] || 0) + 1; });
+    if (!d.buys.length) {
+      var e = document.createElement('li');
+      e.className = 'f-row';
+      e.textContent = '이번 보고서에서 새로 사거나 늘린 종목이 없어요.';
+      el.appendChild(e);
+      return;
+    }
+    d.buys.forEach(function (x, i) {
+      var li = document.createElement('li');
+      li.className = 'f-row';
+      li.innerHTML = '<span class="c-rank"></span><span class="c-name"><span class="c-label"><b class="s-name"></b><span class="f-sub"></span></span></span><span class="f-amt"></span><span class="f-wt"></span>';
+      li.querySelector('.c-rank').textContent = i + 1;
+      var nm = titleCase(x.name);
+      if (names[x.name] > 1 && x.cls) nm += ' (' + x.cls.replace(/^CAP STK |^COM /, '').trim() + ')'; // 알파벳 A·C 처럼 같은 회사 두 종류
+      li.querySelector('.s-name').textContent = nm;
+      li.title = x.name + ' · ' + x.cls + ' · CUSIP ' + x.cusip;
+      var sub = li.querySelector('.f-sub');
+      sub.className = 'f-sub ' + x.type;
+      sub.textContent = x.type === 'new' ? '신규 매수' : '+' + Math.round(x.changePct).toLocaleString('ko-KR') + '% 늘림';
+      li.querySelector('.f-amt').textContent = fmtUsdKor(x.bought);
+      li.querySelector('.f-wt').textContent = x.weight.toFixed(1) + '%';
+      el.appendChild(li);
+    });
+  }
+  function load13f() {
+    var k = f13Key;
+    if (f13Cache[k]) { render13f(f13Cache[k]); return; }
+    $('f13-info').textContent = '불러오는 중…';
+    $('f13').innerHTML = '';
+    getJSON('/api/13f?m=' + k).then(function (d) {
+      f13Cache[k] = d;
+      render13f(d);
+    }).catch(function () { if (f13Key === k) $('f13-info').textContent = 'SEC 자료를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요.'; });
+  }
+  slideSeg($('f13-seg'), function (b) { f13Key = b.getAttribute('data-m'); load13f(); });
+
   /* ---------- 코인 ---------- */
   var coins = [];            // 순위 순서
   var byId = {};             // id -> coin
@@ -913,4 +969,5 @@
 
   renderHours();
   start();
+  load13f();
 })();
