@@ -593,7 +593,7 @@
         li.innerHTML =
           '<span class="c-rank"></span>' +
           '<span class="c-name"><img alt="" width="34" height="34" loading="lazy"><span class="c-label"><b class="c-sym"></b><span class="c-full"></span><span class="c-srcs"></span></span></span>' +
-          '<span class="c-price"><span class="c-l1"><em class="src"></em><b class="c-usd"></b></span><span class="c-krw"><em class="src"></em><span class="c-krwv"></span></span></span>' +
+          '<span class="c-price"><span class="c-l1"><b class="c-usd"></b><em class="src"></em></span><span class="c-krw"><span class="c-krwv"></span><em class="src"></em></span></span>' +
           '<span class="c-chg"></span><span class="c-cap"></span>';
         li.querySelector('img').src = c.image || '';
         li.querySelector('.c-sym').textContent = c.symbol;

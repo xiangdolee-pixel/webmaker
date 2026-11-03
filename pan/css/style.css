@@ -70,6 +70,9 @@ button { font: inherit; color: inherit; }
 /* 가격 출처 표시 */
 .src { display: inline-block; font-style: normal; font-size: 10px; font-weight: 800; line-height: 1; letter-spacing: .02em; padding: 2px 4px; border-radius: 4px; margin-right: 5px; vertical-align: 2px; cursor: help; }
 .src:empty { display: none; }
+/* 가격 뒤에 붙는 출처: 폭을 똑같이 해서 숫자 끝이 줄 맞춰 선다 */
+.c-price .src { width: 22px; padding: 2px 0; text-align: center; margin: 0 0 0 6px; }
+.c-price .src:empty { display: inline-block; visibility: hidden; }
 .src.bn { background: #fcd535; color: #1e2026; }
 .src.cg { background: #8dc63f; color: #fff; }
 .src.up { background: #093687; color: #fff; }
@@ -282,6 +285,7 @@ button { font: inherit; color: inherit; }
   .c-src { display: none; }
   .coin-list > li { min-height: 66px; }
   .coin-row .src { font-size: 9px; padding: 2px 3px; margin-right: 3px; }
+  .coin-row .c-price .src { width: 20px; padding: 2px 0; margin: 0 0 0 4px; }
   .coin-row .c-usd { font-size: 17px; }
   .coin-row .c-name img { width: 24px; height: 24px; }
   .coin-row .c-name { gap: 6px; }
