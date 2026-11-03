@@ -289,8 +289,37 @@
     });
   }
 
+  /* 홈 "포토": xms 포토 게시판의 최신 글 4개 (사진을 누르면 그 글로). 게시판을 못 불러오면 예전 사진으로. */
+  function renderBoardPhotos(container, items) {
+    items.forEach(function (item) {
+      var a = document.createElement("a");
+      a.className = "photo-thumb";
+      a.href = item.url;
+      a.setAttribute("aria-label", item.title);
+      if (item.thumb) {
+        var img = document.createElement("img");
+        img.src = item.thumb;
+        img.alt = item.title;
+        img.loading = "lazy";
+        a.appendChild(img);
+      }
+      var date = document.createElement("span");
+      date.className = "photo-date";
+      date.textContent = item.date;
+      a.appendChild(date);
+      container.appendChild(a);
+    });
+  }
   var homePhotoGrid = document.getElementById("homePhotoGrid");
-  if (homePhotoGrid) renderPhotoGrid(homePhotoGrid, 4);
+  if (homePhotoGrid) {
+    fetch("/xms-api/boards/photo/latest?n=4", { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (items) {
+        if (items && items.length) renderBoardPhotos(homePhotoGrid, items);
+        else renderPhotoGrid(homePhotoGrid, 4);
+      })
+      .catch(function () { renderPhotoGrid(homePhotoGrid, 4); });
+  }
   var galleryGrid = document.getElementById("galleryGrid");
   if (galleryGrid) renderPhotoGrid(galleryGrid);
 

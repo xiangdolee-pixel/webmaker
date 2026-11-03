@@ -393,6 +393,23 @@ export async function publicApi(ctx) {
   let m;
 
   if (path === '/menu' && method === 'GET') return json(await visibleMenus(db, site, me));
+
+  // 게시판 최신 글 — 사이트 첫 화면 등에서 사이트 디자인 그대로 그릴 때 쓴다 (예: sjccc 홈 "포토")
+  //   GET /xms-api/boards/<주소>/latest?n=4  → [{ id, title, date, url, thumb }]  (비밀글 · 예약 글 · 볼 권한 없는 글은 빠짐)
+  if ((m = path.match(/^\/boards\/([a-z0-9-]+)\/latest$/)) && method === 'GET') {
+    const b = await loadBoard(db, site, m[1]);
+    if (!b || !b.visible || !canList(b, me)) return json([]);
+    const n = Math.min(12, Math.max(1, Number(url.searchParams.get('n')) || 4));
+    const { results } = await db.prepare(`SELECT id, title, content_html, published_at FROM posts
+      WHERE board_id = ? AND deleted_at IS NULL AND is_secret = 0 AND published_at <= ? ORDER BY published_at DESC, id DESC LIMIT ?`).bind(b.id, now(), n).all();
+    const ids = results.map((p) => p.id);
+    const atts = ids.length ? (await db.prepare(`SELECT post_id, id FROM uploads WHERE site = ? AND kind = 'IMAGE' AND post_id IN (${ids.map(() => '?').join(',')}) ORDER BY sort`).bind(site, ...ids).all()).results : [];
+    const attOf = (id) => atts.find((a) => a.post_id === id);
+    return new Response(JSON.stringify(results.map((p) => ({
+      id: p.id, title: p.title, date: fmtDate(p.published_at), url: `/board/${b.slug}/${p.id}`,
+      thumb: firstImage(p.content_html) || (attOf(p.id) ? `/xms/upload/${attOf(p.id).id}` : ''),
+    }))), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=30' } });
+  }
   if (path === '/me' && method === 'GET') {
     if (me.kind === 'guest') return json({ guest: true });
     return json(me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, login_id: me.member.login_id, admin: isAdmin(me) });
