@@ -73,10 +73,12 @@ const SIDE = [
     ['#/favicon', '파비콘'], ['#/seo', '검색엔진'], ['#/share', '카카오톡 미리보기'], ['#/requests', '수정 요청']]],
   ['내 계정', [['#/account', '비밀번호 변경'], ['#/audit', '관리 로그']]],
 ];
+// 왼쪽 위 사이트 표시: 파비콘을 올렸으면 그 그림, 없으면 이름 두 글자
+let favVer = Date.now();
 function renderSide() {
   const s = INFO.site;
   const pct = s.quota_mb ? Math.round((s.used_mb / s.quota_mb) * 100) : 0;
-  $('#side').innerHTML = `<a class="brand" href="/" target="_blank" rel="noopener"><i>${esc(s.slug.slice(0, 2).toUpperCase())}</i><span><b>${esc(s.name)}</b><small>${esc(s.domain || s.slug)}</small></span></a>
+  $('#side').innerHTML = `<a class="brand" href="/" target="_blank" rel="noopener"><i>${esc(s.slug.slice(0, 2).toUpperCase())}<img src="/xms/file/favicon-192.png?v=${favVer}" alt="" onload="this.parentElement.classList.add('has-fav')" onerror="this.remove()"></i><span><b>${esc(s.name)}</b><small>${esc(s.domain || s.slug)}</small></span></a>
     ${SIDE.map(([group, items]) => `${group ? `<h4>${group}</h4>` : ''}${items.map(([href, label, kind]) => (href === 'head'
       ? `<div class="head">${label}</div>`
       : `<a href="${href}" class="${kind === 'sub' ? 'sub' : ''}">${label}${kind === 'storage' ? `<span class="meter${pct >= 90 ? ' full' : ''}">${pct}%</span>` : ''}</a>`)).join('')}`).join('')}
@@ -895,10 +897,10 @@ async function faviconPage() {
   });
   $('[data-save]').onclick = (e) => busy(e.currentTarget, $('.err'), async () => {
     await api('/settings/favicon', { method: 'PUT', data: { icons } });
-    toast('파비콘을 바꿨습니다. 브라우저 탭에는 새로고침 뒤에 보입니다.'); route();
+    toast('파비콘을 바꿨습니다. 브라우저 탭에는 새로고침 뒤에 보입니다.'); favVer = Date.now(); renderSide(); route();
   });
   $('[data-off]')?.addEventListener('click', (e) => confirmInline(e.currentTarget, '브라우저 탭 아이콘이 사이트에 원래 넣어 둔 아이콘으로 돌아갑니다. 머리글 로고는 그대로입니다.', '파비콘을 내립니다', async () => {
-    await api('/settings/favicon', { method: 'DELETE' }); toast('파비콘을 내렸습니다.'); route();
+    await api('/settings/favicon', { method: 'DELETE' }); toast('파비콘을 내렸습니다.'); favVer = Date.now(); renderSide(); route();
   }));
 }
 
