@@ -103,9 +103,19 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
   host.after(blocksHost);
   let blocks = null;
   const initBlocks = (() => { try { return JSON.parse(host.querySelector('[data-blocks]')?.textContent || 'null'); } catch { return null; } })();
+  // 본문 사진이 바뀌면 첨부 목록도 다시 그린다 (mountAttach)
+  const meta = new Map(); // 사진 주소 → { name, size } (이번에 올린 것만 안다)
+  const listeners = [];
+  let notifyQueued = false;
+  const notify = () => {
+    if (notifyQueued) return;
+    notifyQueued = true;
+    requestAnimationFrame(() => { notifyQueued = false; listeners.forEach((f) => f()); });
+  };
   const sync = () => {
     if (mode === 'simple' && blocks) ta.value = blocks.html();
     else ta.value = area.innerHTML.trim() === '<br>' ? '' : area.innerHTML;
+    notify();
   };
   // 편집기 내용 → 카드 하나 (사진은 사진 칸으로, 글은 내용 칸으로)
   const htmlToCard = (h) => {
@@ -117,7 +127,7 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
   };
   const ensureBlocks = (initial) => {
     if (blocks) { if (initial) blocks.set(initial); return; }
-    blocks = mountBlocks(blocksHost, { initial, upload: async (f) => (await uploadFile(board, 'INLINE', await shrinkImage(f))).url });
+    blocks = mountBlocks(blocksHost, { initial, upload: async (f) => { const up = await uploadFile(board, 'INLINE', await shrinkImage(f)); meta.set(up.url, up); return up.url; } });
     blocks.onChange(sync);
   };
   area.addEventListener('input', sync);
@@ -140,6 +150,7 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
     try {
       toast('그림을 올리는 중…');
       const up = await uploadFile(board, 'INLINE', await shrinkImage(file));
+      meta.set(up.url, up);
       insert(`<img src="${up.url}" alt="">`);
       toast('그림을 넣었습니다.');
     } catch (e) { toast(e.message); }
@@ -261,5 +272,78 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
   };
   // 간단입력으로 쓴 글을 고칠 때는 카드로 연다
   if (initBlocks && modeBox) modeBox.querySelector('[data-v="simple"]').click();
-  return { sync, area, insertHtml, mode: () => mode, blocks: () => (mode === 'simple' && blocks ? blocks.value() : null) };
+  // 본문에 든 사진 (올린 사진만 — 바깥 주소 그림은 빼고)
+  const images = () => {
+    const d = document.createElement('div');
+    d.innerHTML = ta.value;
+    const seen = new Set();
+    return [...d.querySelectorAll('img')].map((i) => i.getAttribute('src') || '')
+      .filter((u) => /^\/xms\/upload\//.test(u) && !seen.has(u) && seen.add(u))
+      .map((url) => ({ url, name: meta.get(url)?.name || '', size: meta.get(url)?.size || 0 }));
+  };
+  // 첨부 목록의 ✕ → 본문에서 그 사진을 뺀다 (간단입력 카드는 카드에서 빼야 해서 false)
+  const removeImage = (url) => {
+    if (mode !== 'editor') return false;
+    area.querySelectorAll('img').forEach((i) => {
+      if (i.getAttribute('src') !== url) return;
+      const p = i.parentElement;
+      i.remove();
+      if (p && p !== area && !p.textContent.trim() && !p.querySelector('img,iframe')) p.remove();
+    });
+    sync();
+    return true;
+  };
+  const addImage = (up) => { meta.set(up.url, up); insertHtml(`<p><img src="${up.url}" alt=""></p>`); };
+  return {
+    sync, area, insertHtml, addImage, images, removeImage,
+    onChange: (f) => listeners.push(f),
+    mode: () => mode, blocks: () => (mode === 'simple' && blocks ? blocks.value() : null),
+  };
+}
+
+// 첨부 상자: [이미지] [파일] 버튼 + 목록. 본문에 넣은 사진도 목록에 함께 보이고(✕ 로 본문에서 빼기),
+//   [이미지] 로 고른 사진은 에디터 본문에 바로 들어간다(간단입력이면 첨부로). 게시판 글쓰기 · 수정 요청이 같이 쓴다.
+//   <div data-attach><button data-add="IMAGE">…<button data-add="FILE">…<div data-list></div></div>
+const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round((n || 0) / 1024))}KB`);
+export function mountAttach(box, { ed = null, target, files = [] }) {
+  const list = box.querySelector('[data-list]');
+  const draw = () => {
+    const imgs = ed ? ed.images() : [];
+    list.innerHTML = imgs.map((u, i) => `<div class="att" data-img="${esc(u.url)}"><img src="${esc(u.url)}" alt="">
+      <span class="att-name">${esc(u.name || `본문 사진 ${i + 1}`)}<small>본문${u.size ? ` · ${sizeText(u.size)}` : ''}</small></span>
+      <button type="button" class="att-x" aria-label="본문에서 빼기" title="본문에서 빼기">✕</button></div>`).join('')
+      + files.map((u, i) => `<div class="att" data-i="${i}">${u.kind === 'IMAGE' ? `<img src="${esc(u.url)}" alt="">` : '<span class="att-ico">📄</span>'}
+      <span class="att-name">${esc(u.name)}<small>${sizeText(u.size)}</small></span>
+      <button type="button" class="att-x" aria-label="빼기" title="빼기">✕</button></div>`).join('');
+  };
+  list.addEventListener('click', (e) => {
+    const row = e.target.closest('.att-x')?.closest('.att');
+    if (!row) return;
+    if (row.dataset.img) { if (!ed.removeImage(row.dataset.img)) toast('간단입력에서는 카드에서 사진을 빼 주세요.'); }
+    else files.splice(+row.dataset.i, 1);
+    draw();
+  });
+  ed?.onChange(draw);
+  box.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', async () => {
+    const kind = btn.dataset.add;
+    const input = document.createElement('input');
+    input.type = 'file'; input.multiple = true;
+    if (kind === 'IMAGE') input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    input.onchange = async () => {
+      for (const f of input.files) {
+        try {
+          toast(`${f.name} 올리는 중…`);
+          if (kind === 'IMAGE' && ed && ed.mode() === 'editor') {
+            ed.addImage(await uploadFile(target, 'INLINE', await shrinkImage(f)));
+          } else {
+            files.push(await uploadFile(target, kind, kind === 'IMAGE' ? await shrinkImage(f) : f));
+            draw();
+          }
+        } catch (er) { toast(er.message); }
+      }
+    };
+    input.click();
+  }));
+  draw();
+  return { ids: () => files.map((u) => u.id) };
 }

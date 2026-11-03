@@ -97,51 +97,19 @@ $$('[data-doc]').forEach((b) => b.addEventListener('click', () => {
 // 글쓰기: 에디터(↔ 간단입력) · 첨부(이미지 · 파일)
 // 편집기 스크립트는 글쓰기 화면에서만 받는다 (목록 · 글 보기는 가볍게)
 const edHost = $('[data-editor]');
-const { mountEditor, shrinkImage, uploadFile } = edHost || $('[data-attach]') ? await import('./editor.js') : {};
+const { mountEditor, mountAttach } = edHost || $('[data-attach]') ? await import('./editor.js') : {};
 const ed = edHost ? mountEditor(edHost, { modeBox: $('[data-mode]') }) : null;
 const attachBox = $('[data-attach]');
-let attachments = [];
-const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
-function drawAttachments() {
-  const list = $('[data-list]', attachBox);
-  list.innerHTML = attachments.map((u, i) => `<div class="att" data-i="${i}">${u.kind === 'IMAGE' ? `<img src="${u.url}" alt="">` : '<span class="att-ico">📄</span>'}
-    <span class="att-name">${u.name.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}<small>${sizeText(u.size)}</small></span>
-    <button type="button" class="att-x" aria-label="빼기">✕</button></div>`).join('');
-  list.querySelectorAll('.att-x').forEach((b) => b.addEventListener('click', () => { attachments.splice(+b.closest('.att').dataset.i, 1); drawAttachments(); }));
-}
+let attach = null;
 if (attachBox) {
-  try { attachments = JSON.parse($('[data-init]', attachBox).textContent) || []; } catch { attachments = []; }
-  drawAttachments();
-  const board = $('form[data-form=post]').dataset.board;
-  attachBox.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', () => {
-    const kind = btn.dataset.add;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    if (kind === 'IMAGE') input.accept = 'image/png,image/jpeg,image/gif,image/webp';
-    input.onchange = async () => {
-      for (const f of input.files) {
-        try {
-          toast(`${f.name} 올리는 중…`);
-          // 에디터 모드에서는 사진을 본문에 바로 넣는다 (간단입력이면 첨부 목록으로)
-          if (kind === 'IMAGE' && ed && ed.mode() === 'editor') {
-            const up = await uploadFile(board, 'INLINE', await shrinkImage(f));
-            ed.insertHtml(`<p><img src="${up.url}" alt=""></p>`);
-            continue;
-          }
-          const up = await uploadFile(board, kind, kind === 'IMAGE' ? await shrinkImage(f) : f);
-          attachments.push(up);
-          drawAttachments();
-        } catch (e) { toast(e.message); }
-      }
-    };
-    input.click();
-  }));
+  let files = [];
+  try { files = JSON.parse($('[data-init]', attachBox).textContent) || []; } catch { files = []; }
+  attach = mountAttach(attachBox, { ed, target: $('form[data-form=post]').dataset.board, files });
 }
 onForm('post', async (form, data) => {
   ed?.sync();
   data.content = form.querySelector('[name=content]').value;
-  data.attachments = attachments.map((u) => u.id);
+  data.attachments = attach ? attach.ids() : [];
   data.mode = ed ? ed.mode() : 'editor';
   data.blocks = ed ? ed.blocks() : null;
   const { board, id } = form.dataset;

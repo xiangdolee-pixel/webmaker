@@ -1,6 +1,6 @@
 // xms 관리자 화면 (/admin/) — 해시 주소로 화면을 바꾼다: #/members, #/boards/3 …
 import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, formData, openDialog, busy, confirmInline } from './common.js';
-import { mountEditor, uploadFile, shrinkImage } from './editor.js';
+import { mountEditor, mountAttach } from './editor.js';
 import { sortable, treeFromDepths } from './drag.js';
 
 const api = makeApi('/xms-api/admin');
@@ -613,7 +613,7 @@ async function requestsPage() {
   main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 운영자에게 요청합니다. 처리되면 아래에 답변이 붙습니다.')}
     <form class="panel pad write-box" id="rform">
       <label class="field"><span>제목</span><input class="input" name="title" maxlength="120" required placeholder="예) 메인 사진 교체 부탁드립니다"></label>
-      <div class="field"><span>첨부</span><div class="attach">
+      <div class="field"><span>첨부</span><div class="attach" data-attach>
         <div class="attach-btns"><button type="button" class="pill-btn" data-add="IMAGE">${IMG_ICON}이미지</button><button type="button" class="pill-btn" data-add="FILE">${ATT_ICON}파일</button></div>
         <div class="attach-list" data-list></div></div></div>
       <div class="field"><span>내용</span><div class="editor" data-editor data-board="@request"><textarea name="body" hidden></textarea></div></div>
@@ -626,39 +626,13 @@ async function requestsPage() {
     : empty('아직 보낸 요청이 없습니다', '위에서 첫 요청을 보내 보세요.')}</div>`;
   const form = $('#rform');
   const ed = mountEditor($('[data-editor]', form), { placeholder: '바꾸고 싶은 곳과 내용을 적어 주세요.' });
-  // 첨부: 이미지는 본문에 바로, 파일은 목록으로 (게시판 글쓰기와 같음)
-  const atts = [];
-  const drawAtts = () => {
-    const box = $('[data-list]', form);
-    box.innerHTML = atts.map((u, i) => `<div class="att" data-i="${i}"><span class="att-ico">📄</span><span class="att-name">${esc(u.name)}<small>${size(u.size)}</small></span><button type="button" class="att-x" aria-label="빼기">✕</button></div>`).join('');
-    box.querySelectorAll('.att-x').forEach((b) => b.addEventListener('click', () => { atts.splice(+b.closest('.att').dataset.i, 1); drawAtts(); }));
-  };
-  form.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', () => {
-    const kind = btn.dataset.add;
-    const input = document.createElement('input');
-    input.type = 'file'; input.multiple = true;
-    if (kind === 'IMAGE') input.accept = 'image/png,image/jpeg,image/gif,image/webp';
-    input.onchange = async () => {
-      for (const f of input.files) {
-        try {
-          toast(`${f.name} 올리는 중…`);
-          if (kind === 'IMAGE') {
-            const up = await uploadFile('@request', 'INLINE', await shrinkImage(f));
-            ed.insertHtml(`<p><img src="${up.url}" alt=""></p>`);
-          } else {
-            atts.push(await uploadFile('@request', 'FILE', f));
-            drawAtts();
-          }
-        } catch (er) { toast(er.message); }
-      }
-    };
-    input.click();
-  }));
+  // 첨부: 이미지는 본문에 바로(목록에도 보임), 파일은 목록으로 — 게시판 글쓰기와 같은 mountAttach
+  const attach = mountAttach($('[data-attach]', form), { ed, target: '@request' });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     ed.sync();
     busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
-      await api('/requests', { method: 'POST', data: { title: form.title.value, body: form.body.value, attachments: atts.map((a) => a.id) } });
+      await api('/requests', { method: 'POST', data: { title: form.title.value, body: form.body.value, attachments: attach.ids() } });
       toast('요청을 보냈습니다.'); route();
     });
   });
