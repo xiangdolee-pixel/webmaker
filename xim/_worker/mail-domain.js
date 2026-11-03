@@ -78,6 +78,8 @@ export async function ensureTurnstile(token, accountId, { slug, hosts, sitekey }
     const w = await cf(token, 'POST', `/accounts/${accountId}/challenges/widgets`, { name: `xms ${slug}`, domains, mode: 'managed' });
     return { status: 'added', message: '봇 확인을 만들었습니다', sitekey: w.sitekey, secret: w.secret };
   } catch (e) {
+    // 토큰에 Turnstile 권한이 없으면(10000) '실패' 가 아니라 '설정 전'
+    if ((e.codes || []).includes(10000) || /Authentication error/i.test(e.message)) return { status: 'skip', message: '봇 확인: 토큰에 Turnstile 권한을 더하면 만들어집니다' };
     return { status: 'error', message: `봇 확인: ${e.message}` };
   }
 }

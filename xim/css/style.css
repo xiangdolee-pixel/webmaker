@@ -130,6 +130,7 @@ textarea.input { min-height: 120px; resize: vertical; }
 .badge.new { color: var(--warn); background: var(--warn-soft); }
 .badge.doing { color: var(--brand); background: var(--brand-soft); }
 .mail-badge { border: 0; cursor: pointer; font-family: inherit; }
+.badge.idle { color: var(--sub); background: #eef0f3; }
 
 .quota { height: 6px; border-radius: 99px; background: #eceef3; overflow: hidden; }
 .quota i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), var(--brand-2)); }

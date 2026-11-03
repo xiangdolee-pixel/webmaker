@@ -62,16 +62,32 @@ function showApp() {
 }
 
 // ───────── 왼쪽 메뉴 ─────────
+const SIDE_ICON = {
+  storage: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>',
+  members: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.9-5 5.5-5s4.9 2 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.4.2 4.3 1.9 4.9 4.8"/></svg>',
+  withdrawn: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.2"/><path d="M4 19c.6-3 3-5 6-5 1.4 0 2.6.4 3.6 1.1M16 16l4 4M20 16l-4 4"/></svg>',
+  levels: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>',
+  fields: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>',
+  terms: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  privacy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9.5 12l2 2 3.5-3.5"/></svg>',
+  boards: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg>',
+  menus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+  popups: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="7" y="9" width="10" height="6" rx="1"/></svg>',
+  favicon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 14l2-5 2 5M9.7 12.5h2.6"/></svg>',
+  seo: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.3-4.3"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c-4.4 0-8 2.8-8 6.3 0 2.2 1.5 4.2 3.7 5.3L7 20l4.3-3.1c.2 0 .5.1.7.1 4.4 0 8-2.8 8-6.3S16.4 4 12 4z"/></svg>',
+  requests: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
+  account: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+};
+// 왼쪽 메뉴: 묶음 이름 아래 같은 모양의 한 단계 목록 (만들기 · 추가는 각 화면 오른쪽 위 버튼)
 const SIDE = [
   [null, [['#/storage', '저장 공간', 'storage']]],
-  ['회원관리', [['#/members', '가입회원'], ['#/members/withdrawn', '탈퇴회원'], ['#/levels', '등급 이름'],
-    ['head', '가입 항목'], ['#/fields', '항목 목록', 'sub'], ['#/fields/new', '항목 추가', 'sub'],
-    ['head', '약관·방침'], ['#/terms', '이용약관', 'sub'], ['#/privacy', '개인정보 처리방침', 'sub']]],
-  ['사이트', [['head', '게시판'], ['#/boards', '게시판 목록', 'sub'], ['#/boards/new', '게시판 만들기', 'sub'],
-    ['head', '메뉴'], ['#/menus', '메뉴 목록', 'sub'], ['#/menus/new', '메뉴 추가', 'sub'],
-    ['head', '팝업'], ['#/popups', '팝업 목록', 'sub'], ['#/popups/new', '팝업 추가', 'sub'],
-    ['#/favicon', '파비콘'], ['#/seo', '검색엔진'], ['#/share', '카카오톡 미리보기'], ['#/requests', '수정 요청']]],
-  ['내 계정', [['#/account', '비밀번호 변경'], ['#/audit', '관리 로그']]],
+  ['회원', [['#/members', '가입회원', 'members'], ['#/members/withdrawn', '탈퇴회원', 'withdrawn'], ['#/levels', '등급 이름', 'levels'],
+    ['#/fields', '가입 항목', 'fields'], ['#/terms', '이용약관', 'terms'], ['#/privacy', '개인정보 처리방침', 'privacy']]],
+  ['사이트', [['#/boards', '게시판', 'boards'], ['#/menus', '메뉴', 'menus'], ['#/popups', '팝업', 'popups'],
+    ['#/favicon', '파비콘', 'favicon'], ['#/seo', '검색엔진', 'seo'], ['#/share', '카카오톡 미리보기', 'share'], ['#/requests', '수정 요청', 'requests']]],
+  ['내 계정', [['#/account', '비밀번호 변경', 'account'], ['#/audit', '관리 로그', 'audit']]],
 ];
 // 왼쪽 위 사이트 표시: 파비콘을 올렸으면 그 그림, 없으면 이름 두 글자
 let favVer = Date.now();
@@ -79,9 +95,7 @@ function renderSide() {
   const s = INFO.site;
   const pct = s.quota_mb ? Math.round((s.used_mb / s.quota_mb) * 100) : 0;
   $('#side').innerHTML = `<a class="brand" href="/" target="_blank" rel="noopener"><i>${esc(s.slug.slice(0, 2).toUpperCase())}<img src="/xms/file/favicon-192.png?v=${favVer}" alt="" onload="this.parentElement.classList.add('has-fav')" onerror="this.remove()"></i><span><b>${esc(s.name)}</b><small>${esc(s.domain || s.slug)}</small></span></a>
-    ${SIDE.map(([group, items]) => `${group ? `<h4>${group}</h4>` : ''}${items.map(([href, label, kind]) => (href === 'head'
-      ? `<div class="head">${label}</div>`
-      : `<a href="${href}" class="${kind === 'sub' ? 'sub' : ''}">${label}${kind === 'storage' ? `<span class="meter${pct >= 90 ? ' full' : ''}">${pct}%</span>` : ''}</a>`)).join('')}`).join('')}
+    ${SIDE.map(([group, items]) => `${group ? `<h4>${group}</h4>` : ''}${items.map(([href, label, icon]) => `<a href="${href}">${SIDE_ICON[icon] || ''}<span class="lbl">${label}</span>${icon === 'storage' ? `<span class="meter${pct >= 90 ? ' full' : ''}">${pct}%</span>` : ''}</a>`).join('')}`).join('')}
     <p class="foot">${esc(s.name)} 관리자 화면</p>`;
 }
 function markSide() {
@@ -155,8 +169,8 @@ async function route() {
 }
 const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
 
-function head(eyebrow, title, lede = '') {
-  return `<header class="ph"><small>${eyebrow}</small><h1>${title}</h1>${lede ? `<p>${lede}</p>` : ''}</header>`;
+function head(eyebrow, title, lede = '', action = '') {
+  return `<header class="ph${action ? ' has-act' : ''}"><div><small>${eyebrow}</small><h1>${title}</h1>${lede ? `<p>${lede}</p>` : ''}</div>${action ? `<div class="ph-act">${action}</div>` : ''}</header>`;
 }
 const empty = (t, hint, action = '') => `<div class="empty"><b>${t}</b><span>${hint}</span>${action}</div>`;
 function pager(page, size, total, href) {
@@ -303,7 +317,7 @@ const MODE_LABEL = { REQUIRED: '필수', OPTIONAL: '선택', EXCLUDED: '안 받�
 async function fieldsPage() {
   const d = await api('/fields');
   let fields = d.fields;
-  main.innerHTML = `${head('회원', '가입 항목', '회원가입 화면에서 받을 항목입니다. ⠿ 를 끌어 순서를 바꾸고 저장하세요.')}
+  main.innerHTML = `${head('회원', '가입 항목', '회원가입 화면에서 받을 항목입니다. ⠿ 를 끌어 순서를 바꾸고 저장하세요.', '<a class="btn primary" href="#/fields/new">+ 항목 추가</a>')}
     <form id="fform"><div class="panel"><table class="tbl cardy"><thead><tr><th></th><th>이름표</th><th>종류</th><th>받기</th><th>입력한 회원</th><th>관리</th></tr></thead><tbody id="frows">
     ${fields.map((f) => `<tr data-id="${f.key}" class="${f.mode === 'EXCLUDED' ? 'off' : ''}">
       <td><button type="button" class="handle" aria-label="끌어서 순서 바꾸기">⠿</button></td>
@@ -314,7 +328,7 @@ async function fieldsPage() {
       <td data-l="입력한 회원">${f.used}명 / ${d.total}명</td>
       <td><div class="mng">${f.options ? '<button type="button" class="btn sm" data-opts>보기 고치기</button>' : ''}${f.builtin ? '' : '<button type="button" class="btn sm danger" data-del>삭제</button>'}</div></td>
     </tr>`).join('')}</tbody></table></div>
-    <p class="actions gap"><a class="btn" href="#/fields/new">+ 항목 추가</a></p>
+
     ${saveBar('가입 항목을 고치는 중입니다.', '#/members')}</form>`;
   const form = $('#fform');
   ctrlS(form);
@@ -415,7 +429,7 @@ async function docPage(kind) {
 const LAYOUT_LABEL = { TABLE: '테이블', CARD: '카드', BLOG: '블로그' };
 async function boardsPage() {
   const d = await api('/boards');
-  main.innerHTML = `${head('사이트', '게시판 목록', d.boards.length ? `홈페이지에 붙어 있는 게시판 ${d.boards.length}개입니다. 여기 순서는 이 목록의 차례이고, 홈페이지 메뉴 차례는 <a href="#/menus">메뉴</a>에서 정합니다.` : '')}
+  main.innerHTML = `${head('사이트', '게시판', d.boards.length ? `홈페이지에 붙어 있는 게시판 ${d.boards.length}개입니다. 여기 순서는 이 목록의 차례이고, 홈페이지 메뉴 차례는 <a href="#/menus">메뉴</a>에서 정합니다.` : '', '<a class="btn primary" href="#/boards/new">+ 게시판 만들기</a>')}
     <div class="panel">${d.boards.length ? `<table class="tbl cardy"><thead><tr><th>순서</th><th>이름</th><th>주소</th><th>목록 모양</th><th>제한</th><th>글</th><th>메뉴 위치</th><th>관리</th></tr></thead><tbody id="brows">
       ${d.boards.map((b) => `<tr data-id="${b.id}"><td><button type="button" class="handle" aria-label="끌어서 순서 바꾸기">⠿</button></td>
         <td><b>${esc(b.name)}</b>${b.visible ? '' : ' <span class="tag">숨김</span>'}</td>
@@ -549,7 +563,7 @@ async function menusPage() {
   });
   walk(null, 0, false, false);
   const where = (m) => (m.menu_type === 'BOARD' ? `/board/${m.board_slug || '?'}` : m.path || '대분류 (주소 없음)');
-  main.innerHTML = `${head('사이트', '메뉴 목록', '홈페이지 위쪽 메뉴를 정리합니다. 이름과 순서는 언제든 바꿀 수 있고 배포가 필요 없습니다. ⠿ 를 위아래로 끌면 순서, 오른쪽으로 끌면 위 메뉴 아래로 들어갑니다.')}
+  main.innerHTML = `${head('사이트', '메뉴', '홈페이지 위쪽 메뉴를 정리합니다. 이름과 순서는 언제든 바꿀 수 있고 배포가 필요 없습니다. ⠿ 를 위아래로 끌면 순서, 오른쪽으로 끌면 위 메뉴 아래로 들어갑니다.', '<a class="btn primary" href="#/menus/new">+ 메뉴 추가</a>')}
     <div class="panel" id="mtree">${rows.length ? rows.map(({ m, depth, hiddenAbove, foldedAbove, n }) => `
       <div class="tree-row${m.visible && !hiddenAbove ? '' : ' hid'}" data-id="${m.id}" data-depth="${depth}" data-type="${m.menu_type}" style="--d:${depth}"${foldedAbove ? ' hidden' : ''}>
         <button type="button" class="handle" aria-label="끌어서 옮기기">⠿</button>
@@ -1060,7 +1074,7 @@ async function popupsPage(qs) {
   const live = list.filter((p) => p.bucket === 'live').length;
   const shown = tab === 'all' ? list : list.filter((p) => p.bucket === tab);
   const sortableOn = tab === 'all';
-  main.innerHTML = `${head('사이트', '팝업', live ? `지금 홈 화면에 팝업 ${live}개가 떠 있습니다. 여러 개면 창 하나 안에서 좌우로 넘어갑니다.` : '홈 화면에 들어온 방문자에게 창을 띄웁니다. 여러 개를 켜면 창 하나 안에서 좌우로 넘어갑니다.')}
+  main.innerHTML = `${head('사이트', '팝업', live ? `지금 홈 화면에 팝업 ${live}개가 떠 있습니다. 여러 개면 창 하나 안에서 좌우로 넘어갑니다.` : '홈 화면에 들어온 방문자에게 창을 띄웁니다. 여러 개를 켜면 창 하나 안에서 좌우로 넘어갑니다.', '<a class="btn primary" href="#/popups/new">+ 팝업 만들기</a>')}
     ${list.length ? `<div class="tabs" id="ptabs"></div>
       <p class="meta gap">${tab === 'expired' ? '기간이 지난 팝업입니다. 다시 쓰려면 열어서 기간만 고치면 됩니다.' : sortableOn ? '줄을 끌어서 차례를 바꿀 수 있습니다 — 여러 개가 함께 뜨면 방문자가 이 차례로 넘겨 봅니다.' : '차례는 [전체]에서 끌어서 바꿉니다.'}</p>
       <div class="panel">${shown.length ? `<table class="tbl cardy"><thead><tr>${sortableOn ? '<th>차례</th>' : ''}<th>그림</th><th>이름</th><th>노출 기간</th><th>상태</th><th>운영 모드</th><th>관리</th></tr></thead><tbody id="prows">

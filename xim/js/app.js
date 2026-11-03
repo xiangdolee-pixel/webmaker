@@ -235,9 +235,14 @@ function siteCard(s) {
   const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
   const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
   // 인증 메일 보내는 주소 상태 (대표 도메인 → Email Sending)
-  const MAIL = { ok: ['메일 · 봇확인 준비됨', 'done'], added: ['메일 · 봇확인 준비됨', 'done'], error: ['메일 · 봇확인 실패 · 다시', 'suspended'], skip: ['메일 · 봇확인 대기 · 등록', 'new'] };
-  const [mt, mc] = MAIL[s.mail_status] || MAIL.skip;
-  const mailTag = s.domain ? `<button type="button" class="badge ${mc} mail-badge" data-mail="${s.id}" title="${esc(s.mail_note || '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다. 누르면 등록합니다.')}">${mt}</button>` : '';
+  // 메일(가입 인증 메일 주소) · 봇확인(Turnstile) 을 따로. 초록 = 준비됨, 회색 = 설정 전, 빨강 = 정말 실패. 누르면 다시 시도
+  const ST = (ok, label) => ({ ok: [`${label} ✓`, 'done'], added: [`${label} ✓`, 'done'], error: [`${label} 확인 필요`, 'suspended'], skip: [`${label} 설정 전`, 'idle'] });
+  const tagOf = (status, note, label, hint) => {
+    const [t, c] = ST(true, label)[status] || ST(true, label).skip;
+    return `<button type="button" class="badge ${c} mail-badge" data-mail="${s.id}" title="${esc(note || hint)} — 누르면 다시 시도합니다">${t}</button>`;
+  };
+  const mailTag = s.domain ? tagOf(s.mail_status, s.mail_note, '메일', '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다')
+    + tagOf(s.bot_status, s.bot_note, '봇확인', '아직 만들기 전 — 가입할 때 봇 확인 없이 진행됩니다') : '';
   return `
   <article class="card item" data-site="${s.id}">
     <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>

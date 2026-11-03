@@ -646,11 +646,11 @@ async function mailRegister(env, id, domain) {
     slug: site.slug, sitekey: site.turnstile_sitekey, hosts: [domain, `${site.slug}.${WORKERS_SUB}.workers.dev`],
   });
   if (bot.secret) await env.DB.prepare('UPDATE sites SET turnstile_sitekey = ?, turnstile_secret = ? WHERE id = ?').bind(bot.sitekey, bot.secret, id).run();
+  // 메일 · 봇 확인을 따로 적는다 (카드에 표시 두 개)
+  await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ?, bot_status = ?, bot_note = ? WHERE id = ?')
+    .bind(mail.status, `메일: ${mail.message}`.slice(0, 300), bot.status, bot.message.slice(0, 300), id).run();
   const ok = (x) => ['ok', 'added'].includes(x.status);
-  const status = ok(mail) && ok(bot) ? (mail.status === 'added' || bot.status === 'added' ? 'added' : 'ok') : (mail.status === 'error' || bot.status === 'error' ? 'error' : 'skip');
-  const message = `메일: ${mail.message} · ${bot.message}`;
-  await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ? WHERE id = ?').bind(status, message.slice(0, 300), id).run();
-  return { status, message };
+  return { status: ok(mail) && ok(bot) ? 'ok' : mail.status === 'error' || bot.status === 'error' ? 'error' : 'skip', message: `메일: ${mail.message} · ${bot.message}` };
 }
 
 // 수정 요청 지우기: 주고받은 글 · 붙인 파일(R2 + xms uploads)까지 함께
