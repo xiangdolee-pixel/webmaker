@@ -1,7 +1,7 @@
 // xms 방문자 화면 · API — 고객 사이트 주소 아래 /member/* · /board/* · /xms-api/*
 import {
   DAY, now, bad, forbidden, notFound, HttpError, json, html, esc, str, body, siteSettings, MEMBER_COLUMNS, canBy, levelBit,
-  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin,
+  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 import { postAttachments, attachToPost } from './uploads.js';
@@ -259,7 +259,7 @@ async function boardList(ctx, b) {
   const admin = me.level === 1;
   const where = ['board_id = ?', 'deleted_at IS NULL', 'is_notice = 0'];
   const args = [b.id];
-  if (!admin) { where.push('published_at <= ?'); args.push(now()); }
+  if (!admin) { where.push('published_at <= ?', 'is_hidden = 0'); args.push(now()); }
   if (q) { where.push('(title LIKE ? OR content_html LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
   const w = where.join(' AND ');
   // 개수 · 목록 · 공지를 동시에 (DB 왕복 줄이기)
@@ -267,7 +267,7 @@ async function boardList(ctx, b) {
     env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE ${w}`).bind(...args).first(),
     env.DB.prepare(`SELECT * FROM posts WHERE ${w} ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?`).bind(...args, size, (pg - 1) * size).all(),
     pg === 1 && !q
-      ? env.DB.prepare(`SELECT * FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_notice = 1 ${admin ? '' : 'AND published_at <= ?'} ORDER BY published_at DESC`)
+      ? env.DB.prepare(`SELECT * FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_notice = 1 ${admin ? '' : 'AND published_at <= ? AND is_hidden = 0'} ORDER BY published_at DESC`)
         .bind(...(admin ? [b.id] : [b.id, now()])).all()
       : { results: [] },
   ]);
@@ -277,7 +277,10 @@ async function boardList(ctx, b) {
   const ls = b.opt.list_show;
   const isNew = (p) => now() - p.published_at < b.opt.new_hours * 3600000;
   const secretHidden = (p) => p.is_secret && !admin && !isMine(p, me);
-  const titleHtml = (p) => `${p.is_secret ? '<span class="tag">비밀</span>' : ''}${p.published_at > now() ? '<span class="tag warn">예약</span>' : ''}${esc(secretHidden(p) ? '비밀글입니다' : p.title)}${isNew(p) ? '<span class="tag new">N</span>' : ''}`;
+  // 관리자: 글마다 고르는 칸(글 관리 때만 보임) · 숨긴 글 표시
+  const pick = (p) => (admin ? `<label class="pick" aria-label="글 고르기"><input type="checkbox" value="${p.id}"></label>` : '');
+  const hid = (p) => (p.is_hidden ? ' is-hidden' : '');
+  const titleHtml = (p) => `${p.is_hidden ? '<span class="tag gray">숨김</span>' : ''}${p.is_secret ? '<span class="tag">비밀</span>' : ''}${p.published_at > now() ? '<span class="tag warn">예약</span>' : ''}${esc(secretHidden(p) ? '비밀글입니다' : p.title)}${isNew(p) ? '<span class="tag new">N</span>' : ''}`;
   const link = (p) => `/board/${b.slug}/${p.id}`;
   let list = '';
   const all = [...notices.map((p) => ({ ...p, _notice: true })), ...rows];
@@ -286,16 +289,16 @@ async function boardList(ctx, b) {
   } else if (b.list_layout === 'CARD') {
     list = `<div class="cards">${all.map((p) => {
       const img = secretHidden(p) ? '' : firstImage(p.content_html);
-      return `<a class="pcard" href="${link(p)}"><div class="thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span>No Image</span>'}</div>
+      return `<a class="pcard${hid(p)}" href="${link(p)}" data-pid="${p.id}">${pick(p)}<div class="thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span>No Image</span>'}</div>
         <div class="pcard-b">${p._notice ? '<span class="tag notice">공지</span>' : ''}<b>${titleHtml(p)}</b>${ls.date ? `<small>${fmtDate(p.published_at)}</small>` : ''}</div></a>`;
     }).join('')}</div>`;
   } else if (b.list_layout === 'BLOG') {
-    list = `<div class="blog">${all.map((p) => `<article class="blog-row"><a href="${link(p)}">${p._notice ? '<span class="tag notice">공지</span>' : ''}<h3>${titleHtml(p)}</h3>
+    list = `<div class="blog">${all.map((p) => `<article class="blog-row${hid(p)}" data-pid="${p.id}">${pick(p)}<a href="${link(p)}">${p._notice ? '<span class="tag notice">공지</span>' : ''}<h3>${titleHtml(p)}</h3>
       ${secretHidden(p) ? '' : `<p>${esc(plainText(p.content_html).slice(0, 160))}</p>`}</a>
       <div class="meta">${ls.writer ? `<span>${esc(writerOf(b, p, me))}</span>` : ''}${ls.date ? `<span>${fmtDate(p.published_at)}</span>` : ''}${ls.views ? `<span>조회 ${p.view_count}</span>` : ''}</div></article>`).join('')}</div>`;
   } else {
-    list = `<table class="ptable"><thead><tr>${ls.no ? '<th class="c-no">번호</th>' : ''}<th>제목</th>${ls.writer ? '<th class="c-w">작성자</th>' : ''}${ls.date ? '<th class="c-d">작성일</th>' : ''}${ls.views ? '<th class="c-v">조회</th>' : ''}</tr></thead><tbody>
-      ${all.map((p, i) => `<tr class="${p._notice ? 'is-notice' : ''}">${ls.no ? `<td class="c-no">${p._notice ? '<span class="tag notice">공지</span>' : total - (pg - 1) * size - (i - notices.length)}</td>` : ''}
+    list = `<table class="ptable"><thead><tr>${admin ? '<th class="c-pick"></th>' : ''}${ls.no ? '<th class="c-no">번호</th>' : ''}<th>제목</th>${ls.writer ? '<th class="c-w">작성자</th>' : ''}${ls.date ? '<th class="c-d">작성일</th>' : ''}${ls.views ? '<th class="c-v">조회</th>' : ''}</tr></thead><tbody>
+      ${all.map((p, i) => `<tr class="${p._notice ? 'is-notice' : ''}${hid(p)}" data-pid="${p.id}">${admin ? `<td class="c-pick">${pick(p)}</td>` : ''}${ls.no ? `<td class="c-no">${p._notice ? '<span class="tag notice">공지</span>' : total - (pg - 1) * size - (i - notices.length)}</td>` : ''}
         <td class="c-t"><a href="${link(p)}">${!ls.no && p._notice ? '<span class="tag notice">공지</span>' : ''}${titleHtml(p)}</a></td>
         ${ls.writer ? `<td class="c-w">${esc(writerOf(b, p, me))}</td>` : ''}${ls.date ? `<td class="c-d">${fmtDate(p.published_at)}</td>` : ''}${ls.views ? `<td class="c-v">${p.view_count}</td>` : ''}</tr>`).join('')}
       </tbody></table>`;
@@ -306,7 +309,11 @@ async function boardList(ctx, b) {
   const pager = pages > 1 ? `<nav class="pager">${start > 1 ? `<a href="${qs(start - 1)}">‹</a>` : ''}${Array.from({ length: Math.min(5, pages - start + 1) }, (_, i) => start + i)
     .map((n) => (n === pg ? `<b>${n}</b>` : `<a href="${qs(n)}">${n}</a>`)).join('')}${start + 5 <= pages ? `<a href="${qs(start + 5)}">›</a>` : ''}</nav>` : '';
   return page(ctx, b.name, `<section class="pub-box wide">
-    <div class="board-head"><h1>${esc(b.name)}</h1>${canWrite(b, me) ? `<a class="btn primary" href="/board/${b.slug}/write">글쓰기</a>` : ''}</div>
+    <div class="board-head"><h1>${esc(b.name)}</h1>${admin ? '<button type="button" class="btn manage-btn" data-manage>글 관리</button>' : ''}${canWrite(b, me) ? `<a class="btn primary" href="/board/${b.slug}/write">글쓰기</a>` : ''}</div>
+    ${admin ? `<div class="manage-bar" data-manage-bar data-board="${esc(b.slug)}" hidden>
+      <label class="check"><input type="checkbox" data-pick-all> 전체 선택 <small data-pick-count></small></label>
+      <span class="manage-acts"><button type="button" class="btn" data-act="hide">숨김</button><button type="button" class="btn" data-act="show">보이기</button>
+      <button type="button" class="btn danger" data-act="delete">삭제</button><button type="button" class="btn primary" data-manage-end>끝내기</button></span></div>` : ''}
     <form class="board-tools" method="get"><input class="input" name="q" value="${esc(q)}" placeholder="제목·내용 검색"><button class="btn" type="submit">검색</button>
       <select class="input" name="size" data-autosubmit aria-label="한 쪽에 보일 글 수">${[10, 20, 30].map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n}개씩</option>`).join('')}</select></form>
     ${list}${pager}
@@ -316,7 +323,7 @@ async function boardList(ctx, b) {
 async function postView(ctx, b, id) {
   const { env, me, url } = ctx;
   const p = await env.DB.prepare('SELECT * FROM posts WHERE id = ? AND board_id = ? AND deleted_at IS NULL').bind(id, b.id).first();
-  if (!p || (p.published_at > now() && me.level !== 1)) return msgPage(ctx, '글이 없습니다', '지워졌거나 없는 글입니다.', `<div class="actions center"><a class="btn" href="/board/${b.slug}">목록으로</a></div>`, 404);
+  if (!p || ((p.published_at > now() || p.is_hidden) && me.level !== 1)) return msgPage(ctx, '글이 없습니다', '지워졌거나 없는 글입니다.', `<div class="actions center"><a class="btn" href="/board/${b.slug}">목록으로</a></div>`, 404);
   if (!canRead(b, me)) return me.level ? noRight(ctx) : needLogin(ctx, url.pathname);
   if (p.is_secret && me.level !== 1 && !isMine(p, me)) return msgPage(ctx, '비밀글입니다', '쓴 사람과 관리자만 볼 수 있습니다.', `<div class="actions center"><a class="btn" href="/board/${b.slug}">목록으로</a></div>`);
   await env.DB.prepare('UPDATE posts SET view_count = view_count + 1 WHERE id = ?').bind(p.id).run();
@@ -340,7 +347,7 @@ async function postView(ctx, b, id) {
   return page(ctx, p.title, `<section class="pub-box wide">
     <p class="crumb"><a href="/board/${b.slug}">${esc(b.name)}</a></p>
     <article class="post">
-      <h1>${p.is_notice ? '<span class="tag notice">공지</span>' : ''}${p.is_secret ? '<span class="tag">비밀</span>' : ''}${esc(p.title)}</h1>
+      <h1>${p.is_hidden ? '<span class="tag gray">숨김</span>' : ''}${p.is_notice ? '<span class="tag notice">공지</span>' : ''}${p.is_secret ? '<span class="tag">비밀</span>' : ''}${esc(p.title)}</h1>
       <div class="meta">${vs.writer ? `<span>${esc(writerOf(b, p, me))}</span>` : ''}${vs.date ? `<span>${fmtDate(p.published_at, true)}</span>` : ''}${vs.views ? `<span>조회 ${p.view_count + 1}</span>` : ''}
         ${p.published_at > now() ? `<span class="tag warn">${fmtDate(p.published_at, true)} 공개 예약</span>` : ''}</div>
       ${imgs.length ? `<div class="post-photos">${imgs.map((u) => `<a href="${u.url}" target="_blank" rel="noopener"><img src="${u.url}" alt="${esc(u.name)}" loading="lazy"></a>`).join('')}</div>` : ''}
@@ -437,13 +444,29 @@ export async function publicApi(ctx) {
   if (path === '/menu' && method === 'GET') return json(await visibleMenus(db, site, me));
 
   // 게시판 최신 글 — 사이트 첫 화면 등에서 사이트 디자인 그대로 그릴 때 쓴다 (예: sjccc 홈 "포토")
+  // 글 관리 (관리자): 고른 글 숨김 · 보이기 · 삭제(deleted_at — DB 에는 남아 운영자가 되살릴 수 있다)
+  if ((m = path.match(/^\/boards\/([a-z0-9-]+)\/manage$/)) && method === 'POST') {
+    if (me.level !== 1) throw forbidden('관리자만 할 수 있습니다.');
+    const b = await loadBoard(db, site, m[1]);
+    if (!b) throw notFound('게시판이 없습니다.');
+    const raw = await body(request);
+    const ids = [...new Set((Array.isArray(raw.ids) ? raw.ids : []).map(Number).filter((n) => Number.isInteger(n) && n > 0))].slice(0, 200);
+    if (!ids.length) throw bad('글을 골라 주세요.');
+    const SQL = { hide: 'is_hidden = 1', show: 'is_hidden = 0', delete: 'deleted_at = ?' };
+    if (!SQL[raw.action]) throw bad('할 일을 알 수 없습니다.');
+    const q = `UPDATE posts SET ${SQL[raw.action]} WHERE board_id = ? AND deleted_at IS NULL AND id IN (${ids.map(() => '?').join(',')})`;
+    const r = await db.prepare(q).bind(...(raw.action === 'delete' ? [now()] : []), b.id, ...ids).run();
+    const label = { hide: '숨김', show: '보이기', delete: '삭제' }[raw.action];
+    await audit(db, site, me, request, 'POSTS_MANAGE', b.name, `${label} ${r.meta.changes}개`);
+    return json({ ok: true, changed: r.meta.changes });
+  }
   //   GET /xms-api/boards/<주소>/latest?n=4  → [{ id, title, date, url, thumb }]  (비밀글 · 예약 글 · 볼 권한 없는 글은 빠짐)
   if ((m = path.match(/^\/boards\/([a-z0-9-]+)\/latest$/)) && method === 'GET') {
     const b = await loadBoard(db, site, m[1]);
     if (!b || !b.visible || !canList(b, me)) return json([]);
     const n = Math.min(12, Math.max(1, Number(url.searchParams.get('n')) || 4));
     const { results } = await db.prepare(`SELECT id, title, content_html, published_at FROM posts
-      WHERE board_id = ? AND deleted_at IS NULL AND is_secret = 0 AND published_at <= ? ORDER BY published_at DESC, id DESC LIMIT ?`).bind(b.id, now(), n).all();
+      WHERE board_id = ? AND deleted_at IS NULL AND is_secret = 0 AND is_hidden = 0 AND published_at <= ? ORDER BY published_at DESC, id DESC LIMIT ?`).bind(b.id, now(), n).all();
     const ids = results.map((p) => p.id);
     const atts = ids.length ? (await db.prepare(`SELECT post_id, id FROM uploads WHERE site = ? AND kind = 'IMAGE' AND post_id IN (${ids.map(() => '?').join(',')}) ORDER BY sort`).bind(site, ...ids).all()).results : [];
     const attOf = (id) => atts.find((a) => a.post_id === id);

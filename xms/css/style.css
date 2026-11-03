@@ -325,6 +325,25 @@ tr.dragging td { background: var(--surface); }
 .agree .all { font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .agree-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .crumb { margin: 0 0 8px; font-size: 14px; }
+/* 글 관리 (관리자) */
+.board-head .manage-btn { margin-left: auto; }
+.board-head .manage-btn + .btn { margin-left: 8px; }
+.manage-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 16px; padding: 10px 12px 10px 16px; border: 1px solid var(--brand); border-radius: var(--radius-sm); background: var(--brand-soft); animation: pop .25s var(--ease) both; }
+.manage-bar .check { font-weight: 700; }
+.manage-bar small { margin-left: 4px; font-weight: 500; color: var(--sub); }
+.manage-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.manage-acts .btn:disabled { opacity: .45; cursor: default; }
+.pick { display: none; }
+.managing .pick { display: grid; place-items: center; }
+.managing .pcard, .managing .blog-row { position: relative; }
+.managing .pcard .pick, .managing .blog-row .pick { position: absolute; top: 10px; left: 10px; z-index: 2; width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(0, 0, 0, .15); }
+.managing .blog-row .pick { position: static; float: left; margin: 2px 12px 0 0; box-shadow: none; background: none; width: auto; height: auto; }
+.pick input { width: 20px; height: 20px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+.c-pick { width: 1%; }
+.managing [data-pid] { cursor: pointer; }
+.managing .picked { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-sm); }
+.is-hidden { opacity: .5; }
+.tag.gray { background: var(--line-2); color: var(--sub); }
 /* 가입 완료 */
 .welcome { text-align: center; }
 .welcome-mark { width: 64px; height: 64px; margin: 4px auto 16px; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: #fff; animation: pop .4s var(--ease) both; }

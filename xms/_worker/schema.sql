@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS posts (
   published_at INTEGER NOT NULL,        -- 미래 = 예약 발행(그때까지 숨김)
   created_at   INTEGER NOT NULL,
   updated_at   INTEGER NOT NULL,
+  is_hidden    INTEGER NOT NULL DEFAULT 0,   -- 관리자가 "글 관리" 로 숨긴 글 (관리자만 보임)
   deleted_at   INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_posts_board ON posts(board_id, deleted_at, is_notice, published_at);

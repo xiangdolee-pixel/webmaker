@@ -199,3 +199,51 @@ onForm('comment', async (form, data) => {
   await api(`/posts/${form.dataset.post}/comments`, { method: 'POST', data });
   location.reload();
 });
+
+// 글 관리 (관리자): [글 관리] → 고르는 칸 · 위 막대 [전체 선택 · 숨김 · 보이기 · 삭제 · 끝내기]
+const mbar = $('[data-manage-bar]');
+if (mbar) {
+  const box = mbar.closest('.pub-box');
+  const picks = () => $$('.pick input', box);
+  const chosen = () => picks().filter((i) => i.checked).map((i) => +i.value);
+  const sync = () => {
+    const n = chosen().length;
+    $('[data-pick-count]', mbar).textContent = n ? `${n}개 골랐습니다` : '';
+    $('[data-pick-all]', mbar).checked = n > 0 && n === picks().length;
+    $$('[data-act]', mbar).forEach((b) => { b.disabled = !n; });
+    $$('[data-pid]', box).forEach((el) => el.classList.toggle('picked', !!el.querySelector('.pick input:checked')));
+  };
+  const setMode = (on) => {
+    box.classList.toggle('managing', on);
+    mbar.hidden = !on;
+    $('[data-manage]', box).hidden = on;
+    if (!on) picks().forEach((i) => { i.checked = false; });
+    sync();
+  };
+  $('[data-manage]', box).addEventListener('click', () => setMode(true));
+  $('[data-manage-end]', mbar).addEventListener('click', () => setMode(false));
+  $('[data-pick-all]', mbar).addEventListener('change', (e) => { picks().forEach((i) => { i.checked = e.target.checked; }); sync(); });
+  // 고르는 중에는 글을 눌러도 열리지 않고 골라진다
+  box.addEventListener('click', (e) => {
+    if (!box.classList.contains('managing')) return;
+    const item = e.target.closest('[data-pid]');
+    if (!item || e.target.closest('.pick')) { sync(); return; }
+    e.preventDefault();
+    const i = item.querySelector('.pick input');
+    if (i) { i.checked = !i.checked; sync(); }
+  });
+  box.addEventListener('change', (e) => { if (e.target.closest('.pick')) sync(); });
+  $$('[data-act]', mbar).forEach((btn) => btn.addEventListener('click', () => {
+    const ids = chosen();
+    if (!ids.length) return;
+    const act = btn.dataset.act;
+    const run = () => busy(btn, null, async () => {
+      const r = await api(`/boards/${mbar.dataset.board}/manage`, { method: 'POST', data: { ids, action: act } });
+      toast(`${r.changed}개 글을 ${{ hide: '숨겼습니다', show: '보이게 했습니다', delete: '지웠습니다' }[act]}.`);
+      setTimeout(() => location.reload(), 400);
+    });
+    if (act === 'delete') confirmInline(btn, `고른 글 <b>${ids.length}개</b>를 지웁니다. 지운 글은 이 화면에서 되살릴 수 없습니다.`, '삭제', run);
+    else run();
+  }));
+  sync();
+}

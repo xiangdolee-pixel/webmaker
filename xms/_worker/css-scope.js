@@ -44,7 +44,7 @@ ${SCOPE} .pub-box{background:none;border:0;box-shadow:none;padding:0;max-width:n
 ${SCOPE} .pub-box.narrow{max-width:460px;margin:0 auto}
 ${SCOPE} h1,${SCOPE} h2,${SCOPE} h3{color:inherit}
 ${SCOPE} a{color:inherit}
-${SCOPE} input,${SCOPE} select,${SCOPE} textarea,${SCOPE} button{font-family:var(--font)}
+${SCOPE} *:not(code):not(pre):not(kbd):not(samp){font-family:var(--font)}
 ${SCOPE} .btn.primary,${SCOPE} .btn.dark{color:var(--brand-ink)}
 `;
 

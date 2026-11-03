@@ -163,7 +163,7 @@ async function publicPages(env, site) {
     if (!canBy(b.list_levels, b.allow_guest_list, guest)) continue;
     add(`/board/${b.slug}`, 0);
     if (!canBy(b.read_levels, b.allow_guest_read, guest)) continue;
-    const { results: posts } = await db.prepare('SELECT id, updated_at FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_secret = 0 AND published_at <= ? ORDER BY id DESC LIMIT 500')
+    const { results: posts } = await db.prepare('SELECT id, updated_at FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_secret = 0 AND is_hidden = 0 AND published_at <= ? ORDER BY id DESC LIMIT 500')
       .bind(b.id, now()).all();
     posts.forEach((p) => add(`/board/${b.slug}/${p.id}`, p.updated_at));
   }
@@ -206,7 +206,7 @@ export async function serveRss(env, site, origin) {
   let posts = [];
   if (open.length) {
     const { results } = await db.prepare(`SELECT id, board_id, title, content_html, writer_name, published_at FROM posts
-      WHERE board_id IN (${open.map(() => '?').join(',')}) AND deleted_at IS NULL AND is_secret = 0 AND published_at <= ?
+      WHERE board_id IN (${open.map(() => '?').join(',')}) AND deleted_at IS NULL AND is_secret = 0 AND is_hidden = 0 AND published_at <= ?
       ORDER BY published_at DESC, id DESC LIMIT 50`).bind(...open.map((b) => b.id), now()).all();
     posts = results;
   }
