@@ -4,6 +4,8 @@ import PRIVACY_TXT from './docs/privacy.txt';
 
 export const DAY = 86400000;
 export const now = () => Date.now();
+// 배포 번호: 배포할 때마다 바뀐다 → css · js 주소 뒤에 ?v=번호 를 붙여, 배포하면 브라우저가 바로 새 파일을 받게 한다
+export const verOf = (env) => String(env.VER?.id || 'dev').slice(0, 8);
 export const PBKDF2_ITER = 10000; // xim 과 같은 값 (계정을 옮겨도 비밀번호가 맞도록)
 
 export class HttpError extends Error {

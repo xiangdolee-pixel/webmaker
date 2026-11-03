@@ -1,7 +1,7 @@
 // xms 방문자 화면 · API — 고객 사이트 주소 아래 /member/* · /board/* · /xms-api/*
 import {
   DAY, now, bad, forbidden, notFound, HttpError, json, html, esc, str, body, siteSettings, MEMBER_COLUMNS, canBy, levelBit,
-  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit,
+  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit, verOf,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 import { postAttachments, syncPostFiles, removePostFiles } from './uploads.js';
@@ -64,9 +64,9 @@ async function page(ctx, title, content, opts = {}) {
 <title>${esc(title)} - ${esc(info.name)}</title>
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ''}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/xms/css/style.css">
-<script type="module" src="/xms/js/public.js"></script>
-<script src="/xms/js/account.js" defer></script>
+<link rel="stylesheet" href="/xms/css/style.css?v=${verOf(env)}">
+<script type="module" src="/xms/js/public.js?v=${verOf(env)}"></script>
+<script src="/xms/js/account.js?v=${verOf(env)}" defer></script>
 </head><body class="pub">
 <header class="pub-top"><div class="pub-in">
   <a class="pub-brand" href="/">${esc(info.name)}</a>

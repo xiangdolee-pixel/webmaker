@@ -112,6 +112,8 @@ export default {
     return res;
   },
 };
+// xms 배포 번호 (site-head 가 알려 줌) → ?v=번호. 배포하면 방문자 브라우저가 바로 새 파일을 받는다
+const vq = (data) => (data?.ver && /^[\w-]+$/.test(data.ver) ? `?v=${data.ver}` : '');
 function decodeURIComponentSafe(s) { try { return decodeURIComponent(s); } catch { return s; } }
 
 async function handle(request, env) {
@@ -161,7 +163,7 @@ async function embedPage(request, env) {
         // 틀 페이지의 상대 주소(css/style.css 등)가 게시판 주소 밑에서도 사이트 기준으로 풀리도록
         el.prepend('<base href="/">', { html: true });
         el.append(`<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/xms/css/embed.css">\n<script type="module" src="/xms/js/public.js"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
+<link rel="stylesheet" href="/xms/css/embed.css${vq(data)}">\n<script type="module" src="/xms/js/public.js${vq(data)}"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
       },
     })
     .transform(new Response(shell.body, { status: d.status || 200, headers }));
@@ -261,7 +263,7 @@ async function withXms(res, request, env, data) {
       const tags = [];
       // 계정 버튼 스타일은 파일로 따로 받지 않고 바로 넣는다
       if (data?.account_css) tags.push(`<style id="xa-style">${data.account_css}</style>`);
-      tags.push('<script src="/xms/js/account.js" defer></script>');
+      tags.push(`<script src="/xms/js/account.js${vq(data)}" defer></script>`);
       tags.push('<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml">');
       for (const v of h.verify || []) tags.push(`<meta name="${attr(v.name)}" content="${attr(v.content)}">`);
       if (h.favicon) {
@@ -273,7 +275,7 @@ async function withXms(res, request, env, data) {
       if (ogDesc) tags.push(`<meta property="og:description" content="${attr(ogDesc)}">`);
       if (ogImage) tags.push(`<meta property="og:image" content="${attr(ogImage)}">`, '<meta property="og:image:width" content="1200">');
       if (home && data?.popups?.length) {
-        tags.push(`<script>window.__XMS_POPUPS=${JSON.stringify(data.popups).replace(/</g, '\\u003c')};</script>`, '<script src="/xms/js/popup.js" defer></script>');
+        tags.push(`<script>window.__XMS_POPUPS=${JSON.stringify(data.popups).replace(/</g, '\\u003c')};</script>`, `<script src="/xms/js/popup.js${vq(data)}" defer></script>`);
       }
       el.append(tags.join('\n'), { html: true });
       // 설명 태그가 아예 없던 페이지에는 검색엔진 설명글을 넣는다

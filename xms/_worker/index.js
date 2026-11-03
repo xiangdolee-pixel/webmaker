@@ -10,7 +10,7 @@
 //
 //   바인딩: DB(D1 xms), XIM_DB(D1 xim: 사이트 · 수정요청), ASSETS
 import { WorkerEntrypoint } from 'cloudflare:workers';
-import { fail, whoAmI, now, createSession, html } from './lib.js';
+import { fail, whoAmI, now, createSession, html, verOf } from './lib.js';
 import { adminApi } from './admin-api.js';
 import { publicApi, publicPage, visibleMenus } from './public.js';
 import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site-meta.js';
@@ -26,13 +26,25 @@ async function accountCss(env) {
   return accountCssText;
 }
 
-// 화면용 css · js: 5분은 바로 쓰고, 그 뒤로는 쓰면서 뒤에서 새것을 확인한다 (페이지를 옮길 때마다 다시 받지 않게)
-async function asset(env, path, cache = 'public, max-age=300, stale-while-revalidate=86400') {
+// 화면용 css · js: ?v=번호 가 붙은 주소는 1년 그대로(번호가 바뀌면 새 주소), 번호 없는 옛 주소는 1분만
+//   js 안의 상대 import('./x.js') 에도 같은 번호를 붙여, 함께 바뀐 파일끼리 섞이지 않게 한다
+async function asset(env, path, cache, versioned = false) {
   const res = await env.ASSETS.fetch(new Request(`https://assets${path}`));
-  const out = new Response(res.body, res);
-  out.headers.set('Cache-Control', cache);
+  let out;
+  if (res.ok && /\.js$/.test(path)) {
+    const v = verOf(env);
+    const js = (await res.text()).replace(/((?:from|import)\s*\(?\s*['"])(\.\/[\w-]+\.js)(['"])/g, `$1$2?v=${v}$3`);
+    out = new Response(js, res);
+    out.headers.delete('Content-Length');
+  } else out = new Response(res.body, res);
+  out.headers.set('Cache-Control', cache || (versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=60'));
   return out;
 }
+// 관리 화면 html: /xms/ 아래 css · js 주소에 배포 번호를 붙인다
+const withVer = (env, res) => new HTMLRewriter()
+  .on('link[href^="/xms/"]', { element(el) { el.setAttribute('href', `${el.getAttribute('href')}?v=${verOf(env)}`); } })
+  .on('script[src^="/xms/"]', { element(el) { el.setAttribute('src', `${el.getAttribute('src')}?v=${verOf(env)}`); } })
+  .transform(res);
 
 export class Cms extends WorkerEntrypoint {
   async fetch(request) {
@@ -49,7 +61,7 @@ export class Cms extends WorkerEntrypoint {
       if (fm) return await serveFile(env, site, fm[1]);
       const um = p.match(/^[/]xms[/]upload[/]([0-9a-f]{32})$/);
       if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1');
-      if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+      if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': url.searchParams.has('v') ? 'public, max-age=31536000, immutable' : 'public, max-age=60' } });
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
       if (p === '/rss.xml') return await serveRss(env, site, url.origin);
@@ -68,12 +80,12 @@ export class Cms extends WorkerEntrypoint {
         }
         const res = await asset(env, '/admin/', 'no-cache');
         res.headers.set('X-Robots-Tag', 'noindex');
-        return res;
+        return withVer(env, res);
       }
       if (p.startsWith('/xms/')) {
         const rest = p.slice(4);
         if (!/^\/(css|js)\/[\w.-]+$/.test(rest)) return new Response('Not found', { status: 404 });
-        return await asset(env, rest);
+        return await asset(env, rest, null, url.searchParams.has('v'));
       }
 
       const me = await whoAmI(env.DB, request, site);
@@ -90,7 +102,7 @@ export class Cms extends WorkerEntrypoint {
           if (me.level !== 1) headCache.set(key, data);
         }
         const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1 };
-        return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env) }),
+        return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await uploadApi(ctx);
