@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>실시간 시세 — 지수 · 코인 TOP 20</title>
-  <meta name="description" content="코스피·코스닥·S&P500·나스닥·다우존스 지수와 시가총액 상위 20개 코인 실시간 시세">
-  <meta name="theme-color" content="#0d1117">
+  <title>실시간 시세 — 지수 · 원자재 · 코인 TOP 20</title>
+  <meta name="description" content="코스피·코스닥·S&P500·나스닥·다우존스 지수, 금·은·원유 등 원자재, 시가총액 상위 20개 코인 실시간 시세와 차트">
+  <meta name="theme-color" content="#ffffff">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="css/style.css">
@@ -23,22 +23,82 @@
 
   <main class="wrap">
     <section class="sec">
+      <div class="hours" id="hours">
+        <div class="card hr" id="hr-kr">
+          <div class="hr-top"><b>국내 증시</b><em class="badge close" data-st>—</em></div>
+          <p class="hr-main">09:00 ~ 15:30 <small>한국시간</small></p>
+          <p class="hr-sub">평일 · 코스피 · 코스닥</p>
+          <p class="hr-left" data-left></p>
+        </div>
+        <div class="card hr" id="hr-us">
+          <div class="hr-top"><b>미국 증시</b><em class="badge close" data-st>—</em></div>
+          <p class="hr-main"><span data-kst>23:30 ~ 06:00</span> <small>한국시간</small></p>
+          <p class="hr-sub">09:30 ~ 16:00 뉴욕시간 · <span data-dst></span></p>
+          <p class="hr-left" data-left></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
       <div class="sec-head">
         <h2 class="sec-title">주요 지수</h2>
-        <span class="sec-note">네이버 증권 기준</span>
+        <span class="sec-note">네이버 증권 기준 · 누르면 차트</span>
       </div>
-      <div class="idx-grid" id="indices">
-        <div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div>
+      <div class="tile-grid idx-grid" id="indices">
+        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">환율</h2>
+        <span class="sec-note">네이버 증권 · 하나은행 고시 기준</span>
+      </div>
+      <div class="tile-grid fx-grid" id="fxs">
+        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">원자재</h2>
+        <span class="sec-note">네이버 증권 기준 · 선물 · 약 10분 지연</span>
+      </div>
+      <div class="tile-grid cm-grid" id="cmdty">
+        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">거래대금 상위 종목</h2>
+        <div class="seg seg-sm" id="top-seg" role="tablist">
+          <span class="seg-ind" aria-hidden="true"></span>
+          <button type="button" role="tab" data-market="kr" class="on">국내</button>
+          <button type="button" role="tab" data-market="us">미국</button>
+        </div>
+      </div>
+      <div class="card list-card">
+        <div class="list-head st-row">
+          <span class="c-rank">#</span>
+          <span class="c-name">종목명</span>
+          <span class="c-price">현재가</span>
+          <span class="s-chg">전일대비</span>
+          <span class="s-vol">거래량</span>
+          <span class="s-val">거래대금</span>
+        </div>
+        <ol class="coin-list" id="top"></ol>
+        <p class="list-note" id="top-note"></p>
       </div>
     </section>
 
     <section class="sec">
       <div class="sec-head">
         <h2 class="sec-title">코인 시가총액 TOP 20</h2>
-        <span class="sec-note"><em class="badge live">실시간</em> 바이낸스 · <em class="badge slow">1분</em> 코인게코</span>
+        <span class="sec-note"><em class="badge live">실시간</em> 바이낸스 · <em class="badge slow">1분</em> 코인게코 · 원화 업비트</span>
       </div>
-      <div class="card coin-card">
-        <div class="coin-head">
+      <div class="card list-card">
+        <div class="list-head coin-row">
           <span class="c-rank">#</span>
           <span class="c-name">코인</span>
           <span class="c-price">가격</span>
@@ -49,8 +109,44 @@
       </div>
     </section>
 
-    <p class="foot">지수: 네이버 증권 · 코인 순위·시가총액: CoinGecko · 실시간 가격: Binance · 원화는 하나은행 고시 환율로 계산<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
+    <p class="foot">지수·원자재·종목: 네이버 증권 (국내 거래대금 상위는 ETF·ETN 제외, 미국은 나스닥·뉴욕·아멕스 합산) · 코인 순위·시가총액: CoinGecko · 달러 실시간 가격: Binance · 원화: 업비트 원화 시세(업비트에 없는 코인은 ≈ 업비트 USDT 시세로 환산) · 원/달러: 하나은행 고시<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
   </main>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-bg" data-close></div>
+    <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="ch-name">
+      <div class="ch-head">
+        <img class="ch-icon" id="ch-icon" alt="" width="36" height="36" hidden>
+        <div class="ch-title">
+          <h3 id="ch-name"></h3>
+          <span id="ch-sub"></span>
+        </div>
+        <button class="ch-close" type="button" data-close aria-label="닫기">×</button>
+      </div>
+      <div class="ch-price">
+        <b id="ch-price"></b>
+        <span id="ch-krw"></span>
+        <span id="ch-chg"></span>
+      </div>
+      <div class="seg" id="ch-seg" role="tablist">
+        <span class="seg-ind" aria-hidden="true"></span>
+        <button type="button" role="tab" data-range="1d" class="on">1일</button>
+        <button type="button" role="tab" data-range="1w">1주</button>
+        <button type="button" role="tab" data-range="1m">1달</button>
+        <button type="button" role="tab" data-range="1y">1년</button>
+      </div>
+      <div class="ch-plot" id="ch-plot">
+        <canvas id="ch-canvas"></canvas>
+        <div class="ch-tip" id="ch-tip" hidden><b></b><span></span></div>
+        <div class="ch-msg" id="ch-msg"></div>
+      </div>
+      <dl class="ch-stats" id="ch-stats">
+        <div><dt>기간 고가</dt><dd id="st-high">—</dd></div>
+        <div><dt>기간 저가</dt><dd id="st-low">—</dd></div>
+        <div><dt>기간 등락</dt><dd id="st-chg">—</dd></div>
+      </dl>
+    </div>
+  </div>
 
   <script src="js/main.js"></script>
 </body>
