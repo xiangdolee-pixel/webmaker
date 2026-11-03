@@ -89,10 +89,90 @@ const config = {
     ...(fs.existsSync(path.join(OUT, '404.html')) && { not_found_handling: '404-page' }),
   },
 };
-// 폴더에 _worker/index.js 가 있으면 정적 파일 + 그 Worker(/api 등)를 같이 올린다.
+// ── xim · xms 자동 연결 (사용자 지시 2026-11-03: 디자인해서 올리기만 하면 xim 등록 · 메뉴 · 로그인이 붙어야 한다) ──
+//   대상: xim · xms 자신, 자기 Worker(_worker/index.js)가 있는 폴더, .xim-off 파일이 있는 폴더를 뺀 모든 사이트.
+//   ① 공통 사이트 Worker(xim/_worker/site-worker.js)를 main 으로: 정지 확인 · /admin · /member · /board · 계정 버튼 · 메뉴 바꿔 끼우기
+//   ② dist 의 html(원본은 그대로)에서 헤더 첫 <nav> 에 data-xms-menu, 그 안 링크에 data-xms-item(버튼 모양 cta/btn 빼고),
+//      nav 바로 뒤에 계정 버튼 자리 <span data-xms-account> 를 넣는다 — 이미 표시가 있으면 손대지 않는다.
+//   ③ .xim-connect.json(리포 밖으로 안 나감, .gitignore)에 사이트 이름 · 첫 화면 메뉴를 적어 두면 deploy.mjs 가 xim 등록 · xms 메뉴 가져오기를 한다.
+const CONNECT_FILE = path.join(ROOT, '.xim-connect.json');
+const OWN_WORKER = fs.existsSync(path.join(SRC, '_worker', 'index.js'));
+const CONNECT = !['xim', 'xms'].includes(slug) && !OWN_WORKER && !fs.existsSync(path.join(SRC, '.xim-off'));
+fs.rmSync(CONNECT_FILE, { force: true });
+
+function markHtml(html) {
+  let out = html;
+  if (!/data-xms-menu/.test(out)) {
+    const h = out.search(/<header[\s>]/i);
+    const hEnd = h >= 0 ? out.indexOf('</header>', h) : -1;
+    const rel = hEnd > h ? out.slice(h, hEnd).search(/<nav[\s>]/i) : -1;
+    if (rel >= 0) {
+      const ns = h + rel;
+      const tagEnd = out.indexOf('>', ns);
+      const ne = out.indexOf('</nav>', tagEnd);
+      if (ne > tagEnd) {
+        const inner = out.slice(tagEnd + 1, ne).replace(/<a\b([^>]*)>/gi, (m, attrs) =>
+          (/data-xms-item|class\s*=\s*["'][^"']*\b(cta|btn|button)/i.test(attrs) ? m : `<a${attrs} data-xms-item>`));
+        out = `${out.slice(0, tagEnd)} data-xms-menu>${inner}${out.slice(ne)}`;
+      }
+    }
+  }
+  if (!/data-xms-account/.test(out)) {
+    const m = out.match(/<nav\b[^>]*data-xms-menu[\s\S]*?<\/nav>/i);
+    if (m) out = out.replace(m[0], `${m[0]}\n<span class="xms-account" data-xms-account></span>`);
+  }
+  return out;
+}
+const textOf = (h) => h.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+function menusFrom(html) {
+  const nav = (html.match(/<nav\b[^>]*data-xms-menu[^>]*>([\s\S]*?)<\/nav>/i) || [])[1] || '';
+  const out = [];
+  for (const m of nav.matchAll(/<a\b([^>]*\bdata-xms-item\b[^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const href = ((m[1].match(/\bhref\s*=\s*["']([^"']*)["']/i) || [])[1] || '').trim();
+    const title = textOf(m[2]).slice(0, 40);
+    if (!title) continue;
+    if (/^https?:\/\//i.test(href)) { out.push({ title, type: 'LINK', path: href }); continue; }
+    if (/^(mailto|tel|javascript):/i.test(href)) continue;
+    let p = href.replace(/^\.\//, '');
+    p = p.replace(/^index\.html?(?=#|$)/i, '');
+    if (!p) p = '/';
+    else if (p.startsWith('#')) p = `/${p}`;
+    else if (!p.startsWith('/')) p = `/${p}`;
+    out.push({ title, type: 'PAGE', path: p });
+  }
+  return out;
+}
+
+if (CONNECT) {
+  let marked = 0;
+  (function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!/\.html?$/i.test(entry.name)) continue;
+      const before = fs.readFileSync(full, 'utf8');
+      const after = markHtml(before);
+      if (after !== before) { fs.writeFileSync(full, after); marked++; }
+    }
+  })(OUT);
+  const index = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
+  const title = textOf((index.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '') || slug;
+  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), menus: menusFrom(index) }, null, 2));
+  config.main = './xim/_worker/site-worker.js';
+  config.assets.binding = 'ASSETS';
+  config.assets.run_worker_first = true;
+  config.vars = { XIM_SITE: name };
+  config.services = [
+    { binding: 'XIM', service: 'xim', entrypoint: 'Engine' },
+    { binding: 'XMS', service: 'xms', entrypoint: 'Cms' },
+  ];
+  console.log(`[build] xim · xms 자동 연결: 공통 사이트 Worker + 로그인 버튼 · 메뉴 표시${marked ? ` (html ${marked}개에 표시를 넣음)` : ''}`);
+}
+
+// 폴더에 _worker/index.js 가 있으면 정적 파일 + 그 Worker(/api 등)를 같이 올린다 (이런 폴더는 xim 자동 연결에서 빠진다).
 //   _worker/ 는 웹에 공개하지 않고(위 SKIP_DIRS), _worker/bindings.json 의 D1 · KV 연결을 그대로 붙인다.
 const WORKER = path.join(SRC, '_worker', 'index.js');
-if (fs.existsSync(WORKER)) {
+if (!CONNECT && fs.existsSync(WORKER)) {
   config.main = `./${slug}/_worker/index.js`;
   config.assets.binding = 'ASSETS';
   const extra = path.join(SRC, '_worker', 'bindings.json');

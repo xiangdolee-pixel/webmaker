@@ -29,7 +29,7 @@ Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `sit
 ## 구조
 
 ```
-고객 사이트 Worker (xim/_worker/site-worker.js 복사본)
+고객 사이트 Worker (xim/_worker/site-worker.js — build.mjs 가 모든 사이트에 붙임)
   /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  →  xms (Cms 엔트리, X-Xim-Site 헤더)
   정지 확인 → xim Engine
 xms Worker

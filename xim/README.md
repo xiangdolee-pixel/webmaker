@@ -30,26 +30,19 @@ xim Worker (D1 "xim", XMS_DB = D1 "xms")
 
 - `_worker/index.js` — xim Worker (운영자 API + Engine)
 - `_worker/schema.sql` — D1 스키마 (여러 번 실행해도 안전)
-- `_worker/site-worker.js` — 고객 사이트에 복사해 넣는 Worker
+- `_worker/site-worker.js` — 모든 고객 사이트가 함께 쓰는 Worker (build.mjs 가 main 으로 붙인다, 폴더에 복사하지 않음)
 - `js/qr.js` — QR 생성기 (OTP 비밀키를 외부 QR 서비스로 보내지 않으려고 직접 그림)
 - `index.html`, `js/app.js` — 운영자 화면, `js/common.js` · `css/style.css` 는 둘이 같이 씀
 
-## 사이트를 xim 에 연결하기 (Claude 가 함)
+## 사이트를 xim 에 연결하기 — 자동
 
-1. xim 에서 사이트 만들기 (사이트 ID = WebMaker2 폴더 이름)
-2. `<폴더>/_worker/index.js` ← `xim/_worker/site-worker.js` 복사
-3. `<폴더>/_worker/bindings.json`
-   ```json
-   {
-     "vars": { "XIM_SITE": "<폴더>" },
-     "services": [
-       { "binding": "XIM", "service": "xim", "entrypoint": "Engine" },
-       { "binding": "XMS", "service": "xms", "entrypoint": "Cms" }
-     ],
-     "assets": { "run_worker_first": true }
-   }
-   ```
-4. `node deploy.mjs <폴더>`
+디자인한 폴더를 `node deploy.mjs <폴더>` 로 올리면 끝이다.
+
+1. build.mjs — 공통 Worker(`_worker/site-worker.js`) + 바인딩(XIM · XMS, `XIM_SITE` = 폴더 이름)을 붙이고, dist html 헤더 메뉴에 xms 표시 · 계정 버튼 자리를 넣는다.
+2. deploy.mjs — xim 에 사이트가 없으면 등록(이름 = `<title>`, 용량 500MB), xms 에 헤더 메뉴를 처음 한 번 가져온다.
+3. 그다음은 xim 사이트 카드에서 고객 지정 · 도메인 · 업체 관리자 계정을 정하면 된다.
+
+빠지는 폴더: xim · xms, 자기 `_worker/index.js` 가 있는 폴더, `.xim-off` 파일이 있는 폴더.
 
 ## 폰을 잃어버려 OTP 를 못 넣을 때
 

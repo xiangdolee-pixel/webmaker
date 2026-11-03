@@ -158,3 +158,9 @@ CREATE TABLE IF NOT EXISTS login_fails (
   at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_xms_login_fails ON login_fails(key, at);
+
+-- 배포할 때(deploy.mjs) 사이트 헤더 메뉴를 xms 메뉴로 가져온 사이트 — 한 번만 가져오기 위한 표시
+CREATE TABLE IF NOT EXISTS site_import (
+  site        TEXT PRIMARY KEY,
+  imported_at INTEGER NOT NULL
+);

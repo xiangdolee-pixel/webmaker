@@ -86,7 +86,11 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 ## xim (고객 사이트 통합 관리)
 
 - `xim/` = 운영자 관리 화면 + 공용 엔진(Worker `xim`, D1 `xim`). 구조 · 연결 방법 · 운영 명령은 `xim/README.md`.
-- 새 고객 사이트를 만들면 xim 에 등록하고 `xim/_worker/site-worker.js` 를 `<폴더>/_worker/index.js` 로 복사 + `bindings.json` 을 넣어 연결한다(정지 · /admin · 수정요청이 붙는다).
+- **새 고객 사이트는 디자인해서 `node deploy.mjs <폴더>` 로 올리기만 하면 자동으로 xim · xms 에 연결된다** (사용자 지시 2026-11-03 — "매번 프롬프트로 연결해 달라고 하면 xim 이 있을 이유가 없다"):
+  - build.mjs: 공통 사이트 Worker(`xim/_worker/site-worker.js`)를 main 으로 붙이고(폴더에 복사하지 않는다), dist html 의 헤더 첫 `<nav>` 에 `data-xms-menu` · 링크에 `data-xms-item` · 계정 버튼 자리를 넣는다(원본은 그대로, 이미 표시가 있으면 손대지 않음).
+  - deploy.mjs: 처음이면 xim 에 사이트 등록(이름 = index.html `<title>`), 헤더 메뉴 링크를 xms 메뉴 목록으로 한 번 가져온다. 그 뒤 메뉴 · 게시판은 업체가 xms 에서 고친다.
+  - 빠지는 폴더: xim · xms 자신, 자기 서버 Worker(`_worker/index.js`)가 있는 폴더(예: xip), `.xim-off` 파일을 둔 폴더.
+  - 헤더 메뉴 중 버튼 모양(class 에 cta · btn · button)은 xms 메뉴로 바뀌지 않고 그대로 남는다(예: "후원하기").
 - "xim 요청 처리해줘" → `node deploy.mjs --wrangler d1 execute xim --remote --json --command "..."` 로 처리할 수정요청(status != 'done')을 읽고, 해당 폴더를 고쳐 배포한 뒤 요청 상태 · 답변을 갱신한다.
 - 배포 순서: xim · xms 가 먼저 있어야 고객 사이트 배포가 된다(서비스 바인딩).
 
@@ -101,5 +105,5 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 - 서비스(홈페이지)와 xms 는 **같은 로그인(SSO)** — 같은 주소의 `xms_sess` 쿠키. 홈페이지에서 로그인하면 관리 화면도, 관리 화면에서 로그인하면 홈페이지도 로그인돼 있다.
 - **관리 화면(/admin/, xms)은 레벨1(관리자)만.** 다른 등급은 홈페이지 로그인은 되지만 관리 화면은 막힌다.
 - 로그인하면 헤더에 **사람 모양 동그라미 버튼** → 누르면 `관리` · `유지보수 요청`(레벨1만) / `내 정보` / `로그아웃`. 로그인 전에는 `로그인` 링크.
-- 구현: 사이트 Worker(`xim/_worker/site-worker.js` 복사본)가 모든 html 에 `/xms/js/account.js` 를 자동으로 넣는다. **새 홈페이지를 만들 때 헤더 안(메뉴 오른쪽, 모바일 햄버거 옆 — 모바일에서도 늘 보이는 곳)에 `<span data-xms-account></span>` 자리를 꼭 만든다.** 자리가 없으면 화면 오른쪽 위에 떠 있는 버튼으로 나온다.
+- 구현: 공통 사이트 Worker 가 모든 html 에 `/xms/js/account.js` 를 자동으로 넣는다. 자리(`<span data-xms-account></span>`)는 build.mjs 가 헤더 메뉴 바로 뒤에 자동으로 넣지만, **모바일에서도 늘 보이도록 디자인할 때 헤더 안(햄버거 옆)에 직접 두는 게 가장 좋다.** 헤더 `<nav>` 가 없으면 화면 오른쪽 위에 떠 있는 버튼으로 나온다.
 - 색: 자리 요소에 `--xa-bg`(동그라미) · `--xa-fg`(사람) CSS 변수로 사이트 색에 맞춘다. 로그인 링크 글자는 `.xa-login` 으로 사이트 메뉴 글꼴에 맞춘다. 예: `sjccc/css/style.css` 의 `.gnb-account`.

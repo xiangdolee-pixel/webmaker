@@ -22,3 +22,4 @@ _src/
 
 # 로컬 Pages Functions 비밀값
 .dev.vars
+.xim-connect.json

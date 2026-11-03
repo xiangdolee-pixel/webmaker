@@ -37,5 +37,53 @@ else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
 else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
 else {
   run('node', ['build.mjs', arg]);
+  registerInXim();
   run('npx', ['wrangler', 'deploy']);
+}
+
+// build.mjs 가 xim 연결 대상이라고 적어 둔 사이트를 xim 에 등록하고(처음 한 번), 헤더 메뉴를 xms 메뉴 목록으로 가져온다(처음 한 번).
+// 이미 등록된 사이트 · 이미 가져온 메뉴는 건드리지 않는다. 실패해도 배포는 계속한다(사이트 Worker 는 등록 전에도 정상으로 열린다).
+function registerInXim() {
+  const file = path.join(ROOT, '.xim-connect.json');
+  if (!fs.existsSync(file)) return;
+  const c = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+  const t = Date.now();
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xim-connect-'));
+  const ximSql = path.join(tmp, 'xim.sql');
+  fs.writeFileSync(ximSql, `INSERT INTO sites (slug, name, customer_id, domain, status, quota_mb, memo, created_at)
+SELECT ${q(c.slug)}, ${q(c.name)}, NULL, '', 'active', 500, '배포할 때 자동 등록', ${t}
+WHERE NOT EXISTS (SELECT 1 FROM sites WHERE slug = ${q(c.slug)});\n`);
+  const lines = [`CREATE TABLE IF NOT EXISTS site_import (site TEXT PRIMARY KEY, imported_at INTEGER NOT NULL);`];
+  if (c.menus.length) {
+    const rows = c.menus.map((m, i) => `SELECT ${q(c.slug)} AS site, NULL AS parent_id, ${q(m.title)} AS title, ${q(m.type)} AS menu_type, ${q(m.path)} AS path, NULL AS board_id, ${i + 1} AS sort, 1 AS visible, NULL AS read_levels, 1 AS allow_guest_read`).join('\nUNION ALL ');
+    lines.push(`INSERT INTO menus (site, parent_id, title, menu_type, path, board_id, sort, visible, read_levels, allow_guest_read)
+SELECT * FROM (${rows})
+WHERE NOT EXISTS (SELECT 1 FROM site_import WHERE site = ${q(c.slug)}) AND NOT EXISTS (SELECT 1 FROM menus WHERE site = ${q(c.slug)});`);
+  }
+  lines.push(`INSERT OR IGNORE INTO site_import (site, imported_at) VALUES (${q(c.slug)}, ${t});`);
+  const xmsSql = path.join(tmp, 'xms.sql');
+  fs.writeFileSync(xmsSql, `${lines.join('\n')}\n`);
+  const sh = (cmd) => spawnSync(cmd, { cwd: ROOT, env, shell: true, encoding: 'utf8' });
+  const soft = (db, f) => sh(`npx wrangler d1 execute ${db} --remote --file "${f}" -y`);
+  // 상태 조회 (slug 는 build.mjs 가 영문 소문자 · 숫자 · 하이픈으로만 만든다)
+  const count = (db, sql) => {
+    const r = sh(`npx wrangler d1 execute ${db} --remote --json --command "${sql}"`);
+    try { return Object.values(JSON.parse(r.stdout.slice(r.stdout.indexOf('[')))[0].results[0])[0]; } catch { return null; }
+  };
+  try {
+    if (!/^[a-z0-9-]+$/.test(c.slug)) throw new Error(`사이트 이름이 이상합니다: ${c.slug}`);
+    const hadSite = count('xim', `SELECT COUNT(*) AS n FROM sites WHERE slug = '${c.slug}'`);
+    const hadMenus = count('xms', `SELECT COUNT(*) AS n FROM menus WHERE site = '${c.slug}'`);
+    const a = soft('xim', ximSql);
+    const b = soft('xms', xmsSql);
+    if (a.status || b.status) throw new Error((a.stderr || b.stderr || '').slice(0, 300));
+    const site = hadSite ? '이미 등록돼 있음' : '새로 등록함';
+    const menus = hadMenus ? `메뉴 ${hadMenus}개가 이미 있어 건드리지 않음` : (c.menus.length ? `헤더 메뉴 ${c.menus.length}개를 가져옴(처음 한 번만)` : '가져올 헤더 메뉴 없음');
+    console.log(`[xim] ${c.slug}: xim ${site} · xms ${menus}`);
+  } catch (e) {
+    console.warn('[xim] 자동 등록에 실패했습니다(배포는 계속):', e.message);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
