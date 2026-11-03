@@ -1,0 +1,83 @@
+# WebMaker2 (webmaker 리포) — 작업 규칙
+
+**E:\ws\WebMaker\design 과 똑같은 규칙으로 작업한다.** (사용자 지시, 2026-11-03 "매우 중요")
+다른 점은 딱 하나: **GitHub 푸시는 Claude 가 한다** (아래 Git).
+design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)이 바뀌면 이 파일도 맞춰 고친다.
+
+폴더(slug)마다 웹사이트 하나씩 있는 리포다. **사용자는 Claude Code 프롬프트로만 소통한다.** 코드 작업 · git 커밋 · 푸시 · Cloudflare 배포는 Claude 가 맡고, 대시보드나 터미널 작업을 사용자에게 시키지 않는다.
+
+---
+
+## 웹페이지 공통 제작 규칙 (사용자가 따로 말하지 않아도 모두 적용)
+
+### 1. 모바일 화면 깨짐 없음
+- 반응형으로 만들고, 폰 폭(360px 기준, 320px까지)에서 가로 스크롤·잘림·겹침이 없는지 **실제로 확인**한다.
+- 모바일 메뉴(햄버거 등)를 열었을 때도 레이아웃이 깨지지 않는지 확인한다.
+- 글자는 폰에서도 읽기 편한 크기로(본문 16px 안팎).
+
+### 2. 탭 하이라이트(파란 네모) 제거
+폰에서 링크·버튼을 누를 때 잠깐 생기는 파란 영역이 보이지 않게 전역으로 넣는다.
+```css
+* { -webkit-tap-highlight-color: transparent; }
+```
+키보드 접근성을 위해 `:focus-visible` 표시는 남긴다.
+
+### 3. 폰트는 라이선스 문제 없는 것만
+- 상업적 사용·웹 임베딩이 자유로운 폰트만 쓴다(SIL OFL 등). 기본은 **Pretendard**(OFL).
+- 그 밖에 허용 예: Noto Sans KR / Noto Serif KR, Nanum 계열(OFL), Gmarket Sans·Spoqa Han Sans Neo 등 무료 상업 이용 명시 폰트.
+- 출처·라이선스가 불분명한 폰트, 유료 폰트 파일, 윈도우·맥 시스템 폰트 파일(맑은 고딕 등)을 웹폰트로 올리지 않는다.
+- 새 폰트를 쓰게 되면 라이선스를 먼저 확인하고 사용자에게 한 줄로 알린다.
+
+### 4. CSS는 한 파일, 공통화로 최소화
+- 페이지마다·섹션마다 CSS 파일을 나누지 않고 **사이트 전체가 CSS 파일 하나**(예: `css/style.css`)를 쓴다.
+- 색·간격·글꼴·반경 등은 `:root` 변수로 한 번만 정의해 재사용한다.
+- 버튼·카드·섹션 제목·컨테이너처럼 반복되는 것은 공통 클래스로 만들고, 같은 선언을 여러 곳에 복붙하지 않는다.
+- 쓰지 않는 규칙은 지우고, 미디어쿼리는 브레이크포인트별로 모아 중복을 줄인다.
+- 인라인 `style=""` 남발이나 페이지별 `<style>` 블록 대신 공통 CSS에 넣는다.
+
+### 5. 탭·알약 버튼은 슥 미끄러지게
+알약 모양 탭(정렬 기본순·최근순·가나다순, 위쪽 메뉴, 구약/신약 같은 segmented control)은 고른 칸 배경이 **다음 칸으로 부드럽게 미끄러져** 가야 한다. 딱딱 바뀌는(새 페이지 뜨듯) 방식 금지.
+- 배경은 칸마다 따로 칠하지 말고 **떠 있는 배경 하나**(`.tab-ind`/`.seg-ind`)를 `transform: translate` + `width` 로 옮긴다. 0.35s 안팎, `cubic-bezier(.22, .8, .24, 1)`, 글자색도 함께 전환. `prefers-reduced-motion` 이면 끔.
+- 탭을 innerHTML 로 다시 그리면 미끄럼이 끊긴다 → 한 번 그리고 `.on` 만 바꾸고, 누르는 즉시 배경부터 옮긴다(자료는 뒤따라).
+- 숨겨져 있어 폭을 못 재면 칸 자체 배경으로 대신하고, 창 크기·글꼴 로딩 뒤 다시 잰다.
+- 참고 구현: `E:\ws\WebMaker\design\bstv2\cms\public\ui.js` `slideTabs`(ES 모듈), `E:\ws\WebMaker\design\bstv2\web\assets\js\site.js` `B.seg`(ES5).
+
+그 밖의 기본 제작 기준(폴더 구조, 순수 HTML/CSS/JS 등)은 `GUIDELINES.md`.
+
+---
+
+## 작업 흐름
+
+1. 폴더별로 시안 작업 → 로컬 미리보기로 확인 (`서버시작.bat` → http://localhost:8732 , design 의 8731 과 겹치지 않게)
+2. git 은 `main` 에서 바로 커밋 (아래 Git)
+3. 작업이 끝나면 **Claude 가 바로 push** — https://github.com/xiangdolee-pixel/webmaker
+4. "클라우드플레어에 배포해줘" / "○○ 배포해줘" → **그 폴더 하나만** Workers 로 배포 (아래 배포)
+
+## Git: main 하나로 작업 (trunk-based)
+
+- 리포 루트는 `E:\ws\WebMaker2` (E:\ws 상위 리포와 별개). 커밋은 반드시 여기서.
+- **새 브랜치를 만들지 않는다.** 모든 커밋을 `main` 에 바로 한다. 브랜치를 제안하거나 묻지도 않는다.
+- 커밋 메시지는 design 과 같은 꼴: `feat(<폴더>): 한국어 설명`, `style(<폴더>): …`, `fix(<폴더>): …`
+- **WebMaker2 에서 작업했으면 묻지 않고 커밋 + push 까지 한다.** (design 은 사용자가 GitHub Desktop 으로 푸시하지만 여기는 Claude 가 한다)
+- 새 폴더를 만들면 README.md 의 폴더 목록에 추가한다. 빈 폴더는 `.gitkeep`.
+- 리포가 **PUBLIC** 이다 → 비밀값(.env, .dev.vars, 키) · 고객 원본 자료는 절대 커밋하지 않는다(.gitignore 참고).
+- E:\ws\WebMaker2 밖의 작업은 이 리포에 올리지 않는다.
+
+## Cloudflare 배포: 폴더 하나 = Worker 하나
+
+- "배포해줘" 요청을 받으면 Claude 가 직접 배포하고 주소를 알려준다.
+- 리포 루트(`E:\ws\WebMaker2`)에서 두 줄:
+  ```
+  node build.mjs <폴더>
+  npx wrangler deploy
+  ```
+  `build.mjs` 가 그 폴더만 `dist/` 로 모으고(메모 `.md` · 설정 · 숨김 파일 제외) `wrangler.jsonc`(name = 폴더 이름)를 만든다.
+- **리포 전체를 올리지 않는다.** `build.mjs` 없이 `wrangler deploy` 하지 않고, 리포 루트를 통째로 assets 로 쓰지 않고, `webmaker` 이름의 Worker 를 만들지 않는다.
+- design 과 같은 Cloudflare 계정이다 → **design 에 같은 이름 폴더(Worker)가 있으면 덮어쓰게 되니 배포 전에 확인하고, 겹치면 사용자에게 한 줄로 묻는다.**
+- 어느 폴더인지: 요청에 폴더 이름이 있으면 그것, 없으면 지금 작업 중인 폴더. 애매하면 한 줄로 묻는다.
+- 로컬 파일을 그대로 올린다(커밋 · 푸시 전이어도 된다).
+- 배포 뒤 curl 로 확인: `/` 가 200, `README.md` · 다른 폴더 같은 리포 파일은 404.
+- 주소: `https://<Worker이름>.master-7ce.workers.dev` — Worker 이름은 폴더 이름 소문자, `_` · `.` 은 `-` (`4D` → `4d`).
+- Worker 삭제처럼 되돌릴 수 없는 작업은 먼저 묻는다.
+- 첫 화면: index.html 이 없으면 landing.html(또는 html 이 하나뿐이면 그 파일).
+- 서버 기능이 필요한 폴더는 `<폴더>/_worker/index.js`(+ `bindings.json` 에 D1 · KV 연결)를 두면 build.mjs 가 정적 파일과 함께 Worker 로 올린다. `_worker/` 는 웹에 공개되지 않는다. 비밀값은 `npx wrangler secret put` (리포에 두지 않음).
