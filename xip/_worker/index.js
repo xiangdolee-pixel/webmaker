@@ -148,31 +148,42 @@ async function loadFx(code) {
 }
 
 let lastIdx = null; // 직전에 받은 지수·환율·원자재 (부분 실패 때 채움)
+
+// 묶음마다 알맞은 간격으로만 네이버에 묻는다 (그 사이엔 저장본)
+//   국내 지수: 국내 장중 4초 / 아니면 5분      미국 지수: 미국 장중 4초 / 아니면 5분
+//   환율: 30초 (하나은행 고시는 몇 분마다 바뀜)  원자재: 1분 (원래 10분 늦은 값)
+const PART_TTL = {
+  kr: () => (krOpen() ? 4000 : 300000),
+  us: () => (usOpen() ? 4000 : 300000),
+  fx: () => 30000,
+  cm: () => 60000,
+};
+const basicIdx = (codes, host) => Promise.all(codes.map((c) =>
+  getJSON(`${host}/${encodeURIComponent(c)}/basic`).then((d) => ({ ...d, itemCode: c })))).then((datas) => ({ datas }));
+// 지수: polling 서버 → 안 되면 종목별 basic 주소(국내 m.stock, 해외 api.stock)
+const loadKrIdx = () => firstOk(
+  () => getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ', 5000),
+  () => basicIdx(['KOSPI', 'KOSDAQ'], 'https://m.stock.naver.com/api/index'),
+).then((j) => (j.datas || []).map(normIndex));
+const loadUsIdx = () => firstOk(
+  () => getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI', 5000),
+  () => basicIdx(['.INX', '.IXIC', '.DJI'], 'https://api.stock.naver.com/index'),
+).then((j) => (j.datas || []).map(normIndex));
+const loadFxAll = () => Promise.all(Object.keys(FXS).map((c) => loadFx(c).catch(() => null))).then((l) => l.filter(Boolean));
+const loadCmAll = () => Promise.all(Object.keys(CMDTY).map((c) => loadCmdty(c).catch(() => null))).then((l) => l.filter(Boolean));
+const part = (k, f) => cached(`part:${k}`, PART_TTL[k](), f).then((r) => r.data).catch(() => null);
+
 async function loadIndices() {
   const fxCodes = Object.keys(FXS);
   const cmCodes = Object.keys(CMDTY);
   // 한 곳이 실패해도 나머지는 보여준다. 전부 실패할 때만 에러(→ 직전 값 사용)
-  // 지수: polling 서버 → 안 되면 종목별 basic 주소(국내 m.stock, 해외 api.stock)
-  const basic = (codes, host) => Promise.all(codes.map((c) =>
-    getJSON(`${host}/${encodeURIComponent(c)}/basic`).then((d) => ({ ...d, itemCode: c })))).then((datas) => ({ datas }));
-  const [dom, world, ...rest] = await Promise.all([
-    firstOk(
-      () => getJSON('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI,KOSDAQ', 5000),
-      () => basic(['KOSPI', 'KOSDAQ'], 'https://m.stock.naver.com/api/index'),
-    ).catch(() => null),
-    firstOk(
-      () => getJSON('https://polling.finance.naver.com/api/realtime/worldstock/index/.INX,.IXIC,.DJI', 5000),
-      () => basic(['.INX', '.IXIC', '.DJI'], 'https://api.stock.naver.com/index'),
-    ).catch(() => null),
-    ...fxCodes.map((c) => loadFx(c).catch(() => null)),
-    ...cmCodes.map((c) => loadCmdty(c).catch(() => null)),
-  ]);
+  const [kr, us, fxl, cml] = await Promise.all([part('kr', loadKrIdx), part('us', loadUsIdx), part('fx', loadFxAll), part('cm', loadCmAll)]);
   // 이번에 못 받은 항목은 직전 값으로 채운다(화면에서 칸이 사라지지 않게)
-  const keep = (list, codes, prev) => codes.map((c, i) => list[i] || (prev || []).find((x) => x.code === c)).filter(Boolean);
-  const fxs = keep(rest.slice(0, fxCodes.length), fxCodes, lastIdx && lastIdx.fxs);
-  const cm = keep(rest.slice(fxCodes.length), cmCodes, lastIdx && lastIdx.cmdty);
-  if (!dom && !world && !fxs.length && !cm.length) throw new Error('naver unreachable');
-  let items = [...((dom && dom.datas) || []), ...((world && world.datas) || [])].map(normIndex);
+  const keep = (list, codes, prev) => codes.map((c) => (list || []).find((x) => x.code === c) || (prev || []).find((x) => x.code === c)).filter(Boolean);
+  const fxs = keep(fxl, fxCodes, lastIdx && lastIdx.fxs);
+  const cm = keep(cml, cmCodes, lastIdx && lastIdx.cmdty);
+  if (!kr && !us && !fxs.length && !cm.length) throw new Error('naver unreachable');
+  let items = [...(kr || []), ...(us || [])];
   if (lastIdx) for (const p of lastIdx.items) if (!items.some((x) => x.code === p.code)) items.push(p);
   const order = Object.keys(INDEX_NAMES);
   items.sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
@@ -628,14 +639,16 @@ function zoneOpen(tz, open, close) {
 }
 const krOpen = () => zoneOpen('Asia/Seoul', 540, 930);
 const usOpen = () => zoneOpen('America/New_York', 570, 960);
+// 거래대금 상위: 그 시장 장중에만 자주(8초), 아니면 5분
+const topTtl = (mk) => ((mk === 'us' ? usOpen() : krOpen()) ? 8000 : 300000);
 // 비교용: 받은 시각처럼 매번 바뀌는 값은 빼고 본다
 const sameKey = (d) => JSON.stringify(d, (k, v) => (k === 'fetchedAt' || k === 'stale' ? undefined : v));
 
 export class Hub extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.last = null;      // 마지막으로 보낸 값
-    this.lastKey = '';
+    this.last = null;      // 마지막으로 보낸 전체 값
+    this.keys = {};        // 묶음별 비교 키 (indices · kr · us · market)
     this.savedAt = 0;
   }
 
@@ -643,11 +656,15 @@ export class Hub extends DurableObject {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
-    // 들어오자마자 지금 값을 준다(저장본 → 없으면 바로 받기)
     if (!this.last) this.last = (await this.ctx.storage.get('snap')) || null;
-    let sent = false;
-    if (!this.last || Date.now() - (this.last.at || 0) > 20000) sent = await this.refresh().catch(() => false);
-    if (this.last && !sent) server.send(JSON.stringify({ t: 'all', d: this.last }));
+    if (this.last) {
+      // 저장본이 있으면 오래됐어도 먼저 보내고(바로 뜨게), 새 값은 뒤에서 받아 바뀐 것만 보낸다
+      server.send(JSON.stringify({ t: 'all', d: this.last }));
+      if (Date.now() - (this.last.at || 0) > 20000) this.refresh().catch(() => {});
+    } else {
+      // 처음 한 번만: 받아서 보낸다
+      await this.refresh().catch(() => {});
+    }
     if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(Date.now() + 2000);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -670,27 +687,39 @@ export class Hub extends DurableObject {
   async refresh() {
     const [ind, kr, us, mkt] = await Promise.all([
       cached('indices', 4000, loadIndices),
-      cached('top:kr', krOpen() ? 8000 : 300000, () => loadTop('kr')).catch(() => null),
-      cached('top:us', usOpen() ? 8000 : 300000, () => loadTop('us')).catch(() => null),
+      cached('top:kr', topTtl('kr'), () => loadTop('kr')).catch(() => null),
+      cached('top:us', topTtl('us'), () => loadTop('us')).catch(() => null),
       cached('market', 30000, loadMarket).catch(() => null),
     ]);
+    const prev = this.last || {};
     const d = {
       at: Date.now(),
       indices: { ...ind.data, fetchedAt: ind.at },
-      top: { kr: kr ? kr.data : (this.last && this.last.top.kr), us: us ? us.data : (this.last && this.last.top.us) },
-      market: mkt ? mkt.data : this.last && this.last.market,
+      top: { kr: kr ? kr.data : prev.top && prev.top.kr, us: us ? us.data : prev.top && prev.top.us },
+      market: mkt ? mkt.data : prev.market,
     };
-    const key = sameKey({ ...d, at: 0 });
-    if (key === this.lastKey) { this.last.at = d.at; return false; } // 바뀐 게 없으면 보내지 않는다
-    this.lastKey = key;
+    // 바뀐 묶음만 골라 보낸다 (코스피 하나 바뀌었는데 전체를 보내지 않게)
+    const sections = { indices: d.indices, kr: d.top.kr, us: d.top.us, market: d.market };
+    const part = {};
+    let changed = false;
+    for (const [k, v] of Object.entries(sections)) {
+      if (v == null) continue;
+      const key = sameKey(v);
+      if (key === this.keys[k]) continue;
+      this.keys[k] = key;
+      changed = true;
+      if (k === 'kr' || k === 'us') (part.top = part.top || {})[k] = v;
+      else part[k] = v;
+    }
     this.last = d;
-    const msg = JSON.stringify({ t: 'all', d });
+    if (!changed) return false; // 바뀐 게 없으면 보내지 않는다
+    const msg = JSON.stringify({ t: 'part', d: part });
     for (const ws of this.ctx.getWebSockets()) {
       try { ws.send(msg); } catch (e) { /* 끊긴 화면 */ }
     }
     // 저장본은 30초에 한 번만 (쓰기 횟수 절약). 잠들었다 깨도 바로 보여주기 위해
     if (Date.now() - this.savedAt > 30000) { this.savedAt = Date.now(); await this.ctx.storage.put('snap', d); }
-    return true; // 모든 화면에 보냈음
+    return true;
   }
 }
 
@@ -707,7 +736,7 @@ export default {
         const mk = url.searchParams.get('top') === 'us' ? 'us' : 'kr';
         const [ind, top, mkt] = await Promise.all([
           swr(ctx, 'indices', 5000, 10 * 60e3, loadIndices),
-          swr(ctx, `top:${mk}`, 8000, 10 * 60e3, () => loadTop(mk)).catch(() => null),
+          swr(ctx, `top:${mk}`, topTtl(mk), 10 * 60e3, () => loadTop(mk)).catch(() => null),
           swr(ctx, 'market', 30000, 30 * 60e3, loadMarket).catch(() => null),
         ]);
         return json({
@@ -726,7 +755,7 @@ export default {
       }
       if (pathname === '/api/top') {
         const market = url.searchParams.get('market') === 'us' ? 'us' : 'kr';
-        const r = await swr(ctx, `top:${market}`, 8000, 10 * 60e3, () => loadTop(market));
+        const r = await swr(ctx, `top:${market}`, topTtl(market), 10 * 60e3, () => loadTop(market));
         return json({ ...r.data, fetchedAt: r.at, stale: r.stale });
       }
       if (pathname === '/api/market') {

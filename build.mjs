@@ -9,6 +9,7 @@
 //            → 배포 명령이 dist/ 만 올린다
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,29 @@ if (!fs.existsSync(path.join(OUT, 'index.html'))) {
   }
   fs.copyFileSync(path.join(OUT, pick), path.join(OUT, 'index.html'));
   console.log(`[build] index.html 이 없어 ${pick} 를 첫 화면으로 씁니다.`);
+}
+
+// (선택) 파일 지문: html 안의 "파일?v=__HASH__" 를 그 파일 내용의 지문으로 바꾼다.
+//   파일이 바뀌면 주소가 바뀌어, 브라우저가 오래 보관해도 새 버전을 바로 받는다. 표시가 없는 사이트는 그대로.
+{
+  const hashOf = (rel) => {
+    const f = path.join(OUT, rel.replace(/^\//, ''));
+    return fs.existsSync(f) ? crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex').slice(0, 10) : null;
+  };
+  for (const name of fs.readdirSync(OUT).filter((f) => /\.html?$/i.test(f))) {
+    const file = path.join(OUT, name);
+    const html = fs.readFileSync(file, 'utf8');
+    if (!html.includes('?v=__HASH__')) continue;
+    let n = 0;
+    const out = html.replace(/(["'])([^"']+?)\?v=__HASH__\1/g, (m, q, rel) => {
+      const h = hashOf(rel);
+      if (!h) return m;
+      n += 1;
+      return `${q}${rel}?v=${h}${q}`;
+    });
+    fs.writeFileSync(file, out);
+    console.log(`[build] ${name}: 파일 지문 ${n}개`);
+  }
 }
 
 // 올릴 파일 집계 · 너무 큰 파일 확인

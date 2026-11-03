@@ -1,0 +1,12 @@
+# 페이지 파일 보관 기간 (Cloudflare Workers 정적 파일 규칙)
+# css·js 는 주소에 내용 지문(?v=…)이 붙어 바뀌면 주소가 바뀌므로 오래 보관해도 된다
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+/img/*
+  Cache-Control: public, max-age=2592000
+/favicon.ico
+  Cache-Control: public, max-age=2592000
+/manifest.webmanifest
+  Cache-Control: public, max-age=86400

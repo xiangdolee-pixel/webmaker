@@ -408,12 +408,17 @@
   function saveSnap(d) {
     try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), d: d })); } catch (e) {}
   }
+  // d 는 전체일 수도, 바뀐 묶음만일 수도 있다(웹소켓 'part'). 받은 것만 그리고, 저장본에는 합쳐 둔다
+  var whole = { top: {} };
   function applyAll(d, fromSnap) {
     if (!d) return;
-    if (d.market) applyMarket(d.market);
-    if (d.indices) applyIndices(d.indices);
-    if (d.top) { if (d.top.market) renderTop(d.top); else { if (d.top.kr) renderTop(d.top.kr); if (d.top.us) renderTop(d.top.us); } }
-    if (!fromSnap) { snapShown(false); saveSnap(d); }
+    if (d.market) { applyMarket(d.market); whole.market = d.market; }
+    if (d.indices) { applyIndices(d.indices); whole.indices = d.indices; }
+    if (d.top) {
+      if (d.top.market) { renderTop(d.top); whole.top[d.top.market] = d.top; }
+      else ['kr', 'us'].forEach(function (k) { if (d.top[k]) { renderTop(d.top[k]); whole.top[k] = d.top[k]; } });
+    }
+    if (!fromSnap) { snapShown(false); saveSnap(whole); }
   }
   function loadAll() {
     return getJSON('/api/all?top=' + topMarket).then(function (d) { applyAll(d); }).catch(indicesFailed);
@@ -438,7 +443,7 @@
       if (ev.data === 'pong') return;
       var m;
       try { m = JSON.parse(ev.data); } catch (e) { return; }
-      if (m && m.t === 'all') applyAll(m.d);
+      if (m && (m.t === 'all' || m.t === 'part')) applyAll(m.d);
     };
     sock.onclose = function () {
       if (hub !== sock) return;
