@@ -1,0 +1,44 @@
+# xms — 업체별 홈페이지 관리(CMS)
+
+각 업체가 **자기 홈페이지 주소/admin/** 에서 회원 · 게시판 · 메뉴를 관리한다. Webchon CMS(webchon-pilot/cms)의 메뉴 · 동작을 그대로 옮겼다.
+Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `site` 열(= xim 사이트 ID = WebMaker2 폴더 이름).
+
+## 1차에 들어간 것
+
+| 관리 화면 (/admin/) | 방문자 화면 |
+|---|---|
+| 저장 공간 (xim 의 용량 표시) | `/member/login` · `/member/signup` · `/member/mypage` |
+| 회원관리: 가입회원(찾기 · 필수 항목 빈 회원 · 등급 필터, 등급 바꾸기, 로그인 막기/풀기, 비밀번호 재발급 6자리, 탈퇴, 엑셀 내려받기) · 탈퇴회원 · 등급 이름(1~10) · 가입 항목(기본 6개 + 직접 추가: 입력/숫자/날짜/리스트선택/선택/다중선택, 끌어서 순서) · 이용약관 / 개인정보 처리방침(버전 발행) | `/member/terms` · `/member/privacy` |
+| 게시판: 목록(끌어서 순서, 30일 보관함 · 되살리기) · 만들기/설정(이름 · 주소, 테이블/카드/블로그, 댓글 · 비밀글 · 비회원 글쓰기, 목록 · 읽기 표시 항목, 작성자 가리기, 목록 개수, 등급별 목록/읽기/쓰기/댓글 권한, 메뉴에 바로 붙이기) | `/board/<주소>` 목록 · 검색 · 공지 고정 · NEW · 예약 발행, 글 보기 · 쓰기 · 수정 · 삭제, 댓글 |
+| 메뉴: 트리(끌어서 순서 · 오른쪽으로 끌면 하위), 페이지 / 게시판 / 외부 링크, 숨기기, 누가 볼 수 있나 | 방문자 화면 위쪽 메뉴(방문자 등급별로 걸러서) · `/xms-api/menu` |
+| 수정 요청 (xim 으로 감) · 비밀번호 변경 · 관리 로그 | |
+| 웹촌 직원 "대신 들어가기" (xim → 관리 화면 열기, 노란 띠 + 기록) | |
+
+규칙(pcms 와 같음): 등급 1 = 관리자(관리 화면에 들어올 수 있는 유일한 등급), 9 = 가입 기본, 10 = 제한(읽기만). 마지막 관리자는 내리거나 막거나 탈퇴시킬 수 없다. 로그인 5번 틀리면 15분 잠금.
+
+## 2차로 미룬 것
+
+팝업 · 접수함 · 파비콘 · 검색엔진 · 카카오톡 미리보기 · 번역 다듬기 · 솔루션 공지, 사진/파일 올리기(R2) + 저장 공간 집계, 설교 게시판 · 전자책, 비밀번호 찾기 메일, 답글, 태그, 사이트 디자인 안에 메뉴 끼워 넣기(지금은 /board · /member 화면 위쪽에만 메뉴가 나온다).
+
+## 구조
+
+```
+고객 사이트 Worker (xim/_worker/site-worker.js 복사본)
+  /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  →  xms (Cms 엔트리, X-Xim-Site 헤더)
+  정지 확인 → xim Engine
+xms Worker
+  _worker/index.js     라우터 (Cms 엔트리)          _worker/lib.js   세션 · 권한 · 설정 · HTML 정리(HTMLRewriter)
+  _worker/admin-api.js 관리자 API                    _worker/public.js 방문자 화면(서버에서 HTML) · API
+  admin/index.html + js/admin.js  관리 화면(해시 주소)   js/public.js · js/editor.js · js/drag.js · js/common.js
+  css/style.css        관리 · 방문자 화면 공용 CSS 한 파일
+바인딩: DB = D1 xms, XIM_DB = D1 xim (사이트 이름 · 용량, 수정요청)
+xim 은 XMS_DB 로 업체 관리자 계정(xms 등급 1 회원)과 직원 입장권을 만든다.
+```
+
+## 운영 명령 (리포 루트에서)
+
+```
+node deploy.mjs xms
+node deploy.mjs --wrangler d1 execute xms --remote --file xms/_worker/schema.sql -y
+```
+배포 순서: xms · xim 이 먼저 있어야 고객 사이트를 배포할 수 있다(서비스 바인딩).
