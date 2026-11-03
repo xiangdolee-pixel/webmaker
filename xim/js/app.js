@@ -113,15 +113,20 @@ async function renderSites() {
 
 function siteCard(s) {
   const pct = s.quota_mb ? Math.min(100, (s.used_mb / s.quota_mb) * 100) : 0;
-  const domain = s.domain ? `<a href="${esc(/^https?:/.test(s.domain) ? s.domain : `https://${s.domain}`)}" target="_blank" rel="noopener">${esc(s.domain)}</a>` : '도메인 없음';
+  // 바로가기: 도메인이 있으면 도메인, 없으면 workers.dev (서버가 s.url 로 준다). 둘 다 보여 준다.
+  const dev = `https://${s.slug}.xiangdolee.workers.dev`;
+  const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
   return `
   <article class="card item" data-site="${s.id}">
-    <div class="item-head"><h3>${esc(s.name)}</h3>${badge(s.status)}</div>
-    <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span>${domain}</div>
+    <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
+    <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
+    <div class="meta">${addr}</div>
     <div class="meta"><span>용량 ${Math.round(s.used_mb)} / ${s.quota_mb} MB</span><span>관리자 ${s.admin_count}명</span>
       <span>처리할 요청 ${s.open_requests}건</span></div>
     <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div>
     <div class="actions">
+      <a class="btn sm primary" href="${esc(s.url)}" target="_blank" rel="noopener">홈페이지 열기</a>
       <button class="btn sm primary" type="button" data-act="cms">관리 화면 열기</button>
       <button class="btn sm" type="button" data-act="edit">수정</button>
       <button class="btn sm" type="button" data-act="admins">관리자 계정</button>
