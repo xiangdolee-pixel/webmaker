@@ -5,6 +5,7 @@ import {
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 import { postAttachments, attachToPost } from './uploads.js';
+import { sendSignupCode, verifySignupCode, takeTicket, turnstileKey } from './signup.js';
 
 const LOCK_AFTER = 5;
 const LOCK_MS = 15 * 60000;
@@ -116,14 +117,19 @@ function fieldInput(f, value) {
   return `<label class="field">${label}<input class="input" type="${type}" name="${f.key}" value="${esc(v)}" autocomplete="${auto}"${req}${type === 'text' ? ' maxlength="100"' : ''}></label>`;
 }
 
+// 비밀번호 칸 + 눈 모양 보기 버튼 (public.js 가 누르면 바꾼다)
+const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const pwInput = (name, auto, extra = '') => `<span class="pw-wrap"><input class="input" type="password" name="${name}" autocomplete="${auto}"${extra}>
+  <button type="button" class="pw-eye" data-pw-eye aria-label="비밀번호 보기" aria-pressed="false">${EYE}</button></span>`;
+
 async function loginPage(ctx) {
   if (ctx.me.kind === 'member') return Response.redirect(`${ctx.url.origin}/member/mypage`, 302);
   const next = safeNext(ctx.url.searchParams.get('next'));
   return page(ctx, '로그인', `<section class="pub-box narrow">
     <h1>로그인</h1>
     <form data-form="login" data-next="${esc(next)}">
-      <label class="field"><span>아이디</span><input class="input" name="login_id" autocomplete="username" required></label>
-      <label class="field"><span>비밀번호</span><input class="input" type="password" name="password" autocomplete="current-password" required></label>
+      <label class="field"><span>이메일(아이디)</span><input class="input" name="login_id" autocomplete="username" required maxlength="254"></label>
+      <label class="field"><span>비밀번호</span>${pwInput('password', 'current-password', ' required')}</label>
       <p class="err" role="alert"></p>
       <button class="btn primary wide" type="submit">로그인</button>
     </form>
@@ -141,19 +147,37 @@ async function signupPage(ctx) {
   const agreeBox = docs.TERMS || docs.PRIVACY ? `<div class="agree">
       <label class="check all"><input type="checkbox" data-agree-all> 아래 내용에 모두 동의합니다</label>
       ${agree(docs.TERMS, 'terms', '이용약관')}${agree(docs.PRIVACY, 'privacy', '개인정보 처리방침')}</div>` : '';
+  const tk = turnstileKey(env);
+  // 1단계: 이메일 → 6자리 번호 / 2단계: 비밀번호 · 이름 · 닉네임 · 휴대전화 … (이메일 칸은 1단계에서 받았으니 뺀다)
   return page(ctx, '회원가입', `<section class="pub-box narrow">
     <h1>회원가입</h1>
-    <form data-form="signup">
-      <label class="field"><span>아이디 <em class="req">*</em></span><input class="input" name="login_id" autocomplete="username" required minlength="4" maxlength="50" pattern="[A-Za-z0-9_\\-]{4,50}">
-        <small>영문·숫자·_·- 4~50자</small></label>
-      <label class="field"><span>비밀번호 <em class="req">*</em></span><input class="input" type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="200"><small>8자 이상</small></label>
-      <label class="field"><span>비밀번호 확인 <em class="req">*</em></span><input class="input" type="password" name="password2" autocomplete="new-password" required><small data-pw-match></small></label>
-      <label class="check show-pw"><input type="checkbox" data-show-pw> 비밀번호 보기</label>
-      ${fields.filter((f) => f.mode !== 'EXCLUDED').map((f) => fieldInput(f)).join('')}
+    <ol class="steps" aria-label="가입 단계"><li class="on" data-step-dot="1">이메일 인증</li><li data-step-dot="2">정보 입력</li></ol>
+    <form data-form="signup-code" data-step="1">
+      <label class="field"><span>이메일 <em class="req">*</em></span>
+        <span class="row-input"><input class="input" type="email" name="email" autocomplete="email" required maxlength="254" placeholder="name@example.com">
+        <button class="btn" type="submit">인증번호 받기</button></span>
+        <small>이 이메일이 아이디가 됩니다. 메일로 온 6자리 번호를 넣어 주세요.</small></label>
+      ${tk ? `<div class="cf-turnstile" data-sitekey="${esc(tk)}" data-language="ko" data-size="flexible"></div>
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>` : ''}
+      <p class="err" role="alert"></p>
+    </form>
+    <form data-form="signup-verify" data-step="1" hidden>
+      <label class="field"><span>인증번호 <em class="req">*</em> <b class="timer" data-timer></b></span>
+        <span class="row-input"><input class="input code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="6자리 숫자">
+        <button class="btn primary" type="submit">확인</button></span>
+        <small>메일이 안 보이면 스팸함도 봐 주세요. <button type="button" class="linkish" data-resend>다시 받기</button></small></label>
+      <p class="err" role="alert"></p>
+    </form>
+    <form data-form="signup" data-step="2" hidden>
+      <div class="field"><span>이메일(아이디)</span><p class="done-email"><b data-email></b> <span class="tag green">인증됨</span></p></div>
+      <label class="field"><span>비밀번호 <em class="req">*</em></span>${pwInput('password', 'new-password', ' required minlength="8" maxlength="200"')}<small>8자 이상</small></label>
+      <label class="field"><span>비밀번호 확인 <em class="req">*</em></span>${pwInput('password2', 'new-password', ' required')}<small data-pw-match></small></label>
+      ${fields.filter((f) => f.mode !== 'EXCLUDED' && f.key !== 'email').map((f) => fieldInput(f)).join('')}
       ${agreeBox}
       <p class="err" role="alert"></p>
       <button class="btn primary wide" type="submit">가입하기</button>
     </form>
+    <p class="sub-links"><span>이미 가입하셨나요?</span><a href="/member/login">로그인</a></p>
   </section>`, { noindex: true });
 }
 
@@ -175,8 +199,8 @@ async function mypage(ctx) {
     </form>
     <h2>비밀번호 변경</h2>
     <form data-form="password">
-      <label class="field"><span>지금 비밀번호</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>
-      <label class="field"><span>새 비밀번호</span><input class="input" type="password" name="next" autocomplete="new-password" minlength="8" required><small>8자 이상</small></label>
+      <label class="field"><span>지금 비밀번호</span>${pwInput('current', 'current-password', ' required')}</label>
+      <label class="field"><span>새 비밀번호</span>${pwInput('next', 'new-password', ' minlength="8" required')}<small>8자 이상</small></label>
       <label class="field"><span>새 비밀번호 확인</span><input class="input" type="password" name="next2" autocomplete="new-password" required></label>
       <p class="err" role="alert"></p>
       <button class="btn" type="submit">비밀번호 바꾸기</button>
@@ -419,7 +443,8 @@ export async function publicApi(ctx) {
     const ipKey = `ip:${site}:${clientIp(request)}`;
     if (await tooManyFails(db, ipKey)) throw new HttpError(429, '로그인 시도가 너무 많습니다. 15분 뒤에 다시 해 주세요.');
     const raw = await body(request);
-    const m2 = await db.prepare("SELECT * FROM members WHERE site = ? AND login_id = ? AND status != 'WITHDRAWN'").bind(site, str(raw.login_id, 50)).first();
+    const lid = str(raw.login_id, 254);
+    const m2 = await db.prepare("SELECT * FROM members WHERE site = ? AND (login_id = ? OR (instr(login_id, '@') > 0 AND lower(login_id) = lower(?))) AND status != 'WITHDRAWN' LIMIT 1").bind(site, lid, lid).first();
     if (m2 && m2.locked_until > now()) throw new HttpError(423, `비밀번호를 ${LOCK_AFTER}번 틀려 잠시 잠겼습니다. ${Math.ceil((m2.locked_until - now()) / 60000)}분 뒤에 다시 해 주세요.`);
     const ok = m2 && sameText(await hashPassword(String(raw.password ?? '').slice(0, 200), m2.pw_salt), m2.pw_hash);
     if (!ok) {
@@ -429,7 +454,7 @@ export async function publicApi(ctx) {
         await db.prepare('UPDATE members SET fail_count = ?, locked_until = ? WHERE id = ?').bind(n >= LOCK_AFTER ? 0 : n, n >= LOCK_AFTER ? now() + LOCK_MS : 0, m2.id).run();
         if (n >= LOCK_AFTER) throw new HttpError(423, `비밀번호를 ${LOCK_AFTER}번 틀려 15분 동안 잠겼습니다.`);
       }
-      throw new HttpError(401, '아이디 또는 비밀번호가 맞지 않습니다.');
+      throw new HttpError(401, '이메일(아이디) 또는 비밀번호가 맞지 않습니다.');
     }
     if (m2.status === 'LOCKED') throw new HttpError(423, '관리자가 로그인을 막아 둔 계정입니다. 관리자에게 문의해 주세요.');
     await db.prepare('UPDATE members SET fail_count = 0, locked_until = 0, last_login_at = ? WHERE id = ?').bind(now(), m2.id).run();
@@ -440,27 +465,33 @@ export async function publicApi(ctx) {
     return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SESS_COOKIE, '', 0) });
   }
 
+  if (path === '/signup/code' && method === 'POST') {
+    return json(await sendSignupCode(ctx, await body(request), (await siteInfo(env, site)).name));
+  }
+  if (path === '/signup/verify' && method === 'POST') {
+    return json(await verifySignupCode(ctx, await body(request)));
+  }
   if (path === '/signup' && method === 'POST') {
     const raw = await body(request);
-    const loginId = str(raw.login_id, 50);
-    if (!/^[A-Za-z0-9_-]{4,50}$/.test(loginId)) throw bad('아이디는 영문·숫자·_·- 4~50자로 넣어 주세요.');
+    const tk = await takeTicket(db, site, raw); // 이메일 인증을 마친 사람만
+    const loginId = tk.email;
     const pw = String(raw.password ?? '');
     if (pw.length < 8 || pw.length > 200) throw bad('비밀번호는 8자 이상으로 넣어 주세요.');
     const { fields } = await siteSettings(db, site);
-    const vals = memberValues(fields, raw, true);
+    const vals = memberValues(fields, { ...raw, email: loginId }, true);
     const docs = await latestDocs(db, site, env);
     if (docs.TERMS && !raw.agree_terms) throw bad('이용약관에 동의해 주세요.');
     if (docs.PRIVACY && !raw.agree_privacy) throw bad('개인정보 처리방침에 동의해 주세요.');
-    const dup = await db.prepare('SELECT id FROM members WHERE site = ? AND login_id = ?').bind(site, loginId).first();
-    if (dup) throw bad('이미 사용 중인 아이디입니다.');
+    const dup = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(login_id) = ? OR lower(email) = ?) AND status != 'WITHDRAWN' LIMIT 1").bind(site, loginId, loginId).first();
+    if (dup) throw bad('이미 가입한 이메일입니다. 로그인해 주세요.');
     const p = await newPassword(pw);
     const t = now();
     const r = await db.prepare(`INSERT INTO members (site, login_id, pw_hash, pw_salt, name, nickname, level, email, mobile, phone, extra, last_login_at, created_at)
       VALUES (?, ?, ?, ?, ?, ?, 9, ?, ?, ?, ?, ?, ?)`).bind(site, loginId, p.pw_hash, p.pw_salt, vals.cols.name, vals.cols.nickname,
-      vals.cols.email, vals.cols.mobile, vals.cols.phone, JSON.stringify(vals.extra), t, t).run();
+      loginId, vals.cols.mobile, vals.cols.phone, JSON.stringify(vals.extra), t, t).run();
     const id = r.meta.last_row_id;
-    const agreeStmts = [docs.TERMS, docs.PRIVACY].filter(Boolean).map((d) => db.prepare('INSERT INTO member_agreements (member_id, document_id, agreed_at) VALUES (?, ?, ?)').bind(id, d.id, t));
-    if (agreeStmts.length) await db.batch(agreeStmts);
+    const stmts = [docs.TERMS, docs.PRIVACY].filter(Boolean).map((d) => db.prepare('INSERT INTO member_agreements (member_id, document_id, agreed_at) VALUES (?, ?, ?)').bind(id, d.id, t));
+    await db.batch([...stmts, tk.done()]);
     return json({ ok: true }, 200, { 'Set-Cookie': await createSession(db, site, 'member', id) });
   }
 

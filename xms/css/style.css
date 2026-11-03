@@ -292,7 +292,28 @@ tr.dragging td { background: var(--surface); }
 .pub-box h2 { margin: 28px 0 12px; font-size: 18px; }
 .pub-box .lede { color: var(--sub); }
 .sub-links { display: grid; gap: 4px; margin: 16px 0 0; font-size: 14px; color: var(--mute); text-align: center; }
-.show-pw { margin: -6px 0 10px; font-size: 14px; color: var(--sub); }
+/* 비밀번호 칸 + 눈 모양 보기 버튼 */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap .input { width: 100%; padding-right: 48px; }
+.pw-eye { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--mute); cursor: pointer; }
+.pw-eye svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pw-eye:hover, .pw-eye.on { color: var(--brand); }
+.pw-eye.on::after { content: ""; position: absolute; width: 22px; height: 1.8px; background: currentColor; transform: rotate(-45deg); border-radius: 2px; }
+/* 가입 단계 · 이메일 인증 */
+.steps { display: flex; gap: 8px; margin: -6px 0 20px; padding: 0; list-style: none; counter-reset: st; font-size: 14px; color: var(--mute); }
+.steps li { display: flex; align-items: center; gap: 6px; counter-increment: st; }
+.steps li::before { content: counter(st); width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--line-2); font-size: 12px; font-weight: 700; }
+.steps li + li::before { margin-left: 4px; }
+.steps li.on { color: var(--ink); font-weight: 600; }
+.steps li.on::before { background: var(--brand); color: #fff; }
+.row-input { display: flex; gap: 8px; }
+.row-input .input { flex: 1; min-width: 0; }
+.row-input .btn { flex: none; }
+.input.code { letter-spacing: .3em; font-weight: 700; }
+.timer { margin-left: 6px; font-weight: 600; color: var(--brand); }
+.timer.over { color: var(--danger, #d33); }
+.done-email { display: flex; align-items: center; gap: 8px; margin: 0; overflow-wrap: anywhere; }
+.cf-turnstile { margin: 4px 0 12px; }
 .agree { display: grid; gap: 2px; margin: 8px 0 14px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--line-2); }
 .agree .all { font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .agree-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

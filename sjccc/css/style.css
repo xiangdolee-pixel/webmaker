@@ -22,8 +22,8 @@
   --kr: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* 모든 화면이 같은 폭 · 같은 좌우 여백을 쓴다: 내용 폭 --wrap, 화면 가장자리 여백 --gutter */
-  --wrap: 78rem;
-  --gutter: clamp(1.25rem, 6vw, 6rem);
+  --wrap: 90rem;
+  --gutter: clamp(0.75rem, 3vw, 3rem);
   --header-h: 5rem;
   --sec-y: clamp(4.5rem, 9vw, 7.5rem);
 }

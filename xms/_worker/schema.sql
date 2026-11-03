@@ -223,3 +223,16 @@ CREATE INDEX IF NOT EXISTS idx_uploads_site ON uploads(site);
 
 -- 2026-11-03 간단입력(카드) 글의 구조 — 한 번만 실행:  ALTER TABLE posts ADD COLUMN blocks TEXT;
 --   { order: 'media' | 'text', cards: [{ sub, text, photos: ['/xms/upload/…'], video: '<YouTube id>' }] }
+
+-- 회원가입 이메일 인증 (6자리 번호 → 가입표)
+CREATE TABLE IF NOT EXISTS signup_codes (
+  site         TEXT NOT NULL,
+  email        TEXT NOT NULL,
+  code_hash    TEXT NOT NULL DEFAULT '',
+  expires_at   INTEGER NOT NULL DEFAULT 0,
+  tries        INTEGER NOT NULL DEFAULT 0,
+  sent_at      INTEGER NOT NULL DEFAULT 0,
+  ticket       TEXT NOT NULL DEFAULT '',
+  ticket_until INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (site, email)
+);

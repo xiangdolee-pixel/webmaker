@@ -52,11 +52,67 @@ onForm('login', async (form, data) => {
   location.href = next;
 });
 
+// 가입 1단계: 이메일 → 6자리 번호 (봇 확인 포함) / 2단계: 정보 입력
+const signup = { email: '', ticket: '', timer: 0 };
+const stepTo = (n) => {
+  $$('form[data-step]').forEach((f) => { f.hidden = f.dataset.step !== String(n) || (n === 1 && f.dataset.form === 'signup-verify' && !signup.email); });
+  $$('[data-step-dot]').forEach((d) => d.classList.toggle('on', +d.dataset.stepDot <= n));
+};
+function startTimer(sec) {
+  clearInterval(signup.timer);
+  const el = $('[data-timer]');
+  const end = Date.now() + sec * 1000;
+  const tick = () => {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    el.textContent = left ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : '시간 지남';
+    el.classList.toggle('over', !left);
+    if (!left) clearInterval(signup.timer);
+  };
+  tick();
+  signup.timer = setInterval(tick, 1000);
+}
+async function sendCode(form) {
+  const email = form.email.value.trim();
+  const turnstile = form.querySelector('[name="cf-turnstile-response"]')?.value || '';
+  try {
+    const r = await api('/signup/code', { method: 'POST', data: { email, turnstile } });
+    signup.email = r.email;
+    stepTo(1);
+    const vf = $('form[data-form=signup-verify]');
+    vf.code.value = '';
+    vf.code.focus();
+    startTimer(r.expires_in);
+    toast(`${r.email} 로 인증번호를 보냈습니다.`);
+  } finally {
+    if (window.turnstile) try { window.turnstile.reset(); } catch { /* 위젯 없음 */ }
+  }
+}
+onForm('signup-code', (form) => sendCode(form));
+$('[data-resend]')?.addEventListener('click', () => {
+  const f = $('form[data-form=signup-code]');
+  busy(f.querySelector('[type=submit]'), f.querySelector('.err'), () => sendCode(f));
+});
+$('form[data-form=signup-code] [name=email]')?.addEventListener('input', () => {
+  // 이메일을 고치면 번호 칸은 다시 숨긴다
+  if (signup.email) { signup.email = ''; clearInterval(signup.timer); stepTo(1); }
+});
+onForm('signup-verify', async (form, data) => {
+  const r = await api('/signup/verify', { method: 'POST', data: { email: signup.email, code: data.code } });
+  signup.ticket = r.ticket;
+  clearInterval(signup.timer);
+  $('[data-email]').textContent = r.email;
+  stepTo(2);
+  $('form[data-form=signup] [name=password]').focus();
+});
+$('form[data-form=signup-verify] [name=code]')?.addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+  if (e.target.value.length === 6) e.target.form.requestSubmit();
+});
 onForm('signup', async (form, data) => {
   if (data.password !== data.password2) throw new Error('비밀번호 확인이 서로 다릅니다.');
   checkGroups(form);
   delete data.password2;
-  await api('/signup', { method: 'POST', data });
+  await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
   location.href = '/member/mypage?welcome=1';
 });
 
@@ -84,7 +140,15 @@ const pwMsg = $('[data-pw-match]');
 const checkPw = () => { if (pwMsg) pwMsg.textContent = pw2.value ? (pw.value === pw2.value ? '같습니다 ✓' : '서로 다릅니다') : ''; };
 pw?.addEventListener('input', checkPw);
 pw2?.addEventListener('input', checkPw);
-$('[data-show-pw]')?.addEventListener('change', (e) => { [pw, pw2].forEach((i) => { i.type = e.target.checked ? 'text' : 'password'; }); });
+// 비밀번호 칸 옆 눈 모양: 누르면 보였다 안 보였다
+$$('[data-pw-eye]').forEach((b) => b.addEventListener('click', () => {
+  const i = b.parentElement.querySelector('input');
+  const show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  b.setAttribute('aria-pressed', String(show));
+  b.setAttribute('aria-label', show ? '비밀번호 숨기기' : '비밀번호 보기');
+  b.classList.toggle('on', show);
+}));
 const all = $('[data-agree-all]');
 all?.addEventListener('change', () => $$('input[name^=agree_]').forEach((i) => { i.checked = all.checked; }));
 $$('input[name^=agree_]').forEach((i) => i.addEventListener('change', () => { all.checked = $$('input[name^=agree_]').every((x) => x.checked); }));
