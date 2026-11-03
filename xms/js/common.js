@@ -27,7 +27,8 @@ export function fmtDate(ms, time = false) {
   if (!ms) return '';
   const d = new Date(ms);
   const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.${time ? ` ${p(d.getHours())}:${p(d.getMinutes())}` : ''}`;
+  // 날짜 안에서는 줄이 바뀌지 않게(붙는 빈칸 \u00a0) — 표 칸이 좁아도 '2026. 11. 3.' 이 한 줄로
+  return `${d.getFullYear()}.\u00a0${d.getMonth() + 1}.\u00a0${d.getDate()}.${time ? `\u00a0${p(d.getHours())}:${p(d.getMinutes())}` : ''}`;
 }
 export const fmtPhone = (v) => {
   const d = String(v || '').replace(/\D/g, '');
