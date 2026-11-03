@@ -6,6 +6,7 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 ## 폴더
 
 - pan/
+- sjccc/ — 나사렛장학회 (나사렛장학회.kr, 옛 xiangdolee-pixel/sjccc 리포에서 옮겨옴)
 
 ## 로컬 미리보기
 

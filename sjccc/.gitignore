@@ -1,0 +1,21 @@
+# OS 파일
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+휴지통/
+
+# 임시/로그
+*.tmp
+*.log
+*~
+
+# Node (있을 경우)
+node_modules/
+
+# Claude 개인 로컬 설정 (공유 설정/CLAUDE.md는 유지)
+.claude/settings.local.json
+
+# 원본 사진 사본 (사이트에서는 images/about.png 사용)
+e853f77e-5f97-4a47-b945-ddd93bb69ac0.png
