@@ -1027,8 +1027,8 @@ async function sharePage() {
     <div class="share-grid">
       <div>
         <form class="panel pad" id="share-form"><h2>미리보기 설명 <small class="meta">대화방에서 제목 아래 작은 글씨로 붙습니다</small></h2>
-          <label class="field"><span>설명</span><textarea class="input" name="share_description" maxlength="200" placeholder="${esc(d.seo_description || '비우면 검색엔진 화면의 설명글을 그대로 씁니다')}">${esc(d.share_description)}</textarea>
-            <small>비우면 <b>검색엔진 화면의 설명글</b>을 그대로 씁니다. 대화방에서는 두 줄쯤에서 잘리니 <b>40~80자</b>가 알맞습니다.</small></label>
+          <label class="field"><span>설명</span><textarea class="input" name="share_description" maxlength="200" placeholder="대화방에 붙을 설명을 적어 주세요">${esc(d.share_description || d.seo_description || '')}</textarea>
+            <small>${d.share_description ? '이 화면에서 따로 적은 설명입니다.' : '지금은 <b>검색엔진 화면의 설명글</b>이 그대로 들어가 있습니다. 고쳐서 저장하면 대화방에는 고친 글이 나갑니다.'} 대화방에서는 두 줄쯤에서 잘리니 <b>40~80자</b>가 알맞습니다. 비우고 저장하면 검색엔진 설명글을 따라갑니다.</small></label>
           ${saveBar('미리보기 설명을 고치는 중입니다.', '')}
         </form>
         <section class="panel pad"><h2>미리보기 그림 <small class="meta">대화방에서 글 위에 크게 뜨는 그림입니다</small></h2>
@@ -1055,7 +1055,9 @@ async function sharePage() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     busy(form.querySelector('[type=submit]'), null, async () => {
-      await api('/settings/share', { method: 'PUT', data: { share_description: ta.value } }); dirty = false; toast('미리보기 설명을 저장했습니다.'); route();
+      // 검색엔진 설명글과 똑같으면 따로 두지 않는다 (그 글을 고치면 여기도 따라가게)
+      const v = ta.value.trim() === (d.seo_description || '').trim() ? '' : ta.value;
+      await api('/settings/share', { method: 'PUT', data: { share_description: v } }); dirty = false; toast('미리보기 설명을 저장했습니다.'); route();
     });
   });
   let image = null;
