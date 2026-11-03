@@ -1,6 +1,5 @@
 // xms 방문자 화면: 메뉴 열기 · 로그인 · 가입 · 마이페이지 · 글쓰기 · 댓글
 import { $, $$, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
-import { mountEditor, shrinkImage, uploadFile } from './editor.js';
 
 const api = makeApi('/xms-api');
 
@@ -96,7 +95,9 @@ $$('[data-doc]').forEach((b) => b.addEventListener('click', () => {
 }));
 
 // 글쓰기: 에디터(↔ 간단입력) · 첨부(이미지 · 파일)
+// 편집기 스크립트는 글쓰기 화면에서만 받는다 (목록 · 글 보기는 가볍게)
 const edHost = $('[data-editor]');
+const { mountEditor, shrinkImage, uploadFile } = edHost || $('[data-attach]') ? await import('./editor.js') : {};
 const ed = edHost ? mountEditor(edHost, { modeBox: $('[data-mode]') }) : null;
 const attachBox = $('[data-attach]');
 let attachments = [];

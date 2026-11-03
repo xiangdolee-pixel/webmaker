@@ -222,10 +222,18 @@ async function boardList(ctx, b) {
   if (!admin) { where.push('published_at <= ?'); args.push(now()); }
   if (q) { where.push('(title LIKE ? OR content_html LIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
   const w = where.join(' AND ');
-  const total = (await env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE ${w}`).bind(...args).first()).n;
-  const { results: rows } = await env.DB.prepare(`SELECT * FROM posts WHERE ${w} ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?`).bind(...args, size, (pg - 1) * size).all();
-  const notices = pg === 1 && !q ? (await env.DB.prepare(`SELECT * FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_notice = 1 ${admin ? '' : 'AND published_at <= ?'} ORDER BY published_at DESC`)
-    .bind(...(admin ? [b.id] : [b.id, now()])).all()).results : [];
+  // 개수 · 목록 · 공지를 동시에 (DB 왕복 줄이기)
+  const [cnt, listRes, ntsRes] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM posts WHERE ${w}`).bind(...args).first(),
+    env.DB.prepare(`SELECT * FROM posts WHERE ${w} ORDER BY published_at DESC, id DESC LIMIT ? OFFSET ?`).bind(...args, size, (pg - 1) * size).all(),
+    pg === 1 && !q
+      ? env.DB.prepare(`SELECT * FROM posts WHERE board_id = ? AND deleted_at IS NULL AND is_notice = 1 ${admin ? '' : 'AND published_at <= ?'} ORDER BY published_at DESC`)
+        .bind(...(admin ? [b.id] : [b.id, now()])).all()
+      : { results: [] },
+  ]);
+  const total = cnt.n;
+  const rows = listRes.results;
+  const notices = ntsRes.results;
   const ls = b.opt.list_show;
   const isNew = (p) => now() - p.published_at < b.opt.new_hours * 3600000;
   const secretHidden = (p) => p.is_secret && !admin && !isMine(p, me);

@@ -51,7 +51,9 @@ export async function shrinkImage(file, { max = 1920, maxBytes = 900000 } = {}) 
   return new File([blob], `${file.name.replace(/\.\w+$/, '')}.${ext}`, { type: blob.type });
 }
 export async function uploadFile(board, kind, file) {
-  const res = await fetch(`/xms-api/uploads?board=${encodeURIComponent(board)}&kind=${kind}`, {
+  // board 가 '@request' 면 관리 화면 수정 요청용 (관리자만)
+  const where = board.startsWith('@') ? `for=${board.slice(1)}` : `board=${encodeURIComponent(board)}`;
+  const res = await fetch(`/xms-api/uploads?${where}&kind=${kind}`, {
     method: 'POST', credentials: 'same-origin',
     headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
     body: file,

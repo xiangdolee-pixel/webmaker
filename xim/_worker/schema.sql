@@ -82,3 +82,4 @@ CREATE TABLE IF NOT EXISTS otp_trust (
 --   ALTER TABLE requests ADD COLUMN requester TEXT;
 -- site_admins 표는 더 쓰지 않는다(업체 관리자 = xms 회원 등급 1). 기록용으로 남겨 둠.
 --   ALTER TABLE sites ADD COLUMN static_mb REAL NOT NULL DEFAULT 0;   -- 배포한 홈페이지 파일 크기 (deploy.mjs 가 적는다)
+--   ALTER TABLE requests ADD COLUMN attachments TEXT;   -- 수정 요청 첨부 [{ id, name, size, kind }] (파일은 그 사이트 xms 업로드)

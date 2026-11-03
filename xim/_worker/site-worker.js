@@ -18,11 +18,16 @@ const STATUS_TTL = 30000;
 let statusCache = { at: 0, value: 'active' };
 const XMS_PATHS = /^\/(admin|xms|xms-api|member|board)(\/|$)|^\/(robots\.txt|sitemap\.xml)$/;
 
-async function siteStatus(env) {
+// 정지 여부: 이 Worker 메모리(30초) → Cloudflare 가장자리 캐시(30초, 도메인 주소에서) → xim 순서로 묻는다
+async function siteStatus(env, request) {
   const t = Date.now();
   if (t - statusCache.at < STATUS_TTL) return statusCache.value;
+  const key = new Request(`${new URL(request.url).origin}/__xim_status__`);
   try {
+    const hit = await caches.default.match(key).catch(() => null);
+    if (hit) { statusCache = { at: t, value: await hit.text() }; return statusCache.value; }
     statusCache = { at: t, value: await env.XIM.status(env.XIM_SITE) };
+    await caches.default.put(key, new Response(statusCache.value, { headers: { 'Cache-Control': 'public, max-age=30' } })).catch(() => {});
   } catch (e) {
     console.error('xim status 실패', e);
     statusCache = { at: t - STATUS_TTL + 5000, value: statusCache.value }; // 5초 뒤 다시 물어본다
@@ -38,28 +43,53 @@ function forward(binding, request, env, pathname) {
   return binding.fetch(req);
 }
 
+// html 로 보이는 주소 (확장자 없음 · .html) — 이런 요청은 사이트 파일과 xms 메뉴 값을 동시에 가져온다
+const looksHtml = (p) => p.endsWith('/') || /\.html?$/i.test(p) || !/\.[a-z0-9]{1,5}$/i.test(p);
+
+// 정적 파일 캐시: 그림 · 글꼴은 하루, css · js 는 5분 바로 쓰고 그 뒤엔 쓰면서 뒤에서 새것 확인 (페이지 옮길 때마다 다시 받지 않게)
+function cacheStatic(res, pathname) {
+  if (!res.ok) return res;
+  const ct = res.headers.get('Content-Type') || '';
+  if (ct.includes('text/html')) return res;
+  const out = new Response(res.body, res);
+  if (/^(image|font)\//.test(ct) || /\.(woff2?|ttf|otf)$/i.test(pathname)) out.headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+  else if (/css|javascript/.test(ct)) out.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+  return out;
+}
+
 export default {
   async fetch(request, env) {
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    const { pathname } = url;
     const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/xms/') || pathname.startsWith('/xms-api/');
-    if (!isAdmin && (await siteStatus(env)) === 'suspended') return forward(env.XIM, request, env, '/__suspended');
+    // CSS · JS · 그림 같은 파일은 정지 확인 없이 바로 (페이지가 막히면 파일만으로는 쓸 수 없다) — 파일마다 xim 에 묻지 않게
+    if (!isAdmin && request.method === 'GET' && !looksHtml(pathname) && !XMS_PATHS.test(pathname)) return cacheStatic(await env.ASSETS.fetch(request), pathname);
+    if (!isAdmin && (await siteStatus(env, request)) === 'suspended') return forward(env.XIM, request, env, '/__suspended');
     // 게시판 · 회원 화면: 사이트의 기존 페이지(틀)에 끼워 넣는다 — 머리 · 꼬리 · CSS 는 사이트 그대로
     if (request.method === 'GET' && /^\/(board|member)(\/|$)/.test(pathname)) return embedPage(request, env);
     if (XMS_PATHS.test(pathname)) return forward(env.XMS, request, env);
-    return withXms(await env.ASSETS.fetch(request), request, env);
+    if (request.method === 'GET' && looksHtml(pathname)) {
+      const [res, data] = await Promise.all([env.ASSETS.fetch(request), siteHead(request, env, isHome(pathname))]);
+      return withXms(res, request, env, data);
+    }
+    return cacheStatic(await env.ASSETS.fetch(request), pathname);
   },
 };
 
 // xms 에게 본문만 받아(X-Xms-Embed) 틀 페이지의 <main> 안을 그것으로 바꾼다. 틀이 없거나 실패하면 xms 화면 그대로.
+//   본문 · 틀 · 메뉴 값을 동시에 가져온다.
 async function embedPage(request, env) {
   const url = new URL(request.url);
   const req = new Request(url, request);
   req.headers.set('X-Xim-Site', env.XIM_SITE);
   req.headers.set('X-Xms-Embed', '1');
-  const xr = await env.XMS.fetch(req);
+  const [xr, shell, data] = await Promise.all([
+    env.XMS.fetch(req),
+    env.ASSETS.fetch(new Request(new URL(env.XIM_SHELL || '/', url.origin))),
+    siteHead(request, env, false),
+  ]);
   if (!(xr.headers.get('Content-Type') || '').includes('application/json')) return xr; // 이동(로그인 뒤 등) · 오류는 그대로
   const d = await xr.json();
-  const shell = await env.ASSETS.fetch(new Request(new URL(env.XIM_SHELL || '/', url.origin)));
   if (!shell.ok || !(shell.headers.get('Content-Type') || '').includes('text/html')) return forward(env.XMS, request, env);
   const headers = new Headers(shell.headers);
   ['ETag', 'Last-Modified', 'Content-Length'].forEach((h) => headers.delete(h));
@@ -77,7 +107,7 @@ async function embedPage(request, env) {
       },
     })
     .transform(new Response(shell.body, { status: d.status || 200, headers }));
-  return withXms(framed, request, env);
+  return withXms(framed, request, env, data);
 }
 
 const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -86,10 +116,23 @@ const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCod
 async function siteHead(request, env, home) {
   try {
     const url = new URL(request.url);
-    const req = new Request(`${url.origin}/xms-api/site-head${home ? '?home=1' : ''}`, { headers: { Cookie: request.headers.get('Cookie') || '' } });
+    const cookie = request.headers.get('Cookie') || '';
+    // 로그인 안 한 방문자는 모두 같은 값 → Cloudflare 가장자리 캐시에 30초 (도메인 주소에서 동작, workers.dev 에서는 그냥 건너뜀)
+    const guest = !/(?:^|;\s*)xms_sess=/.test(cookie);
+    const key = new Request(`${url.origin}/__xms_site_head__/${home ? 'home' : 'page'}`);
+    if (guest) {
+      const hit = await caches.default.match(key).catch(() => null);
+      if (hit) return await hit.json();
+    }
+    const req = new Request(`${url.origin}/xms-api/site-head${home ? '?home=1' : ''}`, { headers: { Cookie: cookie } });
     req.headers.set('X-Xim-Site', env.XIM_SITE);
     const res = await env.XMS.fetch(req);
-    return res.ok ? await res.json() : null;
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (guest) {
+      await caches.default.put(key, new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } })).catch(() => {});
+    }
+    return data;
   } catch (e) {
     console.error('xms site-head 실패', e);
     return null;
@@ -106,6 +149,13 @@ function menuLinks(items, pathname) {
   }).join('');
 }
 
+// 계정 버튼을 서버에서 미리 그린다 (로그인 링크 / 사람 동그라미) — 화면이 뜬 뒤 바뀌며 메뉴가 흔들리지 않게
+const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4" fill="currentColor"/><path d="M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7" fill="currentColor"/></svg>';
+function accountHtml(me, url) {
+  if (!me || me.guest) return `<a class="xa-login" href="/member/login?next=${encodeURIComponent(url.pathname + url.search)}">로그인</a>`;
+  return `<button type="button" class="xa-avatar" aria-haspopup="menu" aria-expanded="false" aria-label="내 계정 메뉴">${PERSON}</button>`;
+}
+
 const attr = (v) => escHtml(v);
 const isHome = (p) => p === '/' || p === '/index.html' || p === '/index';
 
@@ -114,11 +164,10 @@ const isHome = (p) => p === '/' || p === '/index.html' || p === '/index';
 //   ② [data-xms-menu] 안의 [data-xms-item] 메뉴를 xms 메뉴로 바꿔 끼운다 (xms 가 비었거나 응답 없으면 원래 메뉴 그대로)
 //   ③ xms 의 파비콘 · 검색엔진(제목 · 설명 · 소유권 확인) · 카카오톡 미리보기(og) 값을 머리에 넣는다 (값이 있을 때만 사이트 원래 태그를 바꾼다)
 //   ④ 홈이면 노출 중인 팝업
-async function withXms(res, request, env) {
+async function withXms(res, request, env, data) {
   if (!(res.headers.get('Content-Type') || '').includes('text/html')) return res;
   const url = new URL(request.url);
   const home = isHome(url.pathname);
-  const data = await siteHead(request, env, home);
   const menu = data?.menu?.length ? data.menu : null;
   const h = data?.head || {};
   const ogDesc = h.share_description || '';
@@ -126,6 +175,15 @@ async function withXms(res, request, env) {
   let hasDesc = false;
 
   let rw = new HTMLRewriter();
+  if (data) {
+    rw = rw.on('[data-xms-account]', {
+      element(el) {
+        el.setAttribute('class', `${el.getAttribute('class') || ''} xa-host`.trim());
+        el.setAttribute('data-xa-me', JSON.stringify(data.me || { guest: true }));
+        el.setInnerContent(accountHtml(data.me, url), { html: true });
+      },
+    });
+  }
   if (menu) {
     rw = rw
       .on('[data-xms-menu] [data-xms-item]', { element(el) { el.remove(); } })
@@ -142,7 +200,10 @@ async function withXms(res, request, env) {
 
   rw = rw.on('head', {
     element(el) {
-      const tags = ['<script src="/xms/js/account.js" defer></script>'];
+      const tags = [];
+      // 계정 버튼 스타일은 파일로 따로 받지 않고 바로 넣는다
+      if (data?.account_css) tags.push(`<style id="xa-style">${data.account_css}</style>`);
+      tags.push('<script src="/xms/js/account.js" defer></script>');
       for (const v of h.verify || []) tags.push(`<meta name="${attr(v.name)}" content="${attr(v.content)}">`);
       if (h.favicon) {
         for (const f of h.favicon) {

@@ -391,11 +391,12 @@ async function ximApi(request, env, url) {
     const status = url.searchParams.get('status');
     const where = STATUSES.includes(status) ? 'WHERE r.status = ?' : '';
     const stmt = db.prepare(`
-      SELECT r.*, s.slug, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name
+      SELECT r.*, s.slug, s.domain, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name
       FROM requests r JOIN sites s ON s.id = r.site_id LEFT JOIN site_admins a ON a.id = r.admin_id
       ${where} ORDER BY (r.status = 'done'), r.id DESC LIMIT 200`);
     const { results } = await (where ? stmt.bind(status) : stmt).all();
-    return json(results);
+    // 요청 본문의 사진 · 첨부는 그 사이트 주소에 있다 → xim 에서 볼 수 있게 사이트 주소를 붙여 준다
+    return json(results.map((r) => ({ ...r, site_url: siteUrl({ slug: r.slug, domain: r.domain }), attachments: JSON.parse(r.attachments || '[]') })));
   }
   m = path.match(/^\/api\/requests\/(\d+)$/);
   if (m && method === 'PUT') {
@@ -438,7 +439,7 @@ async function siteUsage(env) {
   // D1 은 UNION 으로 묶을 수 있는 SELECT 수가 적어 표마다 따로 묻고 더한다
   const DB_QUERIES = [
     "SELECT site, SUM(length(login_id) + length(pw_hash) + length(pw_salt) + length(name) + length(nickname) + length(email) + length(mobile) + length(phone) + length(extra) + 120) AS n FROM members GROUP BY site",
-    "SELECT site, SUM(length(title) + length(content_html) + length(writer_name) + 100) AS n FROM posts GROUP BY site",
+    "SELECT site, SUM(length(title) + length(content_html) + COALESCE(length(blocks), 0) + length(writer_name) + 100) AS n FROM posts GROUP BY site",
     "SELECT site, SUM(length(body) + length(writer_name) + 60) AS n FROM comments GROUP BY site",
     "SELECT site, SUM(length(content) + 40) AS n FROM documents GROUP BY site",
     "SELECT site, SUM(length(title) + length(path) + 60) AS n FROM menus GROUP BY site",

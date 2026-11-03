@@ -89,11 +89,14 @@ export async function createSession(db, site, kind, memberId = null) {
 export async function whoAmI(db, request, site) {
   const token = cookie(request, SESS_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return { kind: 'guest', level: 0 };
-  const s = await db.prepare('SELECT * FROM sessions WHERE token = ? AND site = ? AND expires_at > ?').bind(token, site, now()).first();
+  // 세션 · 회원을 한 번에 (DB 왕복 줄이기)
+  const s = await db.prepare(`SELECT s.kind AS s_kind, m.* FROM sessions s
+    LEFT JOIN members m ON m.id = s.member_id AND m.site = s.site AND m.status = 'ACTIVE'
+    WHERE s.token = ? AND s.site = ? AND s.expires_at > ?`).bind(token, site, now()).first();
   if (!s) return { kind: 'guest', level: 0 };
-  if (s.kind === 'staff') return { kind: 'staff', level: 1, token, name: '운영자' };
-  const m = await db.prepare("SELECT * FROM members WHERE id = ? AND site = ? AND status = 'ACTIVE'").bind(s.member_id, site).first();
-  if (!m) return { kind: 'guest', level: 0 };
+  if (s.s_kind === 'staff') return { kind: 'staff', level: 1, token, name: '운영자' };
+  if (!s.id) return { kind: 'guest', level: 0 };
+  const { s_kind, ...m } = s;
   return { kind: 'member', member: m, level: m.level, token, name: m.name };
 }
 export const isAdmin = (me) => me.level === 1;

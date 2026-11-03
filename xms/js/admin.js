@@ -1,6 +1,6 @@
 // xms 관리자 화면 (/admin/) — 해시 주소로 화면을 바꾼다: #/members, #/boards/3 …
 import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, formData, openDialog, busy, confirmInline } from './common.js';
-import { mountEditor } from './editor.js';
+import { mountEditor, uploadFile, shrinkImage } from './editor.js';
 import { sortable, treeFromDepths } from './drag.js';
 
 const api = makeApi('/xms-api/admin');
@@ -126,7 +126,7 @@ async function route() {
     if (parts[0] === 'favicon') return await faviconPage();
     if (parts[0] === 'seo') return await seoPage(qs);
     if (parts[0] === 'share') return await sharePage();
-    if (parts[0] === 'storage') return storagePage();
+    if (parts[0] === 'storage') return await storagePage();
     if (parts[0] === 'account') return accountPage();
     if (parts[0] === 'audit') return await auditPage(qs);
     location.hash = '#/members';
@@ -605,32 +605,90 @@ async function menuPage(id) {
 
 // ───────── 수정 요청 ─────────
 const REQ_LABEL = { new: ['접수', 'warn'], doing: ['진행 중', 'blue'], done: ['완료', 'green'] };
+const ATT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+const IMG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>';
+const size = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round((n || 0) / 1024))}KB`);
 async function requestsPage() {
   const list = await api('/requests');
   main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 운영자에게 요청합니다. 처리되면 아래에 답변이 붙습니다.')}
-    <form class="panel pad" id="rform"><label class="field"><span>제목</span><input class="input" name="title" maxlength="120" required placeholder="예) 메인 사진 교체 부탁드립니다"></label>
-      <label class="field"><span>내용</span><textarea class="input" name="body" maxlength="5000" placeholder="바꾸고 싶은 곳과 내용을 적어 주세요."></textarea></label>
+    <form class="panel pad write-box" id="rform">
+      <label class="field"><span>제목</span><input class="input" name="title" maxlength="120" required placeholder="예) 메인 사진 교체 부탁드립니다"></label>
+      <div class="field"><span>첨부</span><div class="attach">
+        <div class="attach-btns"><button type="button" class="pill-btn" data-add="IMAGE">${IMG_ICON}이미지</button><button type="button" class="pill-btn" data-add="FILE">${ATT_ICON}파일</button></div>
+        <div class="attach-list" data-list></div></div></div>
+      <div class="field"><span>내용</span><div class="editor" data-editor data-board="@request"><textarea name="body" hidden></textarea></div></div>
       <p class="err" role="alert"></p><div class="actions end"><button class="btn primary" type="submit">요청 보내기</button></div></form>
-    <div class="panel gap">${list.length ? list.map((r) => `<div class="tree-row"><div class="tt"><b>${esc(r.title)}</b> <span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span>
-      <small>${fmtDate(r.created_at, true)}${r.requester ? ` · ${esc(r.requester)}` : ''}</small>${r.body ? `<p class="pre">${esc(r.body)}</p>` : ''}
+    <div class="panel gap">${list.length ? list.map((r) => `<div class="tree-row req-row"><div class="tt"><b>${esc(r.title)}</b> <span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span>
+      <small>${fmtDate(r.created_at, true)}${r.requester ? ` · ${esc(r.requester)}` : ''}</small>
+      ${r.body ? (r.body.trim().startsWith('<') ? `<div class="prose req-body">${r.body}</div>` : `<p class="pre">${esc(r.body)}</p>`) : ''}
+      ${r.attachments?.length ? `<div class="post-files"><b>첨부</b>${r.attachments.map((a) => `<a href="/xms/upload/${esc(a.id)}?dl=1">${esc(a.name)} <small>${size(a.size)}</small></a>`).join('')}</div>` : ''}
       ${r.reply ? `<div class="notice-bar gap"><span><b>답변</b><br><span class="pre">${esc(r.reply)}</span></span></div>` : ''}</div></div>`).join('')
     : empty('아직 보낸 요청이 없습니다', '위에서 첫 요청을 보내 보세요.')}</div>`;
   const form = $('#rform');
+  const ed = mountEditor($('[data-editor]', form), { placeholder: '바꾸고 싶은 곳과 내용을 적어 주세요.' });
+  // 첨부: 이미지는 본문에 바로, 파일은 목록으로 (게시판 글쓰기와 같음)
+  const atts = [];
+  const drawAtts = () => {
+    const box = $('[data-list]', form);
+    box.innerHTML = atts.map((u, i) => `<div class="att" data-i="${i}"><span class="att-ico">📄</span><span class="att-name">${esc(u.name)}<small>${size(u.size)}</small></span><button type="button" class="att-x" aria-label="빼기">✕</button></div>`).join('');
+    box.querySelectorAll('.att-x').forEach((b) => b.addEventListener('click', () => { atts.splice(+b.closest('.att').dataset.i, 1); drawAtts(); }));
+  };
+  form.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', () => {
+    const kind = btn.dataset.add;
+    const input = document.createElement('input');
+    input.type = 'file'; input.multiple = true;
+    if (kind === 'IMAGE') input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    input.onchange = async () => {
+      for (const f of input.files) {
+        try {
+          toast(`${f.name} 올리는 중…`);
+          if (kind === 'IMAGE') {
+            const up = await uploadFile('@request', 'INLINE', await shrinkImage(f));
+            ed.insertHtml(`<p><img src="${up.url}" alt=""></p>`);
+          } else {
+            atts.push(await uploadFile('@request', 'FILE', f));
+            drawAtts();
+          }
+        } catch (er) { toast(er.message); }
+      }
+    };
+    input.click();
+  }));
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    ed.sync();
     busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
-      await api('/requests', { method: 'POST', data: formData(form) }); toast('요청을 보냈습니다.'); route();
+      await api('/requests', { method: 'POST', data: { title: form.title.value, body: form.body.value, attachments: atts.map((a) => a.id) } });
+      toast('요청을 보냈습니다.'); route();
     });
   });
 }
 
 // ───────── 저장 공간 · 내 계정 · 관리 로그 ─────────
-function storagePage() {
-  const s = INFO.site;
-  const pct = s.quota_mb ? Math.min(100, Math.round((s.used_mb / s.quota_mb) * 100)) : 0;
-  main.innerHTML = `${head('사이트', '저장 공간', `${Math.round(s.used_mb)}MB / ${s.quota_mb}MB 사용 중입니다.`)}
-    <div class="panel pad"><div class="quota-bar"><i style="width:${pct}%"></i></div>
-    <p class="meta gap">${pct >= 100 ? '저장 공간이 가득 찼습니다. 운영자에게 늘려 달라고 요청하세요.' : pct >= 90 ? '저장 공간이 거의 찼습니다. 필요하면 운영자에게 늘려 달라고 요청하세요.' : '사진·파일 올리기 기능이 생기면 여기에서 쓴 만큼 보입니다.'}</p></div>`;
+async function storagePage() {
+  const u = await api('/usage');
+  const quota = (u.quota_mb || 0) * 1048576;
+  const pct = quota ? Math.min(100, (u.files / quota) * 100) : 0;
+  const pctText = pct > 0 && pct < 1 ? '1% 미만' : `${Math.round(pct)}%`;
+  const bar = (part) => (u.files ? Math.max(part ? 1 : 0, (part / u.files) * 100) : 0);
+  main.innerHTML = `${head('사이트', '저장 공간', `파일 ${size(u.files)} / ${u.quota_mb}MB 사용 중입니다 (${pctText}).`)}
+    <div class="panel pad"><h2>파일 저장 공간 <small class="meta">사진 · 첨부 파일 · 팝업 · 파비콘 그림</small></h2>
+      <div class="quota-bar"><i style="width:${pct}%"></i></div>
+      <p class="meta gap">${pct >= 100 ? '저장 공간이 가득 찼습니다. 운영자에게 늘려 달라고 요청하세요.' : pct >= 90 ? '저장 공간이 거의 찼습니다. 필요하면 운영자에게 늘려 달라고 요청하세요.' : `한도 ${u.quota_mb}MB 중 ${size(u.files)}를 쓰고 있습니다. 사진은 올릴 때 WEBP 로 줄여서 저장합니다.`}</p>
+      <div class="stack-bar" aria-hidden="true"><i class="s1" style="width:${bar(u.images)}%"></i><i class="s2" style="width:${bar(u.attachments)}%"></i><i class="s3" style="width:${bar(u.settings_files)}%"></i></div>
+      <dl class="use-list">
+        <div><dt><i class="s1"></i>사진</dt><dd>${size(u.images)}</dd></div>
+        <div><dt><i class="s2"></i>첨부 파일</dt><dd>${size(u.attachments)}</dd></div>
+        <div><dt><i class="s3"></i>팝업 · 파비콘 · 미리보기 그림</dt><dd>${size(u.settings_files)}</dd></div>
+        <div><dt>파일 수</dt><dd>${u.file_count}개</dd></div>
+      </dl>
+    </div>
+    <div class="use-cards gap">
+      <div class="panel pad"><small class="meta">DB</small><b class="big-num">${size(u.db)}</b><p class="meta">회원 · 글 · 댓글 · 메뉴 · 게시판 · 약관 · 관리 로그 같은 글자 데이터입니다.</p></div>
+      <div class="panel pad"><small class="meta">홈페이지</small><b class="big-num">${u.static_mb ? `${u.static_mb}MB` : '—'}</b><p class="meta">디자인 파일(html · 그림 · CSS) 크기입니다. 저장 공간 한도에는 들어가지 않습니다.</p></div>
+    </div>`;
+  INFO.site.used_mb = Math.round((u.files / 1048576) * 10) / 10;
+  renderSide(); markSide();
 }
 function accountPage() {
   main.innerHTML = `${head('내 계정', '비밀번호 변경', INFO.me.staff ? '운영자로 들어온 화면에서는 바꿀 수 없습니다.' : `${esc(INFO.me.login_id)} 계정의 비밀번호를 바꿉니다.`)}

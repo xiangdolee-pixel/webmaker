@@ -19,8 +19,15 @@ import { uploadApi, serveUpload } from './uploads.js';
 import { embedCss } from './css-scope.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
+const headCache = new Map();
+let accountCssText = null;
+async function accountCss(env) {
+  if (accountCssText === null) accountCssText = await (await env.ASSETS.fetch(new Request('https://assets/css/account.css'))).text();
+  return accountCssText;
+}
 
-async function asset(env, path, cache = 'no-cache') {
+// 화면용 css · js: 5분은 바로 쓰고, 그 뒤로는 쓰면서 뒤에서 새것을 확인한다 (페이지를 옮길 때마다 다시 받지 않게)
+async function asset(env, path, cache = 'public, max-age=300, stale-while-revalidate=86400') {
   const res = await env.ASSETS.fetch(new Request(`https://assets${path}`));
   const out = new Response(res.body, res);
   out.headers.set('Cache-Control', cache);
@@ -60,7 +67,7 @@ export class Cms extends WorkerEntrypoint {
           if (!t) return html('<!doctype html><meta charset="utf-8"><p style="font-family:sans-serif;padding:24px">입장권이 만료됐습니다. xim 에서 "관리 화면 열기" 를 다시 눌러 주세요.</p>', 410);
           return new Response(null, { status: 302, headers: { Location: `${url.origin}/admin/`, 'Set-Cookie': await createSession(env.DB, site, 'staff') } });
         }
-        const res = await asset(env, '/admin/');
+        const res = await asset(env, '/admin/', 'no-cache');
         res.headers.set('X-Robots-Tag', 'noindex');
         return res;
       }
@@ -70,8 +77,17 @@ export class Cms extends WorkerEntrypoint {
       // 사이트 Worker 가 html 을 내보낼 때 한 번에 묻는다: 메뉴 · 머리(head) 값 · 홈 팝업
       if (p === '/xms-api/site-head') {
         const home = url.searchParams.get('home') === '1';
-        const [menu, head, popups] = await Promise.all([visibleMenus(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
-        return new Response(JSON.stringify({ menu, head, popups }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+        // 같은 사이트 · 같은 등급이면 15초 동안 기억해 둔 메뉴 · 머리 값을 쓴다 (관리자는 고친 것이 바로 보이게 늘 새로)
+        const key = `${site}:${me.level}:${home ? 1 : 0}`;
+        let data = me.level === 1 ? null : headCache.get(key);
+        if (!data || Date.now() - data.at > 15000) {
+          const [menu, head, popups] = await Promise.all([visibleMenus(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
+          data = { at: Date.now(), menu, head, popups };
+          if (me.level !== 1) headCache.set(key, data);
+        }
+        const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1 };
+        return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env) }),
+          { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await uploadApi(ctx);
       if (p.startsWith('/xms-api/admin/')) return await adminApi(ctx);

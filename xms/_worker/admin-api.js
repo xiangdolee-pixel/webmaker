@@ -4,6 +4,7 @@ import {
   MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
 } from './lib.js';
 import { settingsApi } from './site-meta.js';
+import { usageOf } from './usage.js';
 import { popupsApi } from './popups.js';
 
 const PAGE = 20;
@@ -26,12 +27,15 @@ export async function adminApi(ctx) {
   if (path === '/me') {
     const s = await env.XIM_DB.prepare('SELECT name, domain, quota_mb, used_mb, status FROM sites WHERE slug = ?').bind(site).first();
     const { levelNames } = await siteSettings(db, site);
+    const u = await usageOf(env, site);
     return json({
-      site: { slug: site, name: s?.name || site, domain: s?.domain || '', quota_mb: s?.quota_mb ?? 0, used_mb: s?.used_mb ?? 0, status: s?.status },
+      site: { slug: site, name: s?.name || site, domain: s?.domain || '', quota_mb: s?.quota_mb ?? 0, used_mb: Math.round((u.files / 1048576) * 10) / 10, status: s?.status },
       me: me.kind === 'staff' ? { staff: true, name: '운영자' } : { staff: false, name: me.member.name, login_id: me.member.login_id },
       levelNames,
     });
   }
+
+  if (path === '/usage' && method === 'GET') return json(await usageOf(env, site));
 
   // ───── 회원 ─────
   if (path === '/members' && method === 'GET') return json(await listMembers(db, site, q, false));
@@ -304,8 +308,8 @@ export async function adminApi(ctx) {
   // ───── 수정 요청 (xim 으로 보낸다) ─────
   if (path === '/requests' && method === 'GET') {
     const s = await ximSite(env, site);
-    const { results } = await env.XIM_DB.prepare('SELECT id, title, body, status, reply, requester, created_at, updated_at FROM requests WHERE site_id = ? ORDER BY id DESC LIMIT 100').bind(s.id).all();
-    return json(results);
+    const { results } = await env.XIM_DB.prepare('SELECT id, title, body, status, reply, requester, attachments, created_at, updated_at FROM requests WHERE site_id = ? ORDER BY id DESC LIMIT 100').bind(s.id).all();
+    return json(results.map((r) => ({ ...r, attachments: JSON.parse(r.attachments || '[]') })));
   }
   if (path === '/requests' && method === 'POST') {
     const raw = await body(request);
@@ -314,8 +318,16 @@ export async function adminApi(ctx) {
     const s = await ximSite(env, site);
     const t = now();
     const who = me.kind === 'staff' ? '운영자' : `${me.member.name}(${me.member.login_id})`;
-    await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)')
-      .bind(s.id, title, str(raw.body, 5000), 'new', who, t, t).run();
+    // 본문은 에디터 HTML (정리해서), 첨부는 이 사이트에 올라간 파일만
+    const html = await sanitizeHtml(String(raw.body ?? '').slice(0, 100000));
+    const ids = (Array.isArray(raw.attachments) ? raw.attachments : []).map(String).filter((x) => /^[0-9a-f]{32}$/.test(x)).slice(0, 30);
+    let atts = [];
+    if (ids.length) {
+      const { results: ups } = await db.prepare(`SELECT id, name, size, kind FROM uploads WHERE site = ? AND id IN (${ids.map(() => '?').join(',')})`).bind(site, ...ids).all();
+      atts = ids.map((id) => ups.find((u) => u.id === id)).filter(Boolean);
+    }
+    await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(s.id, title, html, 'new', who, JSON.stringify(atts), t, t).run();
     await audit(db, site, me, request, 'REQUEST_CREATE', title);
     return json({ ok: true });
   }

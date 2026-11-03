@@ -76,8 +76,24 @@ async function renderTiles() {
     ['정지된 사이트', s.suspended],
     ['처리할 수정요청', s.openRequests, s.openRequests > 0],
   ].map(([label, n, alert]) => `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`).join('')
-  + (s.storage ? `<div class="card tile wide-tile"><span>전체 사용량 (Cloudflare 무료 한도)</span>
-      <div class="usage-sum"><span>xms DB <b>${mb(s.storage.xms_db)}</b> / 500MB</span><span>xim DB <b>${mb(s.storage.xim_db)}</b> / 500MB</span><span>R2 파일 <b>${mb(s.storage.r2)}</b> / 10GB</span></div></div>` : '');
+  + (s.storage ? `<div class="card tile wide-tile"><div class="meters-head"><b class="meters-title">전체 사용량</b><span>Cloudflare 무료 한도 대비</span></div>
+      <div class="meters">${[
+    ['xms DB', '업체 회원 · 글 · 메뉴 등', s.storage.xms_db, 500 * 1048576, 'm1'],
+    ['xim DB', '고객 · 사이트 · 요청', s.storage.xim_db, 500 * 1048576, 'm2'],
+    ['R2 파일', '사진 · 첨부', s.storage.r2, 10 * 1073741824, 'm3'],
+  ].map(([name, sub, used, limit, cls]) => meter(name, sub, used, limit, cls)).join('')}</div></div>` : '');
+}
+
+// 막대 하나: 이름 · 쓴 양 / 한도 · % — 아주 적어도 막대 끝이 보이게 최소 폭을 둔다
+function meter(name, sub, used, limit, cls) {
+  const pct = limit ? (used / limit) * 100 : 0;
+  const pctText = pct === 0 ? '0%' : pct < 0.1 ? '0.1% 미만' : pct < 10 ? `${pct.toFixed(1)}%` : `${Math.round(pct)}%`;
+  const limitText = limit >= 1073741824 ? `${limit / 1073741824}GB` : `${limit / 1048576}MB`;
+  return `<div class="meter ${cls}${pct >= 90 ? ' hot' : ''}">
+    <div class="meter-top"><b>${name}</b><small>${sub}</small><span class="meter-num"><b>${mb(used)}</b> / ${limitText}</span></div>
+    <div class="meter-bar" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct.toFixed(2)}"><i style="width:${Math.min(100, Math.max(pct, used ? 0.8 : 0))}%"></i></div>
+    <div class="meter-pct">${pctText}</div>
+  </div>`;
 }
 
 function render() {
@@ -385,12 +401,23 @@ async function renderRequests() {
   });
 }
 
+// 요청 본문: xms 에디터로 쓴 것은 HTML(xms 가 정리해서 저장), 예전 것은 글자. 사진 · 첨부는 그 사이트 주소로.
+function requestBody(r) {
+  const site = r.site_url || '';
+  const body = !r.body ? '<p class="meta">(내용 없음)</p>'
+    : r.body.trim().startsWith('<') ? `<div class="req-html">${r.body.replace(/(src|href)="\/xms\//g, `$1="${site}/xms/`)}</div>`
+      : `<p class="pre body-text">${esc(r.body)}</p>`;
+  const atts = (r.attachments || []).length
+    ? `<div class="req-atts"><b>첨부</b>${r.attachments.map((a) => `<a href="${esc(site)}/xms/upload/${esc(a.id)}?dl=1" target="_blank" rel="noopener">${esc(a.name)}</a>`).join('')}</div>` : '';
+  return body + atts;
+}
+
 function requestDialog(r) {
   let status = r.status;
   openDialog(`
     <h2>${esc(r.title)}</h2>
     <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>${fmtDate(r.created_at)}</span></div>
-    <p class="pre body-text">${esc(r.body) || '(내용 없음)'}</p>
+    ${requestBody(r)}
     <form>
       <div class="field"><span>상태</span><div class="tabs" data-status></div></div>
       <label class="field"><span>답변 (업체 관리자에게 보입니다)</span><textarea class="input" name="reply">${esc(r.reply)}</textarea></label>

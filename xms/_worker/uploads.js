@@ -17,9 +17,14 @@ async function usage(env, site) {
 // POST /xms-api/uploads?board=<slug>&kind=IMAGE|FILE|INLINE  (본문 = 파일 그대로, 헤더 X-File-Name)
 export async function uploadApi(ctx) {
   const { request, env, site, me, url } = ctx;
-  const board = await env.DB.prepare('SELECT * FROM boards WHERE site = ? AND slug = ? AND deleted_at IS NULL').bind(site, url.searchParams.get('board') || '').first();
-  if (!board) throw notFound('없는 게시판입니다.');
-  if (!canBy(board.write_levels, board.allow_guest_write, me, true)) throw forbidden('이 게시판에 글을 쓸 수 없습니다.');
+  if (url.searchParams.get('for') === 'request') {
+    // 관리 화면 수정 요청에 붙이는 파일 — 관리자(레벨1) · 운영자만. 그 사이트 몫으로 저장돼 용량에 들어간다.
+    if (me.level !== 1) throw forbidden('관리자만 올릴 수 있습니다.');
+  } else {
+    const board = await env.DB.prepare('SELECT * FROM boards WHERE site = ? AND slug = ? AND deleted_at IS NULL').bind(site, url.searchParams.get('board') || '').first();
+    if (!board) throw notFound('없는 게시판입니다.');
+    if (!canBy(board.write_levels, board.allow_guest_write, me, true)) throw forbidden('이 게시판에 글을 쓸 수 없습니다.');
+  }
   if (me.kind === 'guest') throw new HttpError(401, '사진과 파일은 로그인한 뒤 올릴 수 있습니다.');
   const kind = KINDS.includes(url.searchParams.get('kind')) ? url.searchParams.get('kind') : 'FILE';
   const mime = (request.headers.get('Content-Type') || 'application/octet-stream').split(';')[0].trim().toLowerCase();
