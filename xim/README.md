@@ -1,9 +1,10 @@
 # xim — 고객 사이트 통합 관리
 
-주소: https://xim.xiangdolee.workers.dev (운영자 비밀번호: `%USERPROFILE%\.wrangler-xiangdolee\xim-운영자비밀번호.txt`, 리포 밖)
+주소: https://xim.xiangdolee.workers.dev (운영자 비밀번호는 사용자가 정함 — Worker 비밀값 `XIM_ADMIN_PASSWORD`, 리포에 없음)
 
 ## 할 수 있는 것 (1단계)
 
+- **구글 OTP** (보안 탭에서 QR 등록): 브라우저마다 하루 1번 OTP, 그 뒤 24시간 동안은 비밀번호만으로 로그인. 운영자 세션도 그 24시간까지만.
 - **고객** 등록 · 수정 · 삭제
 - **사이트** 만들기(등록) · 수정, 저장 용량(MB) 지정, **정지 / 다시 운영**
 - 사이트별 **업체 관리자 계정** 만들기 → 업체가 `사이트주소/admin/` 에서 로그인
@@ -30,6 +31,7 @@ xim Worker (D1 "xim")
 - `_worker/schema.sql` — D1 스키마 (여러 번 실행해도 안전)
 - `_worker/site-worker.js` — 고객 사이트에 복사해 넣는 Worker
 - `site-admin/index.html`, `js/site-admin.js` — 업체 관리자 화면
+- `js/qr.js` — QR 생성기 (OTP 비밀키를 외부 QR 서비스로 보내지 않으려고 직접 그림)
 - `index.html`, `js/app.js` — 운영자 화면, `js/common.js` · `css/style.css` 는 둘이 같이 씀
 
 ## 사이트를 xim 에 연결하기 (Claude 가 함)
@@ -45,6 +47,14 @@ xim Worker (D1 "xim")
    }
    ```
 4. `node deploy.mjs <폴더>`
+
+## 폰을 잃어버려 OTP 를 못 넣을 때
+
+Claude 에게 "xim OTP 초기화해줘" → 아래를 실행하면 비밀번호만으로 로그인되고, 보안 탭에서 다시 등록한다.
+
+```
+node deploy.mjs --wrangler d1 execute xim --remote --command "\"DELETE FROM settings WHERE key IN ('totp_secret','totp_pending'); DELETE FROM otp_trust;\""
+```
 
 ## 운영 명령 (리포 루트에서)
 
