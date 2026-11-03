@@ -1086,7 +1086,7 @@ async function popupsPage(qs) {
   const live = list.filter((p) => p.bucket === 'live').length;
   const shown = tab === 'all' ? list : list.filter((p) => p.bucket === tab);
   const sortableOn = tab === 'all';
-  main.innerHTML = `${head('사이트', '팝업', live ? `지금 홈 화면에 팝업 ${live}개가 떠 있습니다. 여러 개면 창 하나 안에서 좌우로 넘어갑니다.` : '홈 화면에 들어온 방문자에게 창을 띄웁니다. 여러 개를 켜면 창 하나 안에서 좌우로 넘어갑니다.', '<a class="btn primary" href="#/popups/new">+ 팝업 만들기</a>')}
+  main.innerHTML = `${head('사이트', '팝업', live ? `지금 홈 화면에 팝업 ${live}개가 떠 있습니다. 여러 개면 모두 나란히 보이고, 누르면 크게 볼 수 있습니다.` : '홈 화면에 들어온 방문자에게 창을 띄웁니다. 여러 개를 켜면 모두 나란히 보이고, 방문자가 누르면 크게 볼 수 있습니다.', '<a class="btn primary" href="#/popups/new">+ 팝업 만들기</a>')}
     ${list.length ? `<div class="tabs" id="ptabs"></div>
       <p class="meta gap">${tab === 'expired' ? '기간이 지난 팝업입니다. 다시 쓰려면 열어서 기간만 고치면 됩니다.' : sortableOn ? '줄을 끌어서 차례를 바꿀 수 있습니다 — 여러 개가 함께 뜨면 방문자가 이 차례로 넘겨 봅니다.' : '차례는 [전체]에서 끌어서 바꿉니다.'}</p>
       <div class="panel">${shown.length ? `<table class="tbl cardy"><thead><tr>${sortableOn ? '<th>차례</th>' : ''}<th>그림</th><th>이름</th><th>노출 기간</th><th>상태</th><th>운영 모드</th><th>관리</th></tr></thead><tbody id="prows">
