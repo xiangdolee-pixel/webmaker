@@ -113,7 +113,7 @@ onForm('signup', async (form, data) => {
   checkGroups(form);
   delete data.password2;
   await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
-  location.href = '/member/mypage?welcome=1';
+  location.href = '/member/welcome';
 });
 
 onForm('profile', async (form, data) => {

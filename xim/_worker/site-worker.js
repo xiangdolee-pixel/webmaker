@@ -152,7 +152,7 @@ function menuLinks(items, pathname) {
 // 계정 버튼을 서버에서 미리 그린다 (로그인 링크 / 사람 동그라미) — 화면이 뜬 뒤 바뀌며 메뉴가 흔들리지 않게
 const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4" fill="currentColor"/><path d="M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7" fill="currentColor"/></svg>';
 function accountHtml(me, url) {
-  if (!me || me.guest) return `<a class="xa-login" href="/member/login?next=${encodeURIComponent(url.pathname + url.search)}">로그인</a>`;
+  if (!me || me.guest) return '<a class="xa-login" href="/member/login">로그인</a>'; // 로그인하면 홈으로
   return `<button type="button" class="xa-avatar" aria-haspopup="menu" aria-expanded="false" aria-label="내 계정 메뉴">${PERSON}</button>`;
 }
 

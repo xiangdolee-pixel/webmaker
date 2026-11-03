@@ -38,8 +38,7 @@
     }
     if (me.guest) {
       if (!el.querySelector('.xa-login')) {
-        const next = encodeURIComponent(location.pathname + location.search);
-        el.innerHTML = `<a class="xa-login" href="/member/login?next=${next}">로그인</a>`;
+        el.innerHTML = '<a class="xa-login" href="/member/login">로그인</a>'; // 로그인하면 홈으로
       }
       return;
     }

@@ -97,14 +97,18 @@ select.input { padding-right: 32px; }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
 dialog {
+  /* 사이트 CSS 가 * { margin: 0 } 으로 브라우저 기본 가운데 정렬을 지워도 늘 화면 가운데 */
+  position: fixed; inset: 0; margin: auto; height: fit-content; overflow: auto; overscroll-behavior: contain;
   width: min(620px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; border: 0; border-radius: 16px;
   background: var(--surface); color: var(--ink); box-shadow: 0 30px 80px -20px rgba(10, 14, 30, .45);
 }
 dialog[open] { animation: pop .28s var(--ease); }
 dialog::backdrop { background: rgba(16, 20, 32, .45); }
-.dlg { padding: 22px 20px 20px; }
+.dlg { --dp: 20px; padding: 22px var(--dp) var(--dp); }
 .dlg h2 { margin: 0 0 14px; font-size: 20px; }
 .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+/* 긴 글(약관 전문 등)도 닫기 버튼은 늘 아래에 보이게 */
+.dlg > .dlg-foot:last-child { position: sticky; bottom: 0; margin: 12px calc(-1 * var(--dp)) calc(-1 * var(--dp)); padding: 12px var(--dp); background: var(--surface); border-top: 1px solid var(--line); }
 
 /* 위험한 버튼 → 그 자리에서 확인 */
 .confirm { display: grid; gap: 8px; padding: 12px; margin-top: 8px; border-radius: var(--radius-sm); background: var(--danger-soft); color: #7a2323; font-size: 14px; text-align: left; white-space: normal; }
@@ -318,6 +322,13 @@ tr.dragging td { background: var(--surface); }
 .agree .all { font-weight: 700; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .agree-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .crumb { margin: 0 0 8px; font-size: 14px; }
+/* 가입 완료 */
+.welcome { text-align: center; }
+.welcome-mark { width: 64px; height: 64px; margin: 4px auto 16px; display: grid; place-items: center; border-radius: 50%; background: var(--brand); color: #fff; animation: pop .4s var(--ease) both; }
+.welcome-mark svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.welcome .lede { margin: 0 0 20px; }
+.welcome-kv { display: inline-grid; text-align: left; margin: 0 auto 16px; padding: 14px 18px; border-radius: var(--radius-sm); background: var(--line-2); }
+.welcome .meta-note { margin: 0 0 20px; font-size: 14px; color: var(--mute); }
 .crumb a { color: var(--sub); text-decoration: none; }
 .board-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .board-head h1 { margin: 0; }
@@ -531,7 +542,7 @@ p.meta, small.meta { display: block; }
   .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .adm-top .who { display: inline; }
-  .dlg { padding: 26px; }
+  .dlg { --dp: 26px; padding: 26px; }
 }
 
 /* 데스크톱: 왼쪽 메뉴 고정, 방문자 메뉴 가로 */

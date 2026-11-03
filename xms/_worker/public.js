@@ -181,6 +181,22 @@ async function signupPage(ctx) {
   </section>`, { noindex: true });
 }
 
+// 가입 완료 (모든 xim 사이트 공통)
+async function welcomePage(ctx) {
+  const { env, site, me } = ctx;
+  if (me.kind !== 'member') return Response.redirect(`${ctx.url.origin}/member/login`, 302);
+  const info = await siteInfo(env, site);
+  const m = me.member;
+  return page(ctx, '가입 완료', `<section class="pub-box narrow welcome">
+    <div class="welcome-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1>가입을 환영합니다</h1>
+    <p class="lede"><b>${esc(m.nickname || m.name)}</b>님, ${esc(info.name)} 회원이 되셨습니다.</p>
+    <dl class="kv welcome-kv"><dt>아이디</dt><dd>${esc(m.login_id)}</dd><dt>이름</dt><dd>${esc(m.name)}</dd><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></dl>
+    <p class="meta-note">지금 로그인돼 있습니다. 다음부터는 이메일과 비밀번호로 로그인하세요.</p>
+    <div class="actions center"><a class="btn primary" href="/">홈으로</a><a class="btn" href="/member/mypage">내 정보 보기</a></div>
+  </section>`, { noindex: true });
+}
+
 async function mypage(ctx) {
   const { env, site, me } = ctx;
   if (me.kind !== 'member') return needLogin(ctx, '/member/mypage');
@@ -190,10 +206,10 @@ async function mypage(ctx) {
   const val = (f) => (MEMBER_COLUMNS.includes(f.key) ? m[f.key] : extra[f.key]);
   return page(ctx, '마이페이지', `<section class="pub-box narrow">
     <h1>마이페이지</h1>
-    <dl class="kv"><dt>아이디</dt><dd>${esc(m.login_id)}</dd><dt>등급</dt><dd>${esc(levelNames[m.level])}</dd><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></dl>
+    <dl class="kv"><dt>${m.login_id.includes('@') ? '이메일(아이디)' : '아이디'}</dt><dd>${esc(m.login_id)}</dd><dt>등급</dt><dd>${esc(levelNames[m.level])}</dd><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></dl>
     <h2>내 정보</h2>
     <form data-form="profile">
-      ${fields.filter((f) => f.mode !== 'EXCLUDED').map((f) => fieldInput(f, val(f))).join('')}
+      ${fields.filter((f) => f.mode !== 'EXCLUDED' && !(f.key === 'email' && m.login_id.includes('@'))).map((f) => fieldInput(f, val(f))).join('')}
       <p class="err" role="alert"></p>
       <button class="btn primary" type="submit">저장</button>
     </form>
@@ -201,7 +217,7 @@ async function mypage(ctx) {
     <form data-form="password">
       <label class="field"><span>지금 비밀번호</span>${pwInput('current', 'current-password', ' required')}</label>
       <label class="field"><span>새 비밀번호</span>${pwInput('next', 'new-password', ' minlength="8" required')}<small>8자 이상</small></label>
-      <label class="field"><span>새 비밀번호 확인</span><input class="input" type="password" name="next2" autocomplete="new-password" required></label>
+      <label class="field"><span>새 비밀번호 확인</span>${pwInput('next2', 'new-password', ' required')}</label>
       <p class="err" role="alert"></p>
       <button class="btn" type="submit">비밀번호 바꾸기</button>
     </form>
@@ -392,6 +408,7 @@ export async function publicPage(ctx) {
   if (p === '/member/login') return loginPage(ctx);
   if (p === '/member/signup') return signupPage(ctx);
   if (p === '/member/mypage') return mypage(ctx);
+  if (p === '/member/welcome') return welcomePage(ctx);
   if (p === '/member/terms') return docPage(ctx, 'TERMS');
   if (p === '/member/privacy') return docPage(ctx, 'PRIVACY');
   const m = p.match(/^\/board\/([a-z0-9-]+)(?:\/(\d+|write)(?:\/(edit))?)?$/);
@@ -407,7 +424,8 @@ export async function publicPage(ctx) {
 }
 
 // ───────── 라우터: 방문자 API ─────────
-function safeNext(n) { return n && /^\/(?!\/)/.test(n) ? n : '/'; }
+// 로그인 뒤 갈 곳: 기본은 홈. 글쓰기처럼 로그인이 필요했던 화면만 그리로 돌아간다(회원 화면은 홈으로)
+function safeNext(n) { return n && /^\/(?!\/)/.test(n) && !/^\/member\//.test(n) ? n : '/'; }
 
 export async function publicApi(ctx) {
   const { request, env, site, me, url } = ctx;
@@ -499,7 +517,9 @@ export async function publicApi(ctx) {
   if (path === '/profile' && method === 'PUT') {
     if (me.kind !== 'member') throw new HttpError(401, '로그인이 필요합니다.');
     const { fields } = await siteSettings(db, site);
-    const vals = memberValues(fields, await body(request), false);
+    const raw = await body(request);
+    if (me.member.login_id.includes('@')) raw.email = me.member.login_id; // 이메일이 아이디인 회원은 이메일을 바꿀 수 없다
+    const vals = memberValues(fields, raw, false);
     const extra = { ...JSON.parse(me.member.extra || '{}'), ...vals.extra };
     await db.prepare('UPDATE members SET name = ?, nickname = ?, email = ?, mobile = ?, phone = ?, extra = ? WHERE id = ?')
       .bind(vals.cols.name || me.member.name, vals.cols.nickname, vals.cols.email, vals.cols.mobile, vals.cols.phone, JSON.stringify(extra), me.member.id).run();
