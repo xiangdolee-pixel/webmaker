@@ -629,3 +629,8 @@ p.meta, small.meta { display: block; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* 새 글 숫자: 깜박여서 눈에 띄게 (움직임 줄이기 설정이면 멈춤) */
+@keyframes new-blink { 0%, 55% { opacity: 1; transform: scale(1); } 70% { opacity: .25; transform: scale(.92); } 85% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+.new-num { animation: new-blink 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .new-num { animation: none; } }
