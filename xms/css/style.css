@@ -236,6 +236,12 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .row2 { display: grid; gap: 0 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
 .tbl td:first-child { white-space: nowrap; }
 .warn-txt { color: var(--warn) !important; }
+/* 가입 항목 "안 받음" 줄: 회색으로 확실히 */
+.tbl tr.off td { background: #eceef2; color: var(--mute); }
+.tbl tr.off .input { background: #e3e6eb; color: var(--mute); border-color: #d6dae1; }
+.tbl tr.off .tag.blue { background: #dfe2e8; color: var(--mute); }
+.off-tag { display: none; margin-left: 4px; background: #d6dae1 !important; color: #5c6474 !important; }
+.tbl tr.off .off-tag { display: inline-block; }
 .quota-bar { height: 10px; border-radius: 99px; background: var(--line-2); overflow: hidden; }
 .quota-bar i { display: block; height: 100%; border-radius: inherit; background: var(--brand); }
 .savebar { position: sticky; bottom: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; padding: 12px 14px; border-radius: var(--radius); background: var(--top); color: #dfe4ee; box-shadow: 0 -10px 30px -18px rgba(10, 14, 30, .5); }

@@ -1,7 +1,7 @@
 // xms 방문자 화면 · API — 고객 사이트 주소 아래 /member/* · /board/* · /xms-api/*
 import {
   DAY, now, bad, forbidden, notFound, HttpError, json, html, esc, str, body, siteSettings, MEMBER_COLUMNS, canBy, levelBit,
-  createSession, SESS_COOKIE, setCookie, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin,
+  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 
@@ -84,7 +84,8 @@ const fmtDate = (ms, withTime = false) => {
 };
 
 // ───────── 회원 화면 ─────────
-async function latestDocs(db, site) {
+async function latestDocs(db, site, env) {
+  if (env) await ensureDocs(env, site);
   const { results } = await db.prepare(`SELECT d.* FROM documents d WHERE d.site = ? AND d.version =
     (SELECT MAX(version) FROM documents x WHERE x.site = d.site AND x.doc_type = d.doc_type)`).bind(site).all();
   return { TERMS: results.find((d) => d.doc_type === 'TERMS'), PRIVACY: results.find((d) => d.doc_type === 'PRIVACY') };
@@ -129,7 +130,7 @@ async function signupPage(ctx) {
   const { env, site, me } = ctx;
   if (me.kind === 'member') return Response.redirect(`${ctx.url.origin}/member/mypage`, 302);
   const { fields } = await siteSettings(env.DB, site);
-  const docs = await latestDocs(env.DB, site);
+  const docs = await latestDocs(env.DB, site, env);
   const agree = (d, key, label) => (d ? `<div class="agree-row"><label class="check"><input type="checkbox" name="agree_${key}" required> ${label} 동의 <em class="req">(필수)</em></label>
     <button type="button" class="linkish" data-doc="${key}">전문 보기</button><template id="doc-${key}">${d.content}</template></div>` : '');
   const agreeBox = docs.TERMS || docs.PRIVACY ? `<div class="agree">
@@ -185,7 +186,7 @@ async function mypage(ctx) {
 }
 
 async function docPage(ctx, type) {
-  const d = (await latestDocs(ctx.env.DB, ctx.site))[type];
+  const d = (await latestDocs(ctx.env.DB, ctx.site, ctx.env))[type];
   const title = type === 'TERMS' ? '이용약관' : '개인정보 처리방침';
   if (!d) return msgPage(ctx, title, '아직 게시된 내용이 없습니다.');
   return page(ctx, title, `<section class="pub-box"><h1>${title}</h1><p class="meta">v${d.version} · ${fmtDate(d.published_at)} 시행</p><div class="prose">${d.content}</div></section>`);
@@ -391,7 +392,7 @@ export async function publicApi(ctx) {
     if (pw.length < 8 || pw.length > 200) throw bad('비밀번호는 8자 이상으로 넣어 주세요.');
     const { fields } = await siteSettings(db, site);
     const vals = memberValues(fields, raw, true);
-    const docs = await latestDocs(db, site);
+    const docs = await latestDocs(db, site, env);
     if (docs.TERMS && !raw.agree_terms) throw bad('이용약관에 동의해 주세요.');
     if (docs.PRIVACY && !raw.agree_privacy) throw bad('개인정보 처리방침에 동의해 주세요.');
     const dup = await db.prepare('SELECT id FROM members WHERE site = ? AND login_id = ?').bind(site, loginId).first();

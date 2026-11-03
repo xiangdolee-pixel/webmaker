@@ -271,9 +271,9 @@ async function fieldsPage() {
   let fields = d.fields;
   main.innerHTML = `${head('회원', '가입 항목', '회원가입 화면에서 받을 항목입니다. ⠿ 를 끌어 순서를 바꾸고 저장하세요.')}
     <form id="fform"><div class="panel"><table class="tbl cardy"><thead><tr><th></th><th>이름표</th><th>종류</th><th>받기</th><th>입력한 회원</th><th>관리</th></tr></thead><tbody id="frows">
-    ${fields.map((f) => `<tr data-id="${f.key}">
+    ${fields.map((f) => `<tr data-id="${f.key}" class="${f.mode === 'EXCLUDED' ? 'off' : ''}">
       <td><button type="button" class="handle" aria-label="끌어서 순서 바꾸기">⠿</button></td>
-      <td><input class="input" name="label" value="${esc(f.label)}" maxlength="30" aria-label="이름표"><small>키 ${esc(f.key)}</small></td>
+      <td><input class="input" name="label" value="${esc(f.label)}" maxlength="30" aria-label="이름표"><small>키 ${esc(f.key)} <span class="tag off-tag">안 받음 — 가입 화면에 안 나옴</span></small></td>
       <td data-l="종류">${f.builtin ? '<span class="tag blue">기본 제공</span>' : `<span class="tag">${TYPE_LABEL[f.type]}</span>`}${f.options ? `<small>${esc(f.options.join(' · '))}</small>` : ''}</td>
       <td data-l="받기"><select class="input" name="mode"${f.key === 'name' ? ' disabled' : ''}>${Object.entries(MODE_LABEL).map(([k, v]) => `<option value="${k}"${k === f.mode ? ' selected' : ''}>${v}</option>`).join('')}</select>
         <small class="warn-txt" hidden></small></td>
@@ -289,6 +289,7 @@ async function fieldsPage() {
     const f = fields.find((x) => x.key === tr.dataset.id);
     const sel = tr.querySelector('select');
     sel.addEventListener('change', () => {
+      tr.classList.toggle('off', sel.value === 'EXCLUDED');
       const w = tr.querySelector('.warn-txt');
       const left = d.total - f.used;
       w.hidden = !(sel.value === 'REQUIRED' && f.mode !== 'REQUIRED' && left > 0);

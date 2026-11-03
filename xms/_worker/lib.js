@@ -1,4 +1,6 @@
-// xms 공통 도우미: 응답 · 쿠키 · 비밀번호 · 세션 · 권한 · 설정 · HTML 정리
+// xms 공통 도우미: 응답 · 쿠키 · 비밀번호 · 세션 · 권한 · 설정 · HTML 정리 · 기본 약관
+import TERMS_TXT from './docs/terms.txt';
+import PRIVACY_TXT from './docs/privacy.txt';
 
 export const DAY = 86400000;
 export const now = () => Date.now();
@@ -116,13 +118,12 @@ export const levelsOf = (mask) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((k) => mask
 export const DEFAULT_LEVEL_NAMES = { 1: '관리자', 9: '일반회원', 10: '제한회원' };
 export const BUILTIN_FIELDS = [
   { key: 'name', label: '이름', type: 'TEXT', builtin: true },
-  { key: 'church', label: '교회', type: 'TEXT', builtin: true },
   { key: 'mobile', label: '휴대전화', type: 'TEXT', builtin: true },
   { key: 'phone', label: '전화', type: 'TEXT', builtin: true },
   { key: 'email', label: '이메일', type: 'TEXT', builtin: true },
   { key: 'nickname', label: '닉네임', type: 'TEXT', builtin: true },
 ];
-const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'OPTIONAL', phone: 'OPTIONAL', email: 'OPTIONAL', church: 'EXCLUDED', nickname: 'EXCLUDED' };
+const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'OPTIONAL', phone: 'OPTIONAL', email: 'OPTIONAL', nickname: 'EXCLUDED' };
 export const MEMBER_COLUMNS = ['name', 'nickname', 'email', 'mobile', 'phone'];
 
 export async function siteSettings(db, site) {
@@ -133,6 +134,8 @@ export async function siteSettings(db, site) {
   if (!fields.length) {
     fields = BUILTIN_FIELDS.map((f, i) => ({ key: f.key, label: f.label, type: 'TEXT', mode: DEFAULT_MODES[f.key], sort: i }));
   }
+  // 예전 기본 제공이던 "교회"(church)는 뺐다 (사용자 지시 2026-11-03). 직접 추가한 항목(custom)은 남긴다.
+  fields = fields.filter((f) => !(f.key === 'church' && !f.custom));
   fields = fields.map((f) => ({ ...f, builtin: BUILTIN_FIELDS.some((b) => b.key === f.key) }));
   fields.sort((a, b) => a.sort - b.sort);
   return { levelNames, fields };
@@ -186,3 +189,28 @@ export async function sanitizeHtml(input) {
 }
 export const plainText = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&[a-z#0-9]+;/gi, (e) =>
   ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" }[e] || ' ')).replace(/\s+/g, ' ').trim();
+
+// ───────── 이용약관 · 개인정보 처리방침 기본 문안 (Webchon CMS 와 같은 원문, docs/*.txt) ─────────
+// 사이트에 아직 발행된 문서가 없으면 사이트 이름을 끼운 기본 문안을 v1 로 자동 발행한다(사용자 지시 2026-11-03).
+// 원문의 을(를)·이(가) 표기는 그대로 둔다 — 조사를 계산해 법적 문장을 바꾸지 않는다.
+function docHtml(txt, siteName) {
+  const name = String(siteName || '').trim() || '본 사이트';
+  const heading = /^(\[.+\]|제\s*\d+\s*조.*|■.*|\d+\.\s.*)$/;
+  return txt.replaceAll('{site}', name).replace(/\r\n/g, '\n').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).map((p) => {
+    if (!p.includes('\n') && p.length <= 60 && heading.test(p)) return `<h3>${esc(p)}</h3>`;
+    return `<p>${p.split('\n').map(esc).join('<br>')}</p>`;
+  }).join('\n');
+}
+export const docTemplate = (type, siteName) => docHtml(type === 'TERMS' ? TERMS_TXT : PRIVACY_TXT, siteName);
+
+export async function ensureDocs(env, site) {
+  const { results } = await env.DB.prepare('SELECT DISTINCT doc_type FROM documents WHERE site = ?').bind(site).all();
+  const have = new Set(results.map((r) => r.doc_type));
+  const missing = ['TERMS', 'PRIVACY'].filter((t) => !have.has(t));
+  if (!missing.length) return;
+  const s = await env.XIM_DB.prepare('SELECT name FROM sites WHERE slug = ?').bind(site).first();
+  const t = now();
+  await env.DB.batch(missing.map((type) => env.DB.prepare(
+    'INSERT OR IGNORE INTO documents (site, doc_type, version, content, published_at) VALUES (?, ?, 1, ?, ?)',
+  ).bind(site, type, docTemplate(type, s?.name || site), t)));
+}

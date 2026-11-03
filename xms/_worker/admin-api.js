@@ -1,7 +1,7 @@
 // xms 관리자 API (/xms-api/admin/*) — 등급 1(관리자) 또는 xim 에서 대신 들어온 웹촌 직원만
 import {
   DAY, now, bad, forbidden, notFound, json, str, body, audit, isAdmin, siteSettings, saveSettings, BUILTIN_FIELDS,
-  MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError,
+  MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
 } from './lib.js';
 
 const PAGE = 20;
@@ -143,8 +143,9 @@ export async function adminApi(ctx) {
   if ((m = path.match(/^\/documents\/(terms|privacy)$/))) {
     const type = m[1].toUpperCase();
     if (method === 'GET') {
+      await ensureDocs(env, site);
       const { results } = await db.prepare('SELECT id, version, content, published_at FROM documents WHERE site = ? AND doc_type = ? ORDER BY version DESC').bind(site, type).all();
-      return json({ current: results[0] || null, history: results.slice(1).map(({ content, ...r }) => r), template: results[0] ? '' : docTemplate(type) });
+      return json({ current: results[0] || null, history: results.slice(1).map(({ content, ...r }) => r), template: '' });
     }
     if (method === 'POST') {
       const content = await sanitizeHtml((await body(request)).content);
@@ -408,7 +409,8 @@ function normField(f, sort) {
     if (!list.length) throw bad(`"${label}" 의 보기를 한 줄에 하나씩 넣어 주세요.`);
     options = [...new Set(list)].slice(0, 50);
   }
-  return { key: f.key, label, mode, type, sort, ...(options ? { options } : {}) };
+  const custom = !BUILTIN_FIELDS.some((b) => b.key === f.key);
+  return { key: f.key, label, mode, type, sort, ...(custom ? { custom: true } : {}), ...(options ? { options } : {}) };
 }
 
 function csvResponse(data, withdrawn) {
@@ -519,10 +521,4 @@ async function ximSite(env, site) {
   const s = await env.XIM_DB.prepare('SELECT id FROM sites WHERE slug = ?').bind(site).first();
   if (!s) throw notFound('xim 에 등록되지 않은 사이트입니다.');
   return s;
-}
-
-function docTemplate(type) {
-  return type === 'TERMS'
-    ? '<h3>제1조 (목적)</h3><p>이 약관은 홈페이지(이하 "사이트")가 제공하는 서비스의 이용 조건과 절차, 회원과 사이트의 권리·의무를 정하는 것을 목적으로 합니다.</p><h3>제2조 (회원가입)</h3><p>회원가입은 이용자가 약관에 동의하고 가입 양식을 작성하여 신청하면 성립합니다.</p><h3>제3조 (회원 탈퇴)</h3><p>회원은 언제든지 마이페이지에서 탈퇴할 수 있습니다. 탈퇴해도 작성한 글과 댓글은 남습니다.</p><h3>제4조 (게시물)</h3><p>회원이 올린 게시물의 책임은 작성자에게 있으며, 법령이나 이 약관에 어긋나는 게시물은 알리지 않고 지울 수 있습니다.</p>'
-    : '<h3>1. 수집하는 개인정보</h3><p>회원가입 시 아이디, 비밀번호, 이름과 가입 항목에서 받는 정보를 수집합니다.</p><h3>2. 이용 목적</h3><p>회원 확인, 게시판 이용, 공지 전달에만 씁니다.</p><h3>3. 보관 기간</h3><p>회원 탈퇴 시까지 보관하며, 법령에 따라 보관이 필요한 경우 그 기간 동안 보관합니다.</p><h3>4. 문의</h3><p>개인정보 관련 문의는 사이트 관리자에게 해 주세요.</p>';
 }
