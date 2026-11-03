@@ -281,21 +281,29 @@
   /* 홈 "포토": xms 포토 게시판의 최신 글 4개 (사진을 누르면 그 글로) */
   function renderBoardPhotos(container, items) {
     items.forEach(function (item) {
+      // 사진 + 아래에 제목 · 날짜
       var a = document.createElement("a");
-      a.className = "photo-thumb";
+      a.className = "photo-card";
       a.href = item.url;
-      a.setAttribute("aria-label", item.title);
+      var thumb = document.createElement("div");
+      thumb.className = "photo-thumb";
       if (item.thumb) {
         var img = document.createElement("img");
         img.src = item.thumb;
-        img.alt = item.title;
+        img.alt = "";
         img.loading = "lazy";
-        a.appendChild(img);
+        thumb.appendChild(img);
       }
-      var date = document.createElement("span");
-      date.className = "photo-date";
-      date.textContent = item.date;
-      a.appendChild(date);
+      a.appendChild(thumb);
+      var cap = document.createElement("div");
+      cap.className = "photo-cap";
+      var t = document.createElement("strong");
+      t.textContent = item.title;
+      var d = document.createElement("span");
+      d.textContent = item.date;
+      cap.appendChild(t);
+      cap.appendChild(d);
+      a.appendChild(cap);
       container.appendChild(a);
     });
   }

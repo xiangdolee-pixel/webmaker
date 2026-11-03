@@ -839,20 +839,14 @@ section { padding: var(--sec-y) var(--gutter); }
   transition: transform 0.8s var(--ease);
 }
 .photo-thumb:hover img { transform: scale(1.05); }
-.photo-date {
-  position: absolute;
-  left: 0.7rem;
-  bottom: 0.7rem;
-  z-index: 1;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--white);
-  background: rgba(13, 22, 31, 0.55);
-  border-radius: 999px;
-  padding: 0.18rem 0.65rem;
-  pointer-events: none;
-}
+/* 홈 포토: 사진 + 제목 · 날짜 */
+.photo-card { display: block; min-width: 0; }
+.photo-card .photo-thumb { display: block; }
+.photo-card:hover .photo-thumb img { transform: scale(1.05); }
+.photo-cap { display: grid; gap: 0.2rem; padding: 0.9rem 0.2rem 0; }
+.photo-cap strong { font-size: 1.1rem; font-weight: 600; line-height: 1.45; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 0.3s; }
+.photo-cap span { font-size: 0.95rem; color: var(--ink-soft); letter-spacing: 0.02em; }
+.photo-card:hover .photo-cap strong { color: var(--accent); }
 
 /* ═══════════ 하위 페이지 (게시판 · 회원 화면 — _layout.html 의 <main> 에 xms 가 끼워진다) ═══════════ */
 .subpage { min-height: 100svh; display: flex; flex-direction: column; }
