@@ -7,30 +7,30 @@
 - **구글 OTP** (보안 탭에서 QR 등록): 브라우저마다 하루 1번 OTP, 그 뒤 24시간 동안은 비밀번호만으로 로그인. 운영자 세션도 그 24시간까지만.
 - **고객** 등록 · 수정 · 삭제
 - **사이트** 만들기(등록) · 수정, 저장 용량(MB) 지정, **정지 / 다시 운영**
-- 사이트별 **업체 관리자 계정** 만들기 → 업체가 `사이트주소/admin/` 에서 로그인
-- 업체가 남긴 **수정요청** 확인, 상태(접수 · 진행 중 · 완료) 바꾸기, 답변 달기 → 업체 화면에 보임
+- 사이트별 **업체 관리자 계정** 만들기 (= xms 회원 등급 1) → 업체가 `사이트주소/admin/` 에서 로그인해 회원·게시판·메뉴 관리 (xms)
+- **관리 화면 열기**: 웹촌 직원으로 그 업체 관리 화면에 대신 들어간다 (1분짜리 입장권, 관리 로그에 "웹촌 직원" 으로 남음)
+- 업체가 xms 에서 남긴 **수정요청** 확인, 상태(접수 · 진행 중 · 완료) 바꾸기, 답변 달기 → 업체 화면에 보임
 
-아직 없는 것: 용량은 숫자만 저장(업로드 기능이 생기면 그때 집계·제한), 게시판 · 메뉴 CMS, 고객 도메인 자동 연결.
+아직 없는 것: 용량은 숫자만 저장(업로드 기능이 생기면 그때 집계·제한), 고객 도메인 자동 연결.
 
 ## 구조
 
 ```
-xim Worker (D1 "xim")
+xim Worker (D1 "xim", XMS_DB = D1 "xms")
  ├─ 기본 주소        운영자 화면 index.html + /api/*
  └─ Engine (서비스 바인딩 전용, 공개 주소 없음)
        status(slug)          사이트 운영/정지 상태
-       fetch                 /admin/ · /xim-api/* · 중단 화면
+       fetch                 /__suspended 중단 화면
 
 고객 사이트 Worker (예: sjccc)
-   /admin/, /xim-api/*  → Engine
-   정지된 사이트        → "서비스 일시 중단" (30초 캐시)
+   정지된 사이트        → "서비스 일시 중단" (30초 캐시, /admin/ 은 정지 중에도 열림)
+   /admin/ · /xms/* · /xms-api/* · /member/* · /board/*  → xms (../xms/README.md)
    그 밖                → 자기 정적 파일
 ```
 
 - `_worker/index.js` — xim Worker (운영자 API + Engine)
 - `_worker/schema.sql` — D1 스키마 (여러 번 실행해도 안전)
 - `_worker/site-worker.js` — 고객 사이트에 복사해 넣는 Worker
-- `site-admin/index.html`, `js/site-admin.js` — 업체 관리자 화면
 - `js/qr.js` — QR 생성기 (OTP 비밀키를 외부 QR 서비스로 보내지 않으려고 직접 그림)
 - `index.html`, `js/app.js` — 운영자 화면, `js/common.js` · `css/style.css` 는 둘이 같이 씀
 
@@ -42,7 +42,10 @@ xim Worker (D1 "xim")
    ```json
    {
      "vars": { "XIM_SITE": "<폴더>" },
-     "services": [{ "binding": "XIM", "service": "xim", "entrypoint": "Engine" }],
+     "services": [
+       { "binding": "XIM", "service": "xim", "entrypoint": "Engine" },
+       { "binding": "XMS", "service": "xms", "entrypoint": "Cms" }
+     ],
      "assets": { "run_worker_first": true }
    }
    ```

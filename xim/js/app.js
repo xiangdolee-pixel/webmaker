@@ -101,6 +101,12 @@ async function renderSites() {
     const site = sites.find((s) => s.id === +el.dataset.site);
     el.querySelector('[data-act="edit"]').onclick = () => siteDialog(site);
     el.querySelector('[data-act="admins"]').onclick = () => adminsDialog(site);
+    el.querySelector('[data-act="cms"]').onclick = (e) => busy(e.currentTarget, null, async () => {
+      // 팝업 차단을 피하려고 먼저 빈 창을 열고 주소를 넣는다
+      const w = window.open('', '_blank');
+      const r = await api(`/sites/${site.id}/staff-ticket`, { method: 'POST', data: {} });
+      if (w) w.location = r.url; else location.href = r.url;
+    });
     el.querySelector('[data-act="toggle"]').onclick = (e) => toggleSite(site, e.currentTarget);
   });
 }
@@ -116,6 +122,7 @@ function siteCard(s) {
       <span>처리할 요청 ${s.open_requests}건</span></div>
     <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div>
     <div class="actions">
+      <button class="btn sm primary" type="button" data-act="cms">관리 화면 열기</button>
       <button class="btn sm" type="button" data-act="edit">수정</button>
       <button class="btn sm" type="button" data-act="admins">관리자 계정</button>
       <button class="btn sm${s.status === 'active' ? ' danger' : ''}" type="button" data-act="toggle">${s.status === 'active' ? '사이트 정지' : '다시 운영'}</button>
@@ -182,11 +189,11 @@ function toggleSite(site, btn) {
 function adminsDialog(site) {
   openDialog(`
     <h2>${esc(site.name)} 관리자 계정</h2>
-    <p class="meta">업체 담당자가 <b>사이트 주소/admin</b> 에서 이 계정으로 로그인해 수정요청을 남깁니다.</p>
+    <p class="meta">업체 담당자가 <b>사이트 주소/admin/</b> 에서 이 계정으로 로그인해 회원·게시판·메뉴를 관리합니다 (xms 관리자 등급 회원).</p>
     <div class="sub-list" data-list></div>
     <form>
       <div class="row2">
-        <label class="field"><span>아이디</span><input class="input" name="username" required autocomplete="off" pattern="[A-Za-z0-9._\\-]{3,40}"></label>
+        <label class="field"><span>아이디</span><input class="input" name="username" required autocomplete="off" pattern="[A-Za-z0-9_\\-]{4,50}"></label>
         <label class="field"><span>이름</span><input class="input" name="name" autocomplete="off" placeholder="홍길동"></label>
       </div>
       <label class="field"><span>비밀번호</span><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password">
@@ -203,7 +210,7 @@ function adminsDialog(site) {
       listEl.querySelectorAll('[data-del]').forEach((b) => {
         b.onclick = () => busy(b, null, async () => {
           if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '정말 삭제'; return; }
-          await api(`/admins/${b.dataset.del}`, { method: 'DELETE' });
+          await api(`/sites/${site.id}/admins/${b.dataset.del}`, { method: 'DELETE' });
           await load();
           render();
         });

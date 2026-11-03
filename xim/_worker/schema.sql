@@ -77,3 +77,7 @@ CREATE TABLE IF NOT EXISTS otp_trust (
   token       TEXT PRIMARY KEY,
   expires_at  INTEGER NOT NULL
 );
+
+-- 2026-11-03 xms 로 업체 관리 화면을 옮기며 추가 (한 번만 실행됨 — 이미 있으면 오류가 나므로 따로 실행):
+--   ALTER TABLE requests ADD COLUMN requester TEXT;
+-- site_admins 표는 더 쓰지 않는다(업체 관리자 = xms 회원 등급 1). 기록용으로 남겨 둠.

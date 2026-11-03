@@ -3,10 +3,9 @@
 //   기본 export (xim.….workers.dev)   운영자 관리 화면(/) + 운영자 API(/api/*)
 //   Engine (서비스 바인딩 전용)          각 고객 사이트 Worker 가 부른다. 공개 주소로는 닿지 않는다.
 //     status(slug)                      사이트 상태(active | suspended | unknown)
-//     fetch(request)                    고객 사이트의 /admin(업체 관리자 화면) · /xim-api/* · /__suspended
-//                                       어느 사이트인지는 고객 Worker 가 붙여 주는 X-Xim-Site 헤더로 안다.
+//     fetch(request)                    /__suspended (정지 화면). 업체 관리 화면 · 회원 · 게시판은 xms 가 맡는다.
 //
-//   바인딩: DB(D1 xim), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
+//   바인딩: DB(D1 xim), XMS_DB(D1 xms: 업체 관리자 계정 · 입장권), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 const DAY = 86400000;
@@ -297,11 +296,13 @@ async function ximApi(request, env, url) {
   if (path === '/api/sites' && method === 'GET') {
     const { results } = await db.prepare(`
       SELECT s.*, c.name AS customer_name,
-        (SELECT COUNT(*) FROM requests r WHERE r.site_id = s.id AND r.status != 'done') AS open_requests,
-        (SELECT COUNT(*) FROM site_admins a WHERE a.site_id = s.id) AS admin_count
+        (SELECT COUNT(*) FROM requests r WHERE r.site_id = s.id AND r.status != 'done') AS open_requests
       FROM sites s LEFT JOIN customers c ON c.id = s.customer_id
       ORDER BY s.id DESC`).all();
-    return json(results);
+    // 업체 관리자 = xms 의 등급 1 회원
+    const { results: admins } = await env.XMS_DB.prepare("SELECT site, COUNT(*) AS n FROM members WHERE level = 1 AND status != 'WITHDRAWN' GROUP BY site").all();
+    const count = Object.fromEntries(admins.map((a) => [a.site, a.n]));
+    return json(results.map((s) => ({ ...s, admin_count: count[s.slug] || 0, url: siteUrl(s) })));
   }
   if (path === '/api/sites' && method === 'POST') {
     const raw = await body(request);
@@ -330,38 +331,52 @@ async function ximApi(request, env, url) {
     return json({ ok: true });
   }
 
-  // 업체 관리자 계정
+  // 업체 관리자 계정 = xms 회원 중 등급 1 (사이트주소/admin/ 으로 로그인)
   m = path.match(/^\/api\/sites\/(\d+)\/admins$/);
-  if (m && method === 'GET') {
-    const { results } = await db.prepare('SELECT id, username, name, created_at FROM site_admins WHERE site_id = ? ORDER BY id')
-      .bind(+m[1]).all();
-    return json(results);
-  }
-  if (m && method === 'POST') {
-    const raw = await body(request);
-    const username = str(raw.username, 40);
-    const password = String(raw.password ?? '');
-    if (!/^[A-Za-z0-9._-]{3,40}$/.test(username)) throw bad('아이디는 영문·숫자 3~40자로 넣어 주세요.');
-    if (password.length < 8 || password.length > 200) throw bad('비밀번호는 8자 이상으로 넣어 주세요.');
-    const site = await db.prepare('SELECT id FROM sites WHERE id = ?').bind(+m[1]).first();
+  if (m) {
+    const site = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();
     if (!site) throw new HttpError(404, '사이트가 없습니다.');
-    const salt = randomHex(16);
-    try {
-      await db.prepare('INSERT INTO site_admins (site_id, username, name, pw_hash, pw_salt, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(site.id, username, str(raw.name, 40), await hashPassword(password, salt), salt, now()).run();
-    } catch (e) {
-      if (String(e.message).includes('UNIQUE')) throw bad('이 사이트에 같은 아이디가 이미 있습니다.');
-      throw e;
+    const xms = env.XMS_DB;
+    if (method === 'GET') {
+      const { results } = await xms.prepare("SELECT id, login_id AS username, name, created_at FROM members WHERE site = ? AND level = 1 AND status != 'WITHDRAWN' ORDER BY id")
+        .bind(site.slug).all();
+      return json(results);
     }
-    return json({ ok: true });
+    if (method === 'POST') {
+      const raw = await body(request);
+      const username = str(raw.username, 50);
+      const password = String(raw.password ?? '');
+      if (!/^[A-Za-z0-9_-]{4,50}$/.test(username)) throw bad('아이디는 영문·숫자·_·- 4~50자로 넣어 주세요.');
+      if (password.length < 8 || password.length > 200) throw bad('비밀번호는 8자 이상으로 넣어 주세요.');
+      const dup = await xms.prepare('SELECT id, status FROM members WHERE site = ? AND login_id = ?').bind(site.slug, username).first();
+      if (dup) throw bad(dup.status === 'WITHDRAWN' ? '탈퇴한 회원이 쓰던 아이디입니다. 다른 아이디를 넣어 주세요.' : '이미 있는 아이디입니다. 그 회원을 관리자로 올리려면 사이트 관리 화면의 가입회원에서 등급을 바꾸세요.');
+      const salt = randomHex(16);
+      const t = now();
+      await xms.prepare('INSERT INTO members (site, login_id, pw_hash, pw_salt, name, level, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)')
+        .bind(site.slug, username, await hashPassword(password, salt), salt, str(raw.name, 40) || username, t).run();
+      return json({ ok: true });
+    }
   }
-  m = path.match(/^\/api\/admins\/(\d+)$/);
+  m = path.match(/^\/api\/sites\/(\d+)\/admins\/(\d+)$/);
   if (m && method === 'DELETE') {
-    await db.batch([
-      db.prepare("DELETE FROM sessions WHERE kind = 'site' AND admin_id = ?").bind(+m[1]),
-      db.prepare('DELETE FROM site_admins WHERE id = ?').bind(+m[1]),
+    const site = await db.prepare('SELECT slug FROM sites WHERE id = ?').bind(+m[1]).first();
+    if (!site) throw new HttpError(404, '사이트가 없습니다.');
+    await env.XMS_DB.batch([
+      env.XMS_DB.prepare("UPDATE members SET status = 'WITHDRAWN', withdrawn_at = ?, withdraw_reason = 'xim 에서 관리자 계정 삭제' WHERE id = ? AND site = ? AND level = 1").bind(now(), +m[2], site.slug),
+      env.XMS_DB.prepare('DELETE FROM sessions WHERE member_id = ?').bind(+m[2]),
     ]);
     return json({ ok: true });
+  }
+
+  // 관리 화면 열기 — 웹촌 직원으로 업체 관리 화면에 대신 들어가는 1분짜리 입장권
+  m = path.match(/^\/api\/sites\/(\d+)\/staff-ticket$/);
+  if (m && method === 'POST') {
+    const site = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();
+    if (!site) throw new HttpError(404, '사이트가 없습니다.');
+    const token = randomHex(32);
+    await env.XMS_DB.prepare('DELETE FROM staff_tickets WHERE expires_at < ?').bind(now()).run();
+    await env.XMS_DB.prepare('INSERT INTO staff_tickets (token, site, expires_at) VALUES (?, ?, ?)').bind(token, site.slug, now() + 60000).run();
+    return json({ url: `${siteUrl(site)}/admin/?staff=${token}` });
   }
 
   // 수정요청
@@ -369,7 +384,7 @@ async function ximApi(request, env, url) {
     const status = url.searchParams.get('status');
     const where = STATUSES.includes(status) ? 'WHERE r.status = ?' : '';
     const stmt = db.prepare(`
-      SELECT r.*, s.slug, s.name AS site_name, a.username, a.name AS admin_name
+      SELECT r.*, s.slug, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name
       FROM requests r JOIN sites s ON s.id = r.site_id LEFT JOIN site_admins a ON a.id = r.admin_id
       ${where} ORDER BY (r.status = 'done'), r.id DESC LIMIT 200`);
     const { results } = await (where ? stmt.bind(status) : stmt).all();
@@ -411,58 +426,11 @@ function siteFields(raw) {
 
 // ───────────────────────── 엔진: 고객 사이트용 ─────────────────────────
 
-const SITE_COOKIE = 'xim_site';
-
-async function siteApi(request, env, site, url) {
-  const db = env.DB;
-  const path = url.pathname.replace(/\/+$/, '');
-  const method = request.method;
-
-  if (path === '/xim-api/site') return json({ name: site.name, slug: site.slug, status: site.status });
-
-  if (path === '/xim-api/login' && method === 'POST') {
-    const key = `site:${site.id}:${clientIp(request)}`;
-    if (await tooManyFails(db, key)) throw new HttpError(429, '로그인 실패가 많아 10분 뒤에 다시 시도해 주세요.');
-    const raw = await body(request);
-    const admin = await db.prepare('SELECT * FROM site_admins WHERE site_id = ? AND username = ?')
-      .bind(site.id, str(raw.username, 40)).first();
-    const hash = admin ? await hashPassword(String(raw.password ?? '').slice(0, 200), admin.pw_salt) : '';
-    if (!admin || !sameText(hash, admin.pw_hash)) {
-      await recordFail(db, key);
-      throw new HttpError(401, '아이디 또는 비밀번호가 맞지 않습니다.');
-    }
-    const token = await newSession(db, 'site', site.id, admin.id);
-    return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SITE_COOKIE, token, SESSION_MS / 1000) });
-  }
-
-  const session = await readSession(db, request, SITE_COOKIE, 'site');
-  if (!session || session.site_id !== site.id) throw new HttpError(401, '로그인이 필요합니다.');
-
-  if (path === '/xim-api/logout' && method === 'POST') {
-    await db.prepare('DELETE FROM sessions WHERE token = ?').bind(session.token).run();
-    return json({ ok: true }, 200, { 'Set-Cookie': setCookie(SITE_COOKIE, '', 0) });
-  }
-  if (path === '/xim-api/me') {
-    const a = await db.prepare('SELECT username, name FROM site_admins WHERE id = ?').bind(session.admin_id).first();
-    return json({ ...a, site: { name: site.name, status: site.status, quota_mb: site.quota_mb, used_mb: site.used_mb } });
-  }
-  if (path === '/xim-api/requests' && method === 'GET') {
-    const { results } = await db.prepare(
-      'SELECT id, title, body, status, reply, created_at, updated_at FROM requests WHERE site_id = ? ORDER BY id DESC LIMIT 100',
-    ).bind(site.id).all();
-    return json(results);
-  }
-  if (path === '/xim-api/requests' && method === 'POST') {
-    const raw = await body(request);
-    const title = str(raw.title, 120);
-    if (!title) throw bad('제목을 넣어 주세요.');
-    const t = now();
-    await db.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .bind(site.id, session.admin_id, title, str(raw.body, 5000), 'new', t, t).run();
-    return json({ ok: true });
-  }
-
-  throw new HttpError(404, '없는 주소입니다.');
+// 업체 사이트 주소: 도메인이 있으면 그 주소, 없으면 workers.dev
+const WORKERS_SUB = 'xiangdolee';
+function siteUrl(site) {
+  const d = String(site.domain || '').trim().replace(/^https?:[/][/]/, '').replace(/[/].*$/, '');
+  return d ? `https://${d}` : `https://${site.slug}.${WORKERS_SUB}.workers.dev`;
 }
 
 function suspendedPage(site) {
@@ -493,23 +461,6 @@ export class Engine extends WorkerEntrypoint {
     if (url.pathname === '/__suspended') return suspendedPage(site);
     if (!site) return new Response('xim 에 등록되지 않은 사이트입니다.', { status: 404 });
 
-    if (url.pathname.startsWith('/xim-api/')) {
-      try { return await siteApi(request, this.env, site, url); } catch (e) { return fail(e); }
-    }
-    // /admin/ → 업체 관리자 화면. xim 의 site-admin/index.html 과 같은 css/ · js/ 를 그대로 쓴다.
-    if (url.pathname === '/admin') return Response.redirect(`${url.origin}/admin/`, 301);
-    if (url.pathname.startsWith('/admin/')) {
-      const rest = url.pathname.slice('/admin/'.length);
-      let asset;
-      if (rest === '' || rest === 'index.html') asset = '/site-admin/';
-      else if (/^(css|js)\/[\w.-]+$/.test(rest)) asset = `/${rest}`;
-      else return new Response('Not found', { status: 404 });
-      const res = await this.env.ASSETS.fetch(new Request(`https://assets${asset}`));
-      const out = new Response(res.body, res);
-      out.headers.set('Cache-Control', 'no-cache');
-      out.headers.set('X-Robots-Tag', 'noindex');
-      return out;
-    }
     return new Response('Not found', { status: 404 });
   }
 }
