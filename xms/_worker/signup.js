@@ -4,7 +4,9 @@
 //   ③ /signup 은 가입표가 있어야 받는다 — 아이디 = 이메일
 // 설정 (리포에 두지 않는다):
 //   Turnstile: vars TURNSTILE_SITE_KEY(공개) + secret TURNSTILE_SECRET — 없으면 봇 확인을 건너뛴다
-//   메일: Cloudflare Email Service 바인딩 EMAIL(send_email) 또는 secret RESEND_API_KEY, 보내는 주소 vars MAIL_FROM
+//   메일: Cloudflare Email Service 바인딩 EMAIL(send_email) 또는 secret RESEND_API_KEY
+//   보내는 주소: 그 사이트 도메인의 noreply@<도메인> (고객은 그 사이트에 가입하므로).
+//     그 도메인을 아직 Email Sending 에 등록(Onboard)하지 않았으면 예비 주소 vars MAIL_FROM(noreply@plators.com)으로 보낸다.
 import { HttpError, bad, now, str, esc, randomHex, clientIp, tooManyFails, recordFail } from './lib.js';
 
 export const EMAIL_RE = /^[^\s@<>()",;:]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
@@ -31,23 +33,38 @@ async function checkTurnstile(env, request, token) {
 
 export const mailReady = (env) => !!(env.MAIL_FROM && (env.EMAIL || env.RESEND_API_KEY));
 
-async function sendMail(env, { to, subject, text, html, fromName }) {
-  if (!mailReady(env)) throw new HttpError(503, '인증 메일을 보낼 준비가 아직 안 됐습니다. 잠시 뒤에 다시 해 주세요.');
-  const from = { email: env.MAIL_FROM, name: fromName };
+// 사이트 도메인 → 메일 주소용(한글 도메인은 xn-- 로)
+export function siteMailFrom(domain) {
+  const d = String(domain || '').trim().replace(/^https?:[/][/]/, '').replace(/[/].*$/, '');
+  if (!d) return '';
+  try { return `noreply@${new URL(`https://${d}`).hostname}`; } catch { return ''; }
+}
+
+async function sendOnce(env, from, { to, subject, text, html, fromName }) {
   if (env.EMAIL) {
-    await env.EMAIL.send({ to, from, subject, text, html });
+    await env.EMAIL.send({ to, from: { email: from, name: fromName }, subject, text, html });
     return;
   }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: `${fromName} <${env.MAIL_FROM}>`, to: [to], subject, text, html }),
+    body: JSON.stringify({ from: `${fromName} <${from}>`, to: [to], subject, text, html }),
   });
-  if (!r.ok) { console.error('메일 보내기 실패', r.status, await r.text().catch(() => '')); throw new HttpError(502, '인증 메일을 보내지 못했습니다. 잠시 뒤에 다시 해 주세요.'); }
+  if (!r.ok) throw new Error(`resend ${r.status} ${await r.text().catch(() => '')}`);
+}
+
+async function sendMail(env, msg, siteFrom) {
+  if (!mailReady(env)) throw new HttpError(503, '인증 메일을 보낼 준비가 아직 안 됐습니다. 잠시 뒤에 다시 해 주세요.');
+  // 사이트 주소로 먼저, 그 도메인이 아직 등록 전이면 예비 주소로
+  for (const from of [...new Set([siteFrom, env.MAIL_FROM].filter(Boolean))]) {
+    try { await sendOnce(env, from, msg); return from; } catch (e) { console.error('메일 보내기 실패', from, e?.message || e); }
+  }
+  throw new HttpError(502, '인증 메일을 보내지 못했습니다. 잠시 뒤에 다시 해 주세요.');
 }
 
 // ① 번호 보내기
-export async function sendSignupCode({ env, request, site }, raw, siteName) {
+export async function sendSignupCode({ env, request, site }, raw, info = {}) {
+  const siteName = info.name;
   const db = env.DB;
   const ipKey = `code:${site}:${clientIp(request)}`;
   if (await tooManyFails(db, ipKey, 10)) throw new HttpError(429, '인증 메일을 너무 많이 요청했습니다. 15분 뒤에 다시 해 주세요.');
@@ -74,7 +91,7 @@ export async function sendSignupCode({ env, request, site }, raw, siteName) {
 <p style="margin:0 0 8px;font-size:15px">${esc(name)} 회원가입 인증번호</p>
 <p style="margin:0 0 16px;font-size:34px;font-weight:700;letter-spacing:6px">${code}</p>
 <p style="margin:0;font-size:14px;color:#6b7684">10분 안에 가입 화면에 넣어 주세요.<br>직접 요청하지 않았다면 이 메일은 지우셔도 됩니다.</p></div>`,
-  });
+  }, siteMailFrom(info.domain));
   return { ok: true, email, expires_in: CODE_TTL / 1000, resend_in: RESEND_GAP / 1000 };
 }
 

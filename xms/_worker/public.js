@@ -13,7 +13,7 @@ const LOCK_MS = 15 * 60000;
 // ───────── 공통: 사이트 정보 · 메뉴 ─────────
 async function siteInfo(env, site) {
   const s = await env.XIM_DB.prepare('SELECT name, domain FROM sites WHERE slug = ?').bind(site).first();
-  return { slug: site, name: s?.name || site };
+  return { slug: site, name: s?.name || site, domain: s?.domain || '' };
 }
 
 // 이 방문자에게 보이는 메뉴 트리
@@ -466,7 +466,7 @@ export async function publicApi(ctx) {
   }
 
   if (path === '/signup/code' && method === 'POST') {
-    return json(await sendSignupCode(ctx, await body(request), (await siteInfo(env, site)).name));
+    return json(await sendSignupCode(ctx, await body(request), await siteInfo(env, site)));
   }
   if (path === '/signup/verify' && method === 'POST') {
     return json(await verifySignupCode(ctx, await body(request)));

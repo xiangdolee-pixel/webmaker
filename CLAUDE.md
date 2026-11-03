@@ -103,6 +103,8 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 ## xms (업체별 CMS)
 
+- 회원가입 = 이메일 인증(6자리 번호) → 정보 입력, 아이디 = 이메일. 인증 메일은 **그 사이트 도메인의 `noreply@<도메인>`** 으로 보낸다(Cloudflare Email Service). 새 고객 도메인을 붙이면 대시보드 Compute › Email Service › Email Sending › Onboard Domain 에 그 도메인도 등록해야 한다 — 등록 전에는 예비 주소 noreply@plators.com 으로 나간다.
+
 - `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
 - 기능 기준은 사용자 PC 의 기준 CMS 소스(경로는 Claude 메모리 xim-project 에 있다). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
 - 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "관리 화면 열기" = 운영자 대신 들어가기(1분 입장권).
