@@ -117,7 +117,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 - `/board/*` · `/member/*` 는 **사이트의 기존 페이지(틀)를 그대로 쓰고 `<main>` 자리에만** xms 내용을 끼운다. 머리 · 꼬리 · 사이트 CSS 를 절대 바꾸지 않는다.
 - 틀 고르기(build.mjs → `XIM_SHELL`): 폴더에 `_layout.html` 이 있으면 그것, 없으면 `<main>` 이 있는 첫 하위 페이지, 그것도 없으면 첫 화면. 새 사이트를 디자인할 때 하위 페이지에 `<main>` 을 꼭 둔다(게시판 틀로 쓰인다). 첫 화면처럼 꾸밈이 많은 페이지뿐이면 `_layout.html`(머리 · 빈 main · 꼬리)을 따로 만든다.
-- 게시판 CSS 는 `/xms/css/embed.css` — xms CSS 를 `.xms-c` 안에만 걸리게 바꾼 것. 글꼴 · 글자색은 사이트를 따른다. 강조색은 사이트 CSS 에서 `.xms-c { --brand: … }` 한 줄로 맞춘다(예: sjccc).
+- 게시판 CSS 는 `/xms/css/embed.css` — xms CSS 를 `.xms-c` 안에만 걸리게 바꾼 것. 글자색은 사이트를 따르고, **글꼴은 게시판 · 글 · 회원가입 등 xms 화면 모두 Pretendard** (사용자 지시 2026-11-03). 강조색은 사이트 CSS 에서 `.xms-c { --brand: … }` 한 줄로 맞춘다(예: sjccc).
 
 ## 모든 홈페이지 공통: 로그인 · 계정 버튼 (사용자 지시 2026-11-03, xim 관할 모든 서비스)
 

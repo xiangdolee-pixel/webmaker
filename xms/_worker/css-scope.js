@@ -36,14 +36,15 @@ function walk(css) {
   return out;
 }
 
-// 사이트 안에서는 바탕 · 상자 꾸밈을 빼고 사이트 글꼴 · 글자색을 따른다. 강조색은 사이트가 --brand 로 바꿀 수 있다.
+// 사이트 안에서는 바탕 · 상자 꾸밈을 빼고 글자색은 사이트를 따른다. 글꼴은 늘 Pretendard(사용자 지시 2026-11-03). 강조색은 사이트가 --brand 로 바꿀 수 있다.
 const BASE = `
-${SCOPE}{--font:inherit;--ink:#1f2328;--brand:#2b2f36;--brand-ink:#fff;--brand-soft:rgba(0,0,0,.06);--top:#2b2f36;
-  display:block;max-width:1100px;margin:0 auto;padding:clamp(28px,5vw,64px) 16px clamp(48px,7vw,96px);font-family:inherit;color:inherit;line-height:1.65;text-align:left}
+${SCOPE}{--font:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;--ink:#1f2328;--brand:#2b2f36;--brand-ink:#fff;--brand-soft:rgba(0,0,0,.06);--top:#2b2f36;
+  display:block;max-width:1100px;margin:0 auto;padding:clamp(28px,5vw,64px) 16px clamp(48px,7vw,96px);font-family:var(--font);color:inherit;line-height:1.65;text-align:left}
 ${SCOPE} .pub-box{background:none;border:0;box-shadow:none;padding:0;max-width:none;animation:none}
 ${SCOPE} .pub-box.narrow{max-width:460px;margin:0 auto}
 ${SCOPE} h1,${SCOPE} h2,${SCOPE} h3{color:inherit}
 ${SCOPE} a{color:inherit}
+${SCOPE} input,${SCOPE} select,${SCOPE} textarea,${SCOPE} button{font-family:var(--font)}
 ${SCOPE} .btn.primary,${SCOPE} .btn.dark{color:var(--brand-ink)}
 `;
 

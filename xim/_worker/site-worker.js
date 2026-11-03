@@ -103,7 +103,8 @@ async function embedPage(request, env) {
       element(el) {
         // 틀 페이지의 상대 주소(css/style.css 등)가 게시판 주소 밑에서도 사이트 기준으로 풀리도록
         el.prepend('<base href="/">', { html: true });
-        el.append(`<link rel="stylesheet" href="/xms/css/embed.css">\n<script type="module" src="/xms/js/public.js"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
+        el.append(`<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/xms/css/embed.css">\n<script type="module" src="/xms/js/public.js"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
       },
     })
     .transform(new Response(shell.body, { status: d.status || 200, headers }));
