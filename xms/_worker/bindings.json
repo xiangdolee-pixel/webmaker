@@ -1,4 +1,6 @@
 {
+  "send_email": [{ "name": "EMAIL", "remote": true }],
+  "vars": { "MAIL_FROM": "noreply@plators.com" },
   "placement": { "mode": "smart" },
   "d1_databases": [
     { "binding": "DB", "database_name": "xms", "database_id": "0fd9af7c-f214-4fee-80bb-1e8b94099bda" },
