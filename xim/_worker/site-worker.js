@@ -57,8 +57,65 @@ function cacheStatic(res, pathname) {
   return out;
 }
 
+// ───── 보안 감시 (xim "감시" 탭) ─────
+//   공격 주소(.env · wp-admin · .php · .git …)를 찌르면 → 바로 차단(xim 이 정함), 없는 주소를 마구 던지면 → 10분에 15번이면 차단
+//   막힌 IP 는 모든 사이트에서 403. 확인은 이 Worker 메모리(60초) → 가장자리 캐시(60초) → xim 순서.
+const ATTACK = /(\.(php\d?|phtml|asp|aspx|jsp|cgi|env|git|svn|sql|bak|old|swp|ini|log|sh|DS_Store)(\/|$))|\/(wp-(admin|login|content|includes|json)|xmlrpc|phpmyadmin|pma|myadmin|cgi-bin|vendor\/phpunit|boaform|actuator|solr|HNAP1|manager\/html|autodiscover|owa|ecp)(\/|$)|\.\.\/|%2e%2e|\/etc\/passwd|\/\.(env|git|aws|ssh|htaccess|htpasswd|vscode|idea)/i;
+const BENIGN = /^\/(favicon\.ico|apple-touch-icon[\w-]*\.png|robots\.txt|sitemap\.xml|ads\.txt|manifest\.json|site\.webmanifest|browserconfig\.xml|\.well-known\/)/i;
+const GOOD_BOT = /(googlebot|bingbot|yeti|daumoa|kakaotalk-scrap|facebookexternalhit|twitterbot|applebot|duckduckbot)/i;
+const secMem = new Map(); // ip → { blocked, at }
+async function isBlocked(env, request, ip) {
+  const t = Date.now();
+  const m = secMem.get(ip);
+  if (m && t - m.at < 60000) return m.blocked;
+  const key = new Request(`${new URL(request.url).origin}/__xim_sec__/${encodeURIComponent(ip)}`);
+  let blocked = false;
+  try {
+    const hit = await caches.default.match(key).catch(() => null);
+    if (hit) blocked = (await hit.text()) === '1';
+    else {
+      blocked = !!(await env.XIM.secCheck(ip));
+      await caches.default.put(key, new Response(blocked ? '1' : '0', { headers: { 'Cache-Control': 'public, max-age=60' } })).catch(() => {});
+    }
+  } catch { blocked = false; } // xim 이 응답하지 않으면 막지 않는다
+  if (secMem.size > 5000) secMem.clear();
+  secMem.set(ip, { blocked, at: t });
+  return blocked;
+}
+const blockedPage = () => new Response('<!doctype html><meta charset="utf-8"><title>접근 차단</title><p style="font-family:sans-serif;padding:32px;color:#444">비정상적인 접근이 감지되어 잠시 차단되었습니다.</p>', { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+function secReport(env, request, ip, reason) {
+  const url = new URL(request.url);
+  return env.XIM.secReport({
+    site: env.XIM_SITE, ip, reason, method: request.method,
+    path: (url.pathname + url.search).slice(0, 300),
+    ua: (request.headers.get('User-Agent') || '').slice(0, 200),
+    country: request.cf?.country || '',
+  }).then((r) => { if (r?.blocked) secMem.set(ip, { blocked: true, at: Date.now() }); }).catch(() => {});
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    const ip = request.headers.get('CF-Connecting-IP') || '';
+    const url = new URL(request.url);
+    if (ip && env.XIM) {
+      if (await isBlocked(env, request, ip)) return blockedPage();
+      // 주소 부분은 공격 주소 목록으로, 물음표 뒤(검색어 등)는 경로 거슬러 오르기만 본다 (검색어 'abc.php' 같은 건 막지 않게)
+      if (ATTACK.test(decodeURIComponentSafe(url.pathname)) || /\.\.\/|\/etc\/passwd/i.test(decodeURIComponentSafe(url.search))) {
+        ctx.waitUntil(secReport(env, request, ip, 'attack'));
+        return new Response('Not found', { status: 404 });
+      }
+    }
+    const res = await handle(request, env);
+    if (ip && env.XIM && res.status === 404 && !BENIGN.test(url.pathname) && !GOOD_BOT.test(request.headers.get('User-Agent') || '')) {
+      ctx.waitUntil(secReport(env, request, ip, '404'));
+    }
+    return res;
+  },
+};
+function decodeURIComponentSafe(s) { try { return decodeURIComponent(s); } catch { return s; } }
+
+async function handle(request, env) {
+  {
     const url = new URL(request.url);
     const { pathname } = url;
     const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/xms/') || pathname.startsWith('/xms-api/');
@@ -73,8 +130,8 @@ export default {
       return withXms(res, request, env, data);
     }
     return cacheStatic(await env.ASSETS.fetch(request), pathname);
-  },
-};
+  }
+}
 
 // xms 에게 본문만 받아(X-Xms-Embed) 틀 페이지의 <main> 안을 그것으로 바꾼다. 틀이 없거나 실패하면 xms 화면 그대로.
 //   본문 · 틀 · 메뉴 값을 동시에 가져온다.

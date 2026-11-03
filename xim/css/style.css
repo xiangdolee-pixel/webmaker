@@ -245,3 +245,22 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 @keyframes new-blink { 0%, 55% { opacity: 1; transform: scale(1); } 70% { opacity: .25; transform: scale(.92); } 85% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
 .new-num, .nav-num { animation: new-blink 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .new-num, .nav-num { animation: none; } }
+/* 감시 */
+.live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sub); }
+.live-dot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #22a861; animation: new-blink 1.4s ease-in-out infinite; }
+.mon-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 10px; }
+.mon-rule { margin: 0 0 14px; font-size: 13px; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.input.sm { min-height: 34px; padding: 4px 10px; font-size: 14px; width: auto; }
+.tbl-wrap { overflow-x: auto; margin-top: 10px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th { padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--sub); font-size: 12px; font-weight: 700; text-align: left; white-space: nowrap; }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; white-space: nowrap; }
+.tbl tr.hit td { background: #fff4f4; }
+.mon-tbl .path { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
+.blocked { color: var(--danger, #c63a3a); }
+.allow-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.allow-list li { display: flex; align-items: center; gap: 10px; }
+.allow-list small { color: var(--sub); }
+@media (max-width: 767px) { .mon-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

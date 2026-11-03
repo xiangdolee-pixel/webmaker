@@ -63,6 +63,40 @@ CREATE TABLE IF NOT EXISTS request_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_request_messages ON request_messages(request_id, id);
 
+-- 보안 감시: 의심 요청 기록 (사이트 Worker 가 알린다, 2주 보관)
+CREATE TABLE IF NOT EXISTS sec_events (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  at      INTEGER NOT NULL,
+  site    TEXT NOT NULL DEFAULT '',
+  ip      TEXT NOT NULL,
+  country TEXT NOT NULL DEFAULT '',
+  method  TEXT NOT NULL DEFAULT '',
+  path    TEXT NOT NULL DEFAULT '',
+  ua      TEXT NOT NULL DEFAULT '',
+  reason  TEXT NOT NULL,                -- attack(공격 주소) | 404(없는 주소)
+  action  TEXT NOT NULL DEFAULT 'log'   -- log | block(이 요청으로 차단됨)
+);
+CREATE INDEX IF NOT EXISTS idx_sec_events_ip ON sec_events(ip, reason, at);
+CREATE INDEX IF NOT EXISTS idx_sec_events_at ON sec_events(at);
+-- 막힌 IP (until 이 지나면 풀림. 기록은 남겨 다시 걸리면 7일)
+CREATE TABLE IF NOT EXISTS sec_blocks (
+  ip         TEXT PRIMARY KEY,
+  reason     TEXT NOT NULL DEFAULT '',
+  until      INTEGER NOT NULL,
+  hits       INTEGER NOT NULL DEFAULT 0,
+  country    TEXT NOT NULL DEFAULT '',
+  site       TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  last_at    INTEGER NOT NULL,
+  manual     INTEGER NOT NULL DEFAULT 0
+);
+-- 막지 않을 IP (운영자 사무실 등)
+CREATE TABLE IF NOT EXISTS sec_allow (
+  ip         TEXT PRIMARY KEY,
+  memo       TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
 -- 로그인 세션. kind = xim(운영자) | site(업체 관리자)
 CREATE TABLE IF NOT EXISTS sessions (
   token       TEXT PRIMARY KEY,

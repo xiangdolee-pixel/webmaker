@@ -10,6 +10,8 @@ import { ensureMailDomain, ensureTurnstile } from './mail-domain.js';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 const DAY = 86400000;
+const SEC_WINDOW = 10 * 60000; // 없는 주소: 10분 동안
+const SEC_404_LIMIT = 15;      //   15번이면 차단
 const SESSION_MS = 7 * DAY;
 const PBKDF2_ITER = 10000; // 무료 플랜 CPU 10ms 안에 들도록 낮게 잡음
 const FAIL_WINDOW = 10 * 60000;
@@ -403,6 +405,56 @@ async function ximApi(request, env, url) {
     return json({ url: `${siteUrl(site)}/xms/?staff=${token}` });
   }
 
+  // ───── 보안 감시 ─────
+  if (path === '/api/sec' && method === 'GET') {
+    const t = now();
+    const only = url.searchParams.get('only'); // block | attack
+    const where = only === 'block' ? "WHERE action = 'block'" : only === 'attack' ? "WHERE reason = 'attack'" : '';
+    const [stats, events, blocks, allow] = await db.batch([
+      db.prepare(`SELECT
+          (SELECT COUNT(*) FROM sec_events WHERE at > ?) AS events24,
+          (SELECT COUNT(*) FROM sec_events WHERE at > ? AND reason = 'attack') AS attacks24,
+          (SELECT COUNT(*) FROM sec_blocks WHERE created_at > ? OR last_at > ?) AS blocked24,
+          (SELECT COUNT(*) FROM sec_blocks WHERE until > ?) AS active`).bind(t - DAY, t - DAY, t - DAY, t - DAY, t),
+      db.prepare(`SELECT * FROM sec_events ${where} ORDER BY id DESC LIMIT 200`),
+      db.prepare('SELECT * FROM sec_blocks WHERE until > ? ORDER BY last_at DESC LIMIT 300').bind(t),
+      db.prepare('SELECT * FROM sec_allow ORDER BY created_at DESC'),
+    ]);
+    return json({ stats: stats.results[0], events: events.results, blocks: blocks.results, allow: allow.results, my_ip: request.headers.get('CF-Connecting-IP') || '' });
+  }
+  if (path === '/api/sec/blocks' && method === 'POST') {
+    const raw = await body(request);
+    const ip = str(raw.ip, 64);
+    if (!/^[0-9a-fA-F:.]{3,64}$/.test(ip)) throw bad('IP 주소를 확인해 주세요.');
+    const days = Math.min(3650, Math.max(1, Math.round(Number(raw.days) || 30)));
+    const t = now();
+    await db.prepare(`INSERT INTO sec_blocks (ip, reason, until, hits, country, site, created_at, last_at, manual) VALUES (?, ?, ?, 0, '', '', ?, ?, 1)
+      ON CONFLICT(ip) DO UPDATE SET reason = excluded.reason, until = excluded.until, last_at = excluded.last_at, manual = 1`)
+      .bind(ip, str(raw.memo, 100) || '운영자가 직접 차단', t + days * DAY, t, t).run();
+    await db.prepare('DELETE FROM sec_allow WHERE ip = ?').bind(ip).run();
+    return json({ ok: true });
+  }
+  m = path.match(/^\/api\/sec\/blocks\/([0-9a-fA-F:.%]+)$/);
+  if (m && method === 'DELETE') {
+    await db.prepare('UPDATE sec_blocks SET until = 0 WHERE ip = ?').bind(decodeURIComponent(m[1])).run(); // 기록은 남겨 다시 걸리면 7일
+    return json({ ok: true });
+  }
+  if (path === '/api/sec/allow' && method === 'POST') {
+    const raw = await body(request);
+    const ip = str(raw.ip, 64);
+    if (!/^[0-9a-fA-F:.]{3,64}$/.test(ip)) throw bad('IP 주소를 확인해 주세요.');
+    await db.batch([
+      db.prepare('INSERT OR REPLACE INTO sec_allow (ip, memo, created_at) VALUES (?, ?, ?)').bind(ip, str(raw.memo, 100), now()),
+      db.prepare('UPDATE sec_blocks SET until = 0 WHERE ip = ?').bind(ip),
+    ]);
+    return json({ ok: true });
+  }
+  m = path.match(/^\/api\/sec\/allow\/([0-9a-fA-F:.%]+)$/);
+  if (m && method === 'DELETE') {
+    await db.prepare('DELETE FROM sec_allow WHERE ip = ?').bind(decodeURIComponent(m[1])).run();
+    return json({ ok: true });
+  }
+
   // 수정요청
   if (path === '/api/requests' && method === 'GET') {
     const status = url.searchParams.get('status');
@@ -667,6 +719,45 @@ export class Engine extends WorkerEntrypoint {
   async status(slug) {
     const site = await getSite(this.env, slug);
     return site ? site.status : 'unknown';
+  }
+
+  // 보안 감시: 이 IP 가 지금 막혀 있나 (사이트 Worker 가 IP 마다 60초 캐시)
+  async secCheck(ip) {
+    const db = this.env.DB;
+    const allow = await db.prepare('SELECT 1 FROM sec_allow WHERE ip = ?').bind(ip).first();
+    if (allow) return false;
+    const b = await db.prepare('SELECT until FROM sec_blocks WHERE ip = ? AND until > ?').bind(ip, now()).first();
+    return !!b;
+  }
+
+  // 의심 요청 기록 + 자동 차단 판단 → { blocked }
+  async secReport(e) {
+    const db = this.env.DB;
+    const ip = String(e.ip || '').slice(0, 64);
+    if (!ip) return { blocked: false };
+    const t = now();
+    const allowed = await db.prepare('SELECT 1 FROM sec_allow WHERE ip = ?').bind(ip).first();
+    let block = null;
+    if (!allowed) {
+      if (e.reason === 'attack') block = '공격 주소';
+      else {
+        const c = await db.prepare("SELECT COUNT(*) AS n FROM sec_events WHERE ip = ? AND reason = '404' AND at > ?").bind(ip, t - SEC_WINDOW).first();
+        if (c.n + 1 >= SEC_404_LIMIT) block = `없는 주소 ${SEC_404_LIMIT}번 이상(10분)`;
+      }
+    }
+    const stmts = [db.prepare('INSERT INTO sec_events (at, site, ip, country, method, path, ua, reason, action) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(t, String(e.site || '').slice(0, 40), ip, String(e.country || '').slice(0, 4), String(e.method || '').slice(0, 8), String(e.path || '').slice(0, 300), String(e.ua || '').slice(0, 200), e.reason === 'attack' ? 'attack' : '404', block ? 'block' : 'log')];
+    if (block) {
+      // 처음이면 하루, 전에도 막힌 적이 있으면 7일
+      const prev = await db.prepare('SELECT hits FROM sec_blocks WHERE ip = ?').bind(ip).first();
+      const until = t + (prev ? 7 : 1) * DAY;
+      stmts.push(db.prepare(`INSERT INTO sec_blocks (ip, reason, until, hits, country, site, created_at, last_at, manual) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 0)
+        ON CONFLICT(ip) DO UPDATE SET reason = excluded.reason, until = MAX(sec_blocks.until, excluded.until), hits = sec_blocks.hits + 1, last_at = excluded.last_at, site = excluded.site`)
+        .bind(ip, block, until, String(e.country || '').slice(0, 4), String(e.site || '').slice(0, 40), t, t));
+    }
+    if (Math.random() < 0.02) stmts.push(db.prepare('DELETE FROM sec_events WHERE at < ?').bind(t - 14 * DAY)); // 2주 지난 기록 정리
+    await db.batch(stmts);
+    return { blocked: !!block };
   }
 
   async fetch(request) {
