@@ -66,10 +66,11 @@
     const menu = document.createElement('div');
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
-    menu.innerHTML = `<div class="xa-who">${me.staff ? '웹촌 직원' : `${esc(me.name)} 님`}</div>
+    // 웹촌 직원 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
+    menu.innerHTML = `<div class="xa-who">${me.staff ? '웹촌 직원으로 들어와 있음 (xim)' : `${esc(me.name)} 님`}</div>
       ${admin ? '<a role="menuitem" href="/admin/">관리</a><a role="menuitem" href="/admin/#/requests">유지보수 요청</a>' : ''}
       ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
-      <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
+      <button type="button" role="menuitem" data-xa-logout>${me.staff ? '웹촌 직원 나가기' : '로그아웃'}</button>`;
     document.body.append(menu);
     const btn = el.querySelector('.xa-avatar');
 
