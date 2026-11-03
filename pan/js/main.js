@@ -165,16 +165,30 @@
     return { wd: WD[g.weekday], min: (+g.hour % 24) * 60 + +g.minute };
   }
   // 평일 open~close(분). 지금 장중이면 마감까지, 아니면 다음 개장까지 남은 분
-  function session(tz, open, close) {
+  // 그 거래소 현지 날짜 'YYYY-MM-DD' (+d 일)
+  function zoneDate(tz, d) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + (d || 0) * 864e5));
+  }
+  // 평일·휴장일을 따져 지금 장중인지, 마감/다음 개장까지 몇 분인지
+  // hol: { 'YYYY-MM-DD': 이름 }, early: { 'YYYY-MM-DD': 이름 } (조기폐장 13:00)
+  function session(tz, open, close, hol, early) {
+    hol = hol || {}; early = early || {};
     var n = zoneNow(tz);
-    var weekday = n.wd >= 1 && n.wd <= 5;
-    if (weekday && n.min >= open && n.min < close) return { open: true, left: close - n.min };
-    if (weekday && n.min < open) return { open: false, left: open - n.min };
-    for (var d = 1; d <= 7; d++) {
-      var w = (n.wd + d) % 7;
-      if (w >= 1 && w <= 5) return { open: false, left: d * 1440 - n.min + open };
+    var today = zoneDate(tz, 0);
+    var trading = function (wd, date) { return wd >= 1 && wd <= 5 && !hol[date]; };
+    var cl = early[today] ? 780 : close;
+    if (trading(n.wd, today) && n.min >= open && n.min < cl) return { open: true, left: cl - n.min, early: early[today] || null, close: cl };
+    if (trading(n.wd, today) && n.min < open) return { open: false, left: open - n.min, next: today, early: early[today] || null };
+    for (var d = 1; d <= 14; d++) {
+      var w = (n.wd + d) % 7, date = zoneDate(tz, d);
+      if (trading(w, date)) return { open: false, left: d * 1440 - n.min + open, next: date, holidayToday: hol[today] || null };
     }
     return { open: false, left: 0 };
+  }
+  var WDK = ['일', '월', '화', '수', '목', '금', '토'];
+  function mdw(date) {
+    var d = new Date(date + 'T12:00:00Z');
+    return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '(' + WDK[d.getUTCDay()] + ')';
   }
   function fmtLeft(m) {
     var h = Math.floor(m / 60), mm = m % 60;
@@ -191,23 +205,84 @@
     min = ((min % 1440) + 1440) % 1440;
     return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
   }
-  var naverStatus = {}; // KOSPI / .INX 의 네이버 장 상태(휴장 판단용)
+  var naverStatus = {}; // KOSPI / .INX 의 네이버 장 상태(목록에 없는 임시 휴장 판단용)
+  var market = null;    // /api/market : 휴장일·조기폐장·서킷브레이커
+  function toMap(list) { var m = {}; (list || []).forEach(function (h) { m[h.date] = h.name; }); return m; }
   function renderHours() {
-    [['hr-kr', 'Asia/Seoul', 540, 930, 'KOSPI'], ['hr-us', 'America/New_York', 570, 960, '.INX']].forEach(function (h) {
-      var box = $(h[0]);
-      var s = session(h[1], h[2], h[3]);
-      var st = box.querySelector('[data-st]');
-      var left = box.querySelector('[data-left]');
-      var ns = naverStatus[h[4]];
-      var holiday = s.open && ns && ns !== 'OPEN';
-      st.className = 'badge ' + (s.open && !holiday ? 'open' : 'close');
-      st.textContent = holiday ? '휴장' : s.open ? '장중' : '장마감';
-      left.textContent = holiday ? '오늘은 휴장일이에요' : s.open ? '마감까지 ' + fmtLeft(s.left) : '개장까지 ' + fmtLeft(s.left);
-    });
     var off = nyOffsetMin(); // EST -300, EDT -240
     var diff = 540 - off;    // 한국 - 뉴욕 (분)
+    var conf = [
+      { id: 'hr-kr', tz: 'Asia/Seoul', open: 540, close: 930, nv: 'KOSPI', key: 'kr' },
+      { id: 'hr-us', tz: 'America/New_York', open: 570, close: 960, nv: '.INX', key: 'us' },
+    ];
+    conf.forEach(function (h) {
+      var box = $(h.id);
+      var mk = market && market[h.key];
+      var hol = toMap(mk && mk.holidays), early = toMap(mk && mk.early);
+      var s = session(h.tz, h.open, h.close, hol, early);
+      var st = box.querySelector('[data-st]');
+      var left = box.querySelector('[data-left]');
+      var holEl = box.querySelector('[data-hol]');
+      var today = zoneDate(h.tz, 0);
+      var ns = naverStatus[h.nv];
+      // 목록에 없는 임시 휴장: 장 시간인데 네이버가 계속 '마감'이면
+      var adhoc = s.open && ns && ns !== 'OPEN';
+      var holName = hol[today] || null;
+      var kst = function (min) { return h.key === 'us' ? ' (한국 ' + hm(min + diff) + ')' : ''; };
+      var closedToday = holName || adhoc;
+      st.className = 'badge ' + (s.open && !adhoc ? 'open' : 'close');
+      st.textContent = closedToday ? '휴장' : s.open ? '장중' : '장마감';
+      if (holName) left.textContent = '오늘은 ' + holName + ' — 휴장 · 다음 개장 ' + mdw(s.next) + ' ' + hm(h.open) + kst(h.open);
+      else if (adhoc) left.textContent = '오늘은 휴장이에요 (거래소 임시 휴장)';
+      else if (s.open) left.textContent = '마감까지 ' + fmtLeft(s.left) + (s.early ? ' · 오늘은 ' + s.early + ' 조기 폐장 13:00' + kst(780) : '');
+      else left.textContent = '개장까지 ' + fmtLeft(s.left) + (s.next && s.next !== today ? ' · ' + mdw(s.next) + ' 개장' : '');
+      // 다음 휴장일
+      var up = (mk && mk.holidays || []).filter(function (x) { return x.date > today; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+      var ne = (mk && mk.early || []).filter(function (x) { return x.date >= today; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+      var t = up ? '다음 휴장 ' + mdw(up.date) + ' ' + up.name : '';
+      if (ne && (!up || ne.date < up.date) && ne.date !== today) t += (t ? ' · ' : '') + mdw(ne.date) + ' 조기 폐장';
+      holEl.textContent = t;
+      renderCB(box.querySelector('[data-cb]'), h.key, diff);
+    });
     $('hr-us').querySelector('[data-kst]').textContent = hm(570 + diff) + ' ~ ' + hm(960 + diff);
     $('hr-us').querySelector('[data-dst]').textContent = off === -240 ? '서머타임 적용 중' : '서머타임 아님';
+  }
+
+  // 서킷브레이커: 발동 시각 · 매매 정지 · (단일가) · 재개 시각과 지금 상태
+  function renderCB(el, key, diff) {
+    var list = (market && market.cb || []).filter(function (e) { return e.market === key; });
+    if (!list.length) { el.hidden = true; el.innerHTML = ''; return; }
+    var e = list[list.length - 1]; // 가장 높은 단계
+    var now = key === 'us' ? zoneNow('America/New_York').min : zoneNow('Asia/Seoul').min;
+    var toMin = function (t) { var a = t.split(':'); return +a[0] * 60 + +a[1]; };
+    var k = function (t) { return key === 'us' ? t + ' (한국 ' + hm(toMin(t) + diff) + ')' : t; };
+    var state;
+    if (!e.resume) state = '오늘 장 종료';
+    else if (now < toMin(e.haltEnd)) state = '지금 매매 정지 중 · 재개까지 ' + fmtLeft(toMin(e.resume) - now);
+    else if (e.auctionEnd && now < toMin(e.auctionEnd)) state = '지금 단일가 매매 중 · 재개까지 ' + fmtLeft(toMin(e.resume) - now);
+    else state = '거래 재개됨';
+    var lines = [
+      '<b>⚠ 서킷브레이커 ' + e.level + '단계 발동</b> — ' + e.index + ' 전일 대비 −' + e.pct + '%' + (key === 'us' ? ' (뉴욕시간)' : ''),
+      '발동 ' + k(e.at) + (e.resume
+        ? ' · 매매 정지 ' + e.at + '~' + e.haltEnd + (e.auctionEnd ? ' · 단일가 ' + e.haltEnd + '~' + e.auctionEnd : '') + ' · 재개 ' + k(e.resume)
+        : ' · 그대로 장 마감'),
+      '<span class="cb-now">' + state + '</span>',
+    ];
+    if (list.length > 1) lines.push('<small>이전 단계: ' + list.slice(0, -1).map(function (x) { return x.level + '단계 ' + x.at; }).join(', ') + '</small>');
+    el.innerHTML = lines.join('<br>');
+    el.hidden = false;
+  }
+  function loadMarket() {
+    return getJSON('/api/market').then(function (d) {
+      if (/[?&]cbtest=1/.test(location.search)) { // 화면 확인용 가짜 발동
+        d.cb = [
+          { market: 'kr', index: '코스피', level: 1, pct: 8, at: '10:12', haltEnd: '10:32', auctionEnd: '10:42', resume: '10:42' },
+          { market: 'us', index: 'S&P 500', level: 1, pct: 7, at: '09:58', haltEnd: '10:13', resume: '10:13' },
+        ];
+      }
+      market = d;
+      renderHours();
+    }).catch(function (e) { console.warn('[market]', e); });
   }
 
   /* ---------- 아이콘 (국기·원소 기호 등, 직접 그린 SVG) ---------- */
@@ -517,14 +592,16 @@
         li.className = 'coin-row';
         li.innerHTML =
           '<span class="c-rank"></span>' +
-          '<span class="c-name"><img alt="" width="34" height="34" loading="lazy"><span class="c-label"><b class="c-sym"></b><span class="c-full"></span></span></span>' +
-          '<span class="c-price"><b class="c-usd"></b><span class="c-krw"></span></span>' +
+          '<span class="c-name"><img alt="" width="34" height="34" loading="lazy"><span class="c-label"><b class="c-sym"></b><span class="c-full"></span><span class="c-srcs"></span></span></span>' +
+          '<span class="c-price"><span class="c-l1"><em class="src"></em><b class="c-usd"></b></span><span class="c-krw"><em class="src"></em><span class="c-krwv"></span></span></span>' +
           '<span class="c-chg"></span><span class="c-cap"></span>';
         li.querySelector('img').src = c.image || '';
         li.querySelector('.c-sym').textContent = c.symbol;
         li.querySelector('.c-full').textContent = c.name;
+        var srcs = li.querySelectorAll('.src');
         r = rows[c.id] = {
-          row: li, rank: li.querySelector('.c-rank'), usd: li.querySelector('.c-usd'), krw: li.querySelector('.c-krw'),
+          row: li, rank: li.querySelector('.c-rank'), usd: li.querySelector('.c-usd'), krw: li.querySelector('.c-krwv'),
+          su: srcs[0], sk: srcs[1], srcs: li.querySelector('.c-srcs'),
           chg: li.querySelector('.c-chg'), cap: li.querySelector('.c-cap'), last: null,
         };
         var id = c.id;
@@ -542,16 +619,38 @@
     r.rank.textContent = c.rank || '';
     setFlash(r.usd, fmtUSD(c.price), r.last == null ? 0 : c.price - r.last);
     r.last = c.price;
-    r.krw.textContent = krwText(c);
+    // 출처 표시: 달러 BN(바이낸스 실시간) / CG(코인게코 1분), 원화 UP(업비트) / NV(네이버 환율 환산)
+    var us = pairOf[c.id] && c.live ? 'bn' : 'cg';
+    if (r.su.getAttribute('data-s') !== us) {
+      r.su.setAttribute('data-s', us);
+      r.su.className = 'src ' + us;
+      r.su.textContent = SRC[us][0];
+      r.su.title = SRC[us][1];
+    }
+    var kt = krwText(c);
+    var ks = kt ? (usdtKrw ? 'up' : 'nv') : '';
+    var kTitle = ks === 'up' ? (kt.charAt(0) === '≈' ? '업비트에 없는 코인 — 달러 × 업비트 USDT 원화 시세로 환산' : '업비트 원화 시세 (실시간)') : '네이버 원/달러 환율로 환산';
+    r.sk.className = ks ? 'src ' + ks : 'src';
+    r.sk.textContent = ks ? SRC[ks][0] : '';
+    r.sk.title = ks ? kTitle : '';
+    r.krw.textContent = kt;
+    // 아주 좁은 폰(320px)에서는 출처 표시를 심볼 아래 줄에 모아 보여준다
+    var sk2 = us + '|' + ks;
+    if (r.srcs.getAttribute('data-s') !== sk2) {
+      r.srcs.setAttribute('data-s', sk2);
+      r.srcs.innerHTML = '';
+      [r.su, r.sk].forEach(function (s) { if (s.textContent) r.srcs.appendChild(s.cloneNode(true)); });
+    }
     r.chg.className = 'c-chg ' + dirCls(c.change24h);
     r.chg.textContent = fmtPct(c.change24h);
-    r.cap.innerHTML = '';
-    r.cap.appendChild(document.createTextNode(fmtCap(c.marketCap)));
-    var b = document.createElement('em');
-    b.className = 'badge c-src ' + (c.live ? 'live' : 'slow');
-    b.textContent = c.live ? '실시간' : '1분';
-    r.cap.appendChild(b);
+    r.cap.textContent = fmtCap(c.marketCap);
   }
+  var SRC = {
+    bn: ['BN', '바이낸스 (실시간, USDT 기준)'],
+    cg: ['CG', '코인게코 (1분마다 갱신)'],
+    up: ['UP', '업비트'],
+    nv: ['NV', '네이버 환율로 환산'],
+  };
 
   function schedule() {
     if (rafOn) return;
@@ -873,7 +972,8 @@
     chart.points = (data.points || []).map(function (p) { return { t: p.t, v: p.v }; });
     chart.note = data.note || '';
     $('ch-msg').textContent = chart.points.length < 2 ? chart.note || '표시할 차트 자료가 없어요.' : '';
-    $('ch-note').textContent = chart.points.length >= 2 ? chart.note : '';
+    var src = chart.kind === 'coin' ? (pairOf[chart.code] ? '바이낸스 (USDT 기준)' : '코인게코') : '네이버 증권';
+    $('ch-note').textContent = chart.points.length >= 2 ? '차트 출처: ' + src + (chart.note ? ' · ' + chart.note : '') : '';
     chartTick(true);
   }
 
@@ -1030,6 +1130,8 @@
     timers.push(setInterval(loadTop, TOP_EVERY));
     timers.push(setInterval(loadCoins, COINS_EVERY));
     timers.push(setInterval(renderHours, 30000));
+    loadMarket();
+    timers.push(setInterval(loadMarket, 30000));
   }
   function stop() {
     timers.forEach(clearInterval);

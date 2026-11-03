@@ -31,12 +31,16 @@
           <p class="hr-main">09:00 ~ 15:30 <small>한국시간</small></p>
           <p class="hr-sub">평일 · 코스피 · 코스닥</p>
           <p class="hr-left" data-left></p>
+          <p class="hr-hol" data-hol></p>
+          <div class="hr-cb" data-cb hidden></div>
         </div>
         <div class="card hr" id="hr-us">
           <div class="hr-top"><b>미국 증시</b><em class="badge close" data-st>—</em></div>
           <p class="hr-main"><span data-kst>23:30 ~ 06:00</span> <small>한국시간</small></p>
           <p class="hr-sub">09:30 ~ 16:00 뉴욕시간 · <span data-dst></span></p>
           <p class="hr-left" data-left></p>
+          <p class="hr-hol" data-hol></p>
+          <div class="hr-cb" data-cb hidden></div>
         </div>
       </div>
     </section>
@@ -76,6 +80,7 @@
     <section class="sec sec-list">
       <div class="sec-head">
         <h2 class="sec-title">거래대금 상위 종목</h2>
+        <span class="sec-note">네이버 증권</span>
         <div class="seg seg-sm" id="top-seg" role="tablist">
           <span class="seg-ind" aria-hidden="true"></span>
           <button type="button" role="tab" data-market="kr" class="on">국내</button>
@@ -101,7 +106,7 @@
     <section class="sec sec-list">
       <div class="sec-head">
         <h2 class="sec-title">코인 시가총액 TOP 20</h2>
-        <span class="sec-note"><em class="badge live">실시간</em> 바이낸스 · <em class="badge slow">1분</em> 코인게코 · 원화 업비트</span>
+        <span class="sec-note src-legend"><em class="src bn" title="바이낸스 실시간">BN</em>바이낸스 <em class="src cg" title="코인게코 1분마다">CG</em>코인게코 <em class="src up" title="업비트 원화">UP</em>업비트</span>
       </div>
       <div class="card list-card">
         <div class="list-head coin-row">
