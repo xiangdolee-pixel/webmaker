@@ -184,3 +184,51 @@ export async function headData(env, site) {
     og_image: files.og ? `/xms/file/og?v=${files.og.updated_at}` : null,
   };
 }
+
+// ───────── RSS (네이버 · 구독용) — 로그인 없이 볼 수 있는 게시판의 최신 글 50개, 본문 전체(사진 링크 포함) ─────────
+export async function serveRss(env, site, origin) {
+  const db = env.DB;
+  const guest = { kind: 'guest', level: 0 };
+  const [s, seo, { results: boards }] = await Promise.all([
+    env.XIM_DB.prepare('SELECT name FROM sites WHERE slug = ?').bind(site).first(),
+    getSeo(db, site),
+    db.prepare('SELECT * FROM boards WHERE site = ? AND deleted_at IS NULL AND visible = 1').bind(site).all(),
+  ]);
+  const open = boards.filter((b) => canBy(b.list_levels, b.allow_guest_list, guest) && canBy(b.read_levels, b.allow_guest_read, guest));
+  let posts = [];
+  if (open.length) {
+    const { results } = await db.prepare(`SELECT id, board_id, title, content_html, writer_name, published_at FROM posts
+      WHERE board_id IN (${open.map(() => '?').join(',')}) AND deleted_at IS NULL AND is_secret = 0 AND published_at <= ?
+      ORDER BY published_at DESC, id DESC LIMIT 50`).bind(...open.map((b) => b.id), now()).all();
+    posts = results;
+  }
+  const slugOf = Object.fromEntries(open.map((b) => [b.id, b]));
+  const abs = (h) => String(h || '').replace(/(src|href)="\//g, `$1="${origin}/`);
+  const cdata = (h) => `<![CDATA[${String(h).replace(/]]>/g, ']]&gt;')}]]>`;
+  const name = seo.title || s?.name || site;
+  const items = posts.map((p) => {
+    const b = slugOf[p.board_id];
+    const link = `${origin}/board/${b.slug}/${p.id}`;
+    return `  <item>
+    <title>${esc(p.title)}</title>
+    <link>${esc(link)}</link>
+    <guid isPermaLink="true">${esc(link)}</guid>
+    <category>${esc(b.name)}</category>
+    <pubDate>${new Date(p.published_at).toUTCString()}</pubDate>
+    <description>${cdata(abs(p.content_html))}</description>
+  </item>`;
+  }).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>${esc(name)}</title>
+  <link>${esc(origin)}/</link>
+  <description>${esc(seo.description || name)}</description>
+  <language>ko</language>
+  <atom:link href="${esc(origin)}/rss.xml" rel="self" type="application/rss+xml"/>
+${items}
+</channel>
+</rss>
+`;
+  return new Response(xml, { headers: { 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+}

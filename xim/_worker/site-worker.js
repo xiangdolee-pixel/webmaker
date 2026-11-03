@@ -16,7 +16,7 @@
 
 const STATUS_TTL = 30000;
 let statusCache = { at: 0, value: 'active' };
-const XMS_PATHS = /^\/(admin|xms|xms-api|member|board)(\/|$)|^\/(robots\.txt|sitemap\.xml)$/;
+const XMS_PATHS = /^\/(admin|xms|xms-api|member|board)(\/|$)|^\/(robots\.txt|sitemap\.xml|rss\.xml)$/;
 
 // 정지 여부: 이 Worker 메모리(30초) → Cloudflare 가장자리 캐시(30초, 도메인 주소에서) → xim 순서로 묻는다
 async function siteStatus(env, request) {
@@ -204,6 +204,7 @@ async function withXms(res, request, env, data) {
       // 계정 버튼 스타일은 파일로 따로 받지 않고 바로 넣는다
       if (data?.account_css) tags.push(`<style id="xa-style">${data.account_css}</style>`);
       tags.push('<script src="/xms/js/account.js" defer></script>');
+      tags.push('<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml">');
       for (const v of h.verify || []) tags.push(`<meta name="${attr(v.name)}" content="${attr(v.content)}">`);
       if (h.favicon) {
         for (const f of h.favicon) {

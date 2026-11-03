@@ -846,6 +846,9 @@ async function seoPage(qs) {
     <section class="panel pad gap" data-sec="sitemap"><h2>사이트맵 주소 <small class="meta">구글 서치콘솔·네이버 서치어드바이저에 넣을 주소입니다</small></h2>
       <p><code class="copy">${esc(d.sitemapUrl)}</code> <button class="btn sm" type="button" data-copy>복사</button> <a class="btn sm" href="/sitemap.xml" target="_blank" rel="noopener">열어 보기</a></p>
       <p class="meta">이 주소 한 줄만 등록하면 <b>사이트의 모든 화면</b>을 검색엔진에 알려 줍니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다.</p>
+      <h2 class="gap">RSS 주소 <small class="meta">네이버 서치어드바이저 › 요청 › RSS 제출에 넣을 주소입니다</small></h2>
+      <p><code class="copy">${esc(d.origin)}/rss.xml</code> <a class="btn sm" href="/rss.xml" target="_blank" rel="noopener">열어 보기</a></p>
+      <p class="meta">로그인 없이 볼 수 있는 게시판의 최신 글 50개가 본문 전체(사진 포함)로 들어갑니다. 새 글은 저절로 들어갑니다.</p>
     </section>
     <form class="gap" id="seo-robots" data-sec="robots">
       <section class="panel pad"><h2>robots.txt <small class="meta">검색엔진에게 긁어도 되는 곳을 알려 줍니다</small></h2>

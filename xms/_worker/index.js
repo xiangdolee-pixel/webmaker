@@ -13,7 +13,7 @@ import { WorkerEntrypoint } from 'cloudflare:workers';
 import { fail, whoAmI, now, createSession, html } from './lib.js';
 import { adminApi } from './admin-api.js';
 import { publicApi, publicPage, visibleMenus } from './public.js';
-import { serveFile, serveRobots, serveSitemap, headData } from './site-meta.js';
+import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
 import { uploadApi, serveUpload } from './uploads.js';
 import { embedCss } from './css-scope.js';
@@ -52,6 +52,7 @@ export class Cms extends WorkerEntrypoint {
       if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
+      if (p === '/rss.xml') return await serveRss(env, site, url.origin);
       if (p.startsWith('/xms/')) {
         const rest = p.slice(4);
         if (!/^\/(css|js)\/[\w.-]+$/.test(rest)) return new Response('Not found', { status: 404 });
