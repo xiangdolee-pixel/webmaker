@@ -129,3 +129,10 @@ export function confirmInline(btn, hint, okLabel, run) {
   box.querySelector('[data-no]').onclick = () => box.remove();
   box.querySelector('[data-yes]').onclick = (e) => busy(e.currentTarget, null, async () => { await run(); box.remove(); });
 }
+
+// 날짜 · 시간 칸: 아이콘뿐 아니라 칸 어디를 눌러도 달력이 뜨게 (xms 의 모든 날짜 칸)
+document.addEventListener('click', (e) => {
+  const i = e.target.closest?.('input[type="date"], input[type="datetime-local"], input[type="time"], input[type="month"]');
+  if (!i || i.disabled || i.readOnly) return;
+  try { i.showPicker?.(); } catch { /* 지원하지 않는 브라우저는 원래대로 */ }
+});

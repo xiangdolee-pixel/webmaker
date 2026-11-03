@@ -645,3 +645,5 @@ p.meta, small.meta { display: block; }
 @keyframes new-blink { 0%, 55% { opacity: 1; transform: scale(1); } 70% { opacity: .25; transform: scale(.92); } 85% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
 .new-num { animation: new-blink 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .new-num { animation: none; } }
+/* 날짜 칸: 어디를 눌러도 달력 (common.js) */
+input[type="date"], input[type="datetime-local"], input[type="time"], input[type="month"] { cursor: pointer; }
