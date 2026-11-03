@@ -217,7 +217,7 @@ function siteCard(s) {
     <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div>
     <div class="actions">
       <a class="btn sm primary" href="${esc(s.url)}" target="_blank" rel="noopener">홈페이지 열기</a>
-      <button class="btn sm primary" type="button" data-act="cms">관리 화면 열기</button>
+      <button class="btn sm primary" type="button" data-act="cms">xms</button>
       <button class="btn sm" type="button" data-act="edit">수정</button>
       <button class="btn sm" type="button" data-act="admins">관리자 계정</button>
       <button class="btn sm${s.status === 'active' ? ' danger' : ''}" type="button" data-act="toggle">${s.status === 'active' ? '사이트 정지' : '다시 운영'}</button>

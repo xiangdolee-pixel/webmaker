@@ -107,7 +107,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 - `xms/` = 업체가 `사이트주소/admin/` 에서 쓰는 관리 화면 + 방문자용 `/member/*` · `/board/*` (Worker `xms`, D1 `xms`). 구조·범위는 `xms/README.md`.
 - 기능 기준은 사용자 PC 의 기준 CMS 소스(경로는 Claude 메모리 xim-project 에 있다). 새 기능을 옮길 때 그 소스를 먼저 읽고 문구·동작을 맞춘다.
-- 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "관리 화면 열기" = 운영자 대신 들어가기(1분 입장권).
+- 업체 관리자 = xms 회원 중 등급 1. xim 의 "관리자 계정" 이 xms DB 에 만든다. "xms" 버튼 = 운영자 대신 들어가기(1분 입장권).
 
 ## 용어 금지 (사용자 지시 2026-11-03, "명심해")
 
