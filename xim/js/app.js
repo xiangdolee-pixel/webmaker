@@ -1,5 +1,5 @@
 // xim 운영자 화면
-import { $, esc, makeApi, fmtDate, badge, toast, pillTabs, slideTabs, formData, openDialog, busy } from './common.js';
+import { $, $$, esc, makeApi, fmtDate, badge, toast, pillTabs, slideTabs, formData, openDialog, busy } from './common.js';
 import { qrSvg } from './qr.js';
 
 const api = makeApi('/api');
@@ -50,6 +50,13 @@ $('#logout').addEventListener('click', async () => {
   showLogin();
 });
 
+const NAV_ICON = {
+  sites: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/></svg>',
+  customers: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.9-5 5.5-5s4.9 2 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.4.2 4.3 1.9 4.9 4.8"/></svg>',
+  requests: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
+  monitor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M8.5 12h2l1-2.5 2 5 1-2.5h1"/></svg>',
+  security: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+};
 let navReady = false;
 function showApp() {
   $('#login').hidden = true;
@@ -61,6 +68,9 @@ function showApp() {
       if (reqOpen && !(v === 'requests' && /^#req-\d+$/.test(location.hash))) { reqOpen = 0; if (location.hash) history.replaceState(null, '', location.pathname); }
       render();
     });
+    // 왼쪽 메뉴: 글자 앞에 그림
+    $$('#nav > button').forEach((b) => b.insertAdjacentHTML('afterbegin', NAV_ICON[b.dataset.v] || ''));
+    requestAnimationFrame(() => slideTabs($('#nav')));
   }
   render();
 }
@@ -144,12 +154,17 @@ function render() {
 }
 
 // ───────── 사이트 ─────────
+let siteQ = '';
 async function renderSites() {
   const [sites, cs] = await Promise.all([api('/sites'), api('/customers')]);
   customers = cs;
   view.innerHTML = `
-    <div class="bar"><h2>사이트 ${sites.length}</h2><button class="btn primary" type="button" data-act="connect">GitHub에서 연결</button><button class="btn" type="button" data-act="new-site">+ 직접 만들기</button></div>
-    <div class="list cols">${sites.map(siteCard).join('') || '<div class="card empty">아직 등록된 사이트가 없습니다.</div>'}</div>`;
+    <div class="bar"><h2>사이트 ${sites.length}</h2>
+      <input class="input search-q" type="search" placeholder="사이트 · 고객 · 도메인 · 연락처 찾기" value="${esc(siteQ)}" data-q>
+      <button class="btn primary" type="button" data-act="connect">GitHub에서 연결</button><button class="btn" type="button" data-act="new-site">+ 직접 만들기</button></div>
+    <div class="rows">${sites.map(siteRow).join('') || '<div class="card empty">아직 등록된 사이트가 없습니다.</div>'}</div>
+    <div class="card empty" data-none hidden>찾는 사이트가 없습니다.</div>`;
+  liveSearch(view.querySelector('[data-q]'), (v) => { siteQ = v; });
   view.querySelector('[data-act="new-site"]').onclick = () => siteDialog();
   view.querySelector('[data-act="connect"]').onclick = () => connectDialog();
   view.querySelectorAll('[data-site]').forEach((el) => {
@@ -164,6 +179,24 @@ async function renderSites() {
     });
     el.querySelector('[data-act="toggle"]').onclick = (e) => toggleSite(site, e.currentTarget);
   });
+}
+
+// 글자를 넣는 대로 아래 목록([data-find])을 걸러 보인다
+function liveSearch(input, remember) {
+  const run = () => {
+    const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let shown = 0;
+    view.querySelectorAll('[data-find]').forEach((el) => {
+      const ok = words.every((w) => el.dataset.find.includes(w));
+      el.hidden = !ok;
+      if (ok) shown++;
+    });
+    const none = view.querySelector('[data-none]');
+    if (none) none.hidden = shown > 0 || !view.querySelectorAll('[data-find]').length;
+    remember?.(input.value);
+  };
+  input.addEventListener('input', run);
+  run();
 }
 
 // ───────── GitHub에서 연결 ─────────
@@ -226,42 +259,41 @@ function connectDialog() {
 // 바이트 → 읽기 쉬운 크기
 const mb = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(b >= 104857600 ? 0 : 1)}MB` : b >= 1024 ? `${Math.round(b / 1024)}KB` : `${b || 0}B`);
 
-function siteCard(s) {
+// 사이트 한 줄: 이름 · 고객(담당 · 연락처) · 주소(메일 · 봇확인) · 관리자 · 요청 · 사용량 · 버튼
+function siteRow(s) {
   const u = s.usage || { db: 0, files: 0, file_count: 0, r2: 0, d1_files: 0 };
   const quotaB = (s.quota_mb || 0) * 1048576;
   const pct = quotaB ? Math.min(100, (u.files / quotaB) * 100) : 0;
-  // 바로가기: 도메인이 있으면 도메인, 없으면 workers.dev (서버가 s.url 로 준다). 둘 다 보여 준다.
   const dev = `https://${s.slug}.xiangdolee.workers.dev`;
-  const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
-  const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
-  // 인증 메일 보내는 주소 상태 (대표 도메인 → Email Sending)
-  // 메일(가입 인증 메일 주소) · 봇확인(Turnstile) 을 따로. 초록 = 준비됨, 회색 = 설정 전, 빨강 = 정말 실패. 누르면 다시 시도
-  const ST = (ok, label) => ({ ok: [`${label} ✓`, 'done'], added: [`${label} ✓`, 'done'], error: [`${label} 확인 필요`, 'suspended'], skip: [`${label} 설정 전`, 'idle'] });
+  const link = (href, label) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  const c = customers.find((x) => x.id === s.customer_id);
+  // 메일(가입 인증 메일 주소) · 봇확인(Turnstile): 초록 = 준비됨, 회색 = 설정 전, 빨강 = 정말 실패. 누르면 다시 시도
+  const ST = (label) => ({ ok: [`${label} ✓`, 'done'], added: [`${label} ✓`, 'done'], error: [`${label} 확인 필요`, 'suspended'], skip: [`${label} 설정 전`, 'idle'] });
   const tagOf = (status, note, label, hint) => {
-    const [t, c] = ST(true, label)[status] || ST(true, label).skip;
-    return `<button type="button" class="badge ${c} mail-badge" data-mail="${s.id}" title="${esc(note || hint)} — 누르면 다시 시도합니다">${t}</button>`;
+    const [t, cl] = ST(label)[status] || ST(label).skip;
+    return `<button type="button" class="badge ${cl} mail-badge" data-mail="${s.id}" title="${esc(note || hint)} — 누르면 다시 시도합니다">${t}</button>`;
   };
-  const mailTag = s.domain ? tagOf(s.mail_status, s.mail_note, '메일', '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다')
+  const tags = s.domain ? tagOf(s.mail_status, s.mail_note, '메일', '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다')
     + tagOf(s.bot_status, s.bot_note, '봇확인', '아직 만들기 전 — 가입할 때 봇 확인 없이 진행됩니다') : '';
+  const find = [s.name, s.slug, s.domain, c?.name, c?.contact, c?.phone, c?.email, s.status === 'active' ? '운영' : '정지'].filter(Boolean).join(' ').toLowerCase();
   return `
-  <article class="card item" data-site="${s.id}">
-    <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
-    <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
-    <div class="meta">${addr}${mailTag}</div>
-    <div class="meta"><span>관리자 ${s.admin_count}명</span>${s.open_requests ? `<button type="button" class="link-btn" data-go-reqs="${esc(s.slug)}">처리할 요청 <b>${s.open_requests}</b>건 →</button>` : '<span>처리할 요청 0건</span>'}</div>
-    <dl class="usage">
-      <div><dt>DB</dt><dd>${mb(u.db)}<small>회원 · 글 · 메뉴 등</small></dd></div>
-      <div><dt>파일</dt><dd>${mb(u.files)}<small>${u.file_count}개${u.files ? ` · R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}` : ''}</small></dd></div>
-      <div><dt>홈페이지</dt><dd>${s.static_mb ? `${s.static_mb}MB` : '—'}<small>배포한 디자인 파일</small></dd></div>
-    </dl>
-    <div class="meta"><span>파일 저장 한도 ${mb(u.files)} / ${s.quota_mb}MB (${pct < 1 && pct > 0 ? '1% 미만' : `${Math.round(pct)}%`})</span></div>
-    <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div>
-    <div class="actions">
-      <a class="btn sm primary" href="${esc(s.url)}" target="_blank" rel="noopener">홈페이지 열기</a>
+  <article class="card srow${s.status === 'active' ? '' : ' off'}" data-site="${s.id}" data-find="${esc(find)}">
+    <div class="sr-name">
+      <a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}<b>${esc(s.name)}</b></a>
+      <small>${esc(s.slug)}</small>${badge(s.status)}
+    </div>
+    <div class="sr-cust">${c ? `<b>${esc(c.name)}</b>${c.contact ? `<span>${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}` : '<span class="dim">고객 없음</span>'}</div>
+    <div class="sr-addr">${s.domain ? link(s.url, s.domain) : '<span class="dim">도메인 없음</span>'}${link(dev, 'workers.dev')}${tags}</div>
+    <div class="sr-num"><span>관리자 <b>${s.admin_count}</b></span>${s.open_requests ? `<button type="button" class="link-btn" data-go-reqs="${esc(s.slug)}">요청 <b>${s.open_requests}</b></button>` : '<span>요청 0</span>'}</div>
+    <div class="sr-use" title="DB ${mb(u.db)} · 파일 ${u.file_count}개(R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}) · 홈페이지 ${s.static_mb || 0}MB">
+      <span>DB ${mb(u.db)}</span><span>파일 ${mb(u.files)} / ${s.quota_mb}MB</span><span>홈 ${s.static_mb ? `${s.static_mb}MB` : '—'}</span>
+      <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div></div>
+    <div class="sr-act">
+      <a class="btn sm" href="${esc(s.url)}" target="_blank" rel="noopener">홈</a>
       <button class="btn sm primary" type="button" data-act="cms">xms</button>
       <button class="btn sm" type="button" data-act="edit">수정</button>
-      <button class="btn sm" type="button" data-act="admins">관리자 계정</button>
-      <button class="btn sm${s.status === 'active' ? ' danger' : ''}" type="button" data-act="toggle">${s.status === 'active' ? '사이트 정지' : '다시 운영'}</button>
+      <button class="btn sm" type="button" data-act="admins">관리자</button>
+      <button class="btn sm${s.status === 'active' ? ' danger' : ''}" type="button" data-act="toggle">${s.status === 'active' ? '정지' : '다시 운영'}</button>
     </div>
   </article>`;
 }
@@ -368,19 +400,24 @@ function adminsDialog(site) {
 }
 
 // ───────── 고객 ─────────
+let custQ = '';
 async function renderCustomers() {
   customers = await api('/customers');
   view.innerHTML = `
-    <div class="bar"><h2>고객 ${customers.length}</h2><button class="btn primary" type="button" data-act="new">+ 고객 등록</button></div>
-    <div class="list cols">${customers.map((c) => `
-      <article class="card item" data-id="${c.id}">
-        <div class="item-head"><h3>${esc(c.name)}</h3><span class="badge doing">사이트 ${c.site_count}</span></div>
-        <div class="meta">${c.contact ? `<span>담당 ${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}
-          ${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}<span>등록 ${fmtDate(c.created_at).slice(0, 10)}</span></div>
-        ${c.memo ? `<p class="pre meta">${esc(c.memo)}</p>` : ''}
-        <div class="actions"><button class="btn sm" type="button" data-act="edit">수정</button>
+    <div class="bar"><h2>고객 ${customers.length}</h2>
+      <input class="input search-q" type="search" placeholder="이름 · 담당 · 전화 · 이메일 찾기" value="${esc(custQ)}" data-q>
+      <button class="btn primary" type="button" data-act="new">+ 고객 등록</button></div>
+    <div class="rows">${customers.map((c) => `
+      <article class="card crow" data-id="${c.id}" data-find="${esc([c.name, c.contact, c.phone, c.email, c.memo].filter(Boolean).join(' ').toLowerCase())}">
+        <div class="cr-name"><b>${esc(c.name)}</b><span class="badge doing">사이트 ${c.site_count}</span></div>
+        <div class="cr-info">${c.contact ? `<span>담당 ${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}${!c.contact && !c.phone && !c.email ? '<span class="dim">연락처 없음</span>' : ''}</div>
+        <div class="cr-memo" title="${esc(c.memo || '')}">${c.memo ? esc(c.memo) : '<span class="dim">메모 없음</span>'}</div>
+        <div class="cr-date">${fmtDate(c.created_at).slice(0, 10)}</div>
+        <div class="sr-act"><button class="btn sm" type="button" data-act="edit">수정</button>
           <button class="btn sm danger" type="button" data-act="del">삭제</button></div>
-      </article>`).join('') || '<div class="card empty">아직 등록된 고객이 없습니다.</div>'}</div>`;
+      </article>`).join('') || '<div class="card empty">아직 등록된 고객이 없습니다.</div>'}</div>
+    <div class="card empty" data-none hidden>찾는 고객이 없습니다.</div>`;
+  liveSearch(view.querySelector('[data-q]'), (v) => { custQ = v; });
   view.querySelector('[data-act="new"]').onclick = () => customerDialog();
   view.querySelectorAll('[data-id]').forEach((el) => {
     const c = customers.find((x) => x.id === +el.dataset.id);
@@ -431,7 +468,7 @@ async function renderRequests() {
   if (reqOpen) { reqTabsBox = null; return renderRequestView(reqOpen); }
   const list = await api(`/requests${reqFilter ? `?status=${reqFilter}` : ''}`);
   if (!reqTabsBox || !view.contains(reqTabsBox)) {
-    view.innerHTML = `<div class="bar"><h2>수정요청</h2><div class="tabs" id="req-tabs"></div></div><div class="list" id="req-list"></div>`;
+    view.innerHTML = `<div class="bar"><h2>수정요청</h2><input class="input search-q" type="search" placeholder="제목 · 사이트 · 요청한 사람 찾기" data-q><div class="tabs" id="req-tabs"></div></div><div class="list" id="req-list"></div><div class="card empty" data-none hidden>찾는 요청이 없습니다.</div>`;
     reqTabsBox = $('#req-tabs');
     pillTabs(reqTabsBox, [['', '전체'], ['new', '접수'], ['doing', '진행 중'], ['done', '완료']], reqFilter, (v) => { reqFilter = v; render(); });
   }
@@ -444,10 +481,12 @@ async function renderRequests() {
     only.querySelector('[data-all]').onclick = () => { reqSite = ''; render(); };
   } else only?.remove();
   box.innerHTML = shown.map((r) => `
-    <article class="card item clickable" data-id="${r.id}" tabindex="0">
+    <article class="card item clickable" data-id="${r.id}" tabindex="0" data-find="${esc([r.title, r.site_name, r.slug, r.admin_name, r.requester].filter(Boolean).join(' ').toLowerCase())}">
       <div class="item-head"><h3>${esc(r.title)}${r.msg_count ? ` <small class="req-count">[${r.msg_count}]</small>` : ''}${r.op_unread ? ` <span class="new-num">새 글 ${r.op_unread}</span>` : ''}</h3>${badge(r.status)}</div>
       <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>처음 ${fmtDate(r.created_at)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at)}</span>` : ''}</div>
     </article>`).join('') || '<div class="card empty">해당하는 요청이 없습니다.</div>';
+  const q = view.querySelector('[data-q]');
+  if (q && !q._live) { q._live = true; liveSearch(q); } else if (q) q.dispatchEvent(new Event('input'));
   box.querySelectorAll('[data-id]').forEach((el) => {
     const r = list.find((x) => x.id === +el.dataset.id);
     el.onclick = () => openRequest(r.id);

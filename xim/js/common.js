@@ -1,5 +1,6 @@
 // xim 운영자 화면 · 업체 관리자 화면 공용 도우미 (ES 모듈)
 
+export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 export const $ = (sel, root = document) => root.querySelector(sel);
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
