@@ -37,6 +37,21 @@
     }
   });
 
+  /* ─── 배경 영상은 화면을 다 그린 뒤에 불러온다 (영상 플레이어가 무거워 첫 화면을 늦추지 않게, 그동안은 포스터 사진) ───
+     첫 화면 영상: 페이지를 다 받은 뒤 / 아래쪽 영상: 화면 가까이 왔을 때 */
+  var lazyVideos = document.querySelectorAll("iframe[data-src]");
+  function startVideo(v) { if (v.dataset.src) { v.src = v.dataset.src; v.removeAttribute("data-src"); } }
+  if (!prefersReduced && lazyVideos.length) {
+    var nearIo = "IntersectionObserver" in window ? new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { startVideo(en.target); nearIo.unobserve(en.target); } });
+    }, { rootMargin: "600px 0px" }) : null;
+    var kick = function () {
+      lazyVideos.forEach(function (v) { if (nearIo) nearIo.observe(v); else startVideo(v); });
+    };
+    if (document.readyState === "complete") setTimeout(kick, 300);
+    else window.addEventListener("load", function () { setTimeout(kick, 300); });
+  }
+
   /* ─── 배경 영상 페이드인 (히어로·후원/푸터) ─── */
   document.querySelectorAll(".cover-video iframe").forEach(function (v) {
     v.addEventListener("load", function () {
@@ -121,6 +136,8 @@
   counters.forEach(function (el) { counterIo.observe(el); });
 
 
+  /* ─── 아래는 첫 화면에만 있는 것들 (게시판 · 회원 화면 틀에는 없다) ─── */
+  if (document.getElementById("lightbox")) (function () {
   /* ─── 연혁: 사진 없는 카드 → 가운데 정보 모달 (index 전용) ─── */
   var histModal = document.getElementById("histModal");
 
@@ -261,35 +278,7 @@
     }
   });
 
-  /* ─── 포토 그리드 (홈 4컷 · 갤러리 전체) ─── */
-  var galleryItems = window.GALLERY_ITEMS || [];
-
-  function renderPhotoGrid(container, limit) {
-    var items = limit ? galleryItems.slice(0, limit) : galleryItems;
-    items.forEach(function (item, i) {
-      var thumb = document.createElement("button");
-      thumb.type = "button";
-      thumb.className = "photo-thumb";
-      thumb.setAttribute("aria-label", item.caption || "사진 보기");
-      var img = document.createElement("img");
-      img.src = item.src;
-      img.alt = item.caption || "";
-      img.loading = "lazy";
-      thumb.appendChild(img);
-      if (item.date) {
-        var date = document.createElement("span");
-        date.className = "photo-date";
-        date.textContent = item.date;
-        thumb.appendChild(date);
-      }
-      thumb.addEventListener("click", function () {
-        openLightbox(galleryItems, item.caption || "사진", i);
-      });
-      container.appendChild(thumb);
-    });
-  }
-
-  /* 홈 "포토": xms 포토 게시판의 최신 글 4개 (사진을 누르면 그 글로). 게시판을 못 불러오면 예전 사진으로. */
+  /* 홈 "포토": xms 포토 게시판의 최신 글 4개 (사진을 누르면 그 글로) */
   function renderBoardPhotos(container, items) {
     items.forEach(function (item) {
       var a = document.createElement("a");
@@ -316,12 +305,10 @@
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (items) {
         if (items && items.length) renderBoardPhotos(homePhotoGrid, items);
-        else renderPhotoGrid(homePhotoGrid, 4);
       })
-      .catch(function () { renderPhotoGrid(homePhotoGrid, 4); });
+      .catch(function () {});
   }
-  var galleryGrid = document.getElementById("galleryGrid");
-  if (galleryGrid) renderPhotoGrid(galleryGrid);
+  })();
 
   /* ─── 계좌번호 복사 ─── */
   var copyBtn = document.getElementById("copyBtn");

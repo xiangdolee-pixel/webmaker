@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://f.vimeocdn.com">
 <link rel="preconnect" href="https://i.vimeocdn.com">
 <link rel="preconnect" href="https://vod-adaptive-ak.vimeocdn.com">
-<link rel="preload" as="image" href="images/hero-poster.jpg" fetchpriority="high">
+<link rel="preload" as="image" href="images/hero-poster.webp" fetchpriority="high">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -34,7 +34,7 @@
     <nav class="gnb" id="gnb" aria-label="주 메뉴" data-xms-menu>
       <a href="#about" data-xms-item>소개</a>
       <a href="#history" data-xms-item>사역보고</a>
-      <a href="photos.html" data-xms-item>포토</a>
+      <a href="/board/photo" data-xms-item>포토</a>
       <a href="#criteria" data-xms-item>지급기준</a>
       <a href="#apply" data-xms-item>신청절차</a>
       <a href="#support" class="gnb-cta">후원하기</a>
@@ -51,8 +51,8 @@
   <!-- ══════════ HERO ══════════ -->
   <section class="hero">
     <div class="hero-video cover-video" aria-hidden="true">
-      <iframe src="https://player.vimeo.com/video/1213162121?background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1"
-              allow="autoplay; fullscreen" title="배경 영상" fetchpriority="high"></iframe>
+      <iframe data-src="https://player.vimeo.com/video/1213162121?background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1"
+              allow="autoplay; fullscreen" title="배경 영상"></iframe>
     </div>
     <div class="hero-inner">
       <h1 class="hero-title">
@@ -92,9 +92,9 @@
     </div>
     <div class="about-grid">
       <figure class="about-photo reveal">
-        <img src="images/about.png" alt="세종대CCC나사렛장학회 이사회"
+        <img src="images/about.webp" width="1492" height="1054" loading="lazy" decoding="async" alt="세종대CCC나사렛장학회 이사회"
              onerror="this.parentElement.classList.add('is-empty')">
-        <span class="ph-label" aria-hidden="true">images/about.png</span>
+        <span class="ph-label" aria-hidden="true">images/about.webp</span>
         <figcaption>세종대CCC나사렛장학회 이사회</figcaption>
       </figure>
       <div class="about-body">
@@ -196,7 +196,7 @@
         <div class="hc-foot"><span class="hc-sum">누적 370만원</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2015. 12. 12" data-tag="수여" data-sum="490만원" data-images="2015-12-12-1.jpg">
+        data-date="2015. 12. 12" data-tag="수여" data-sum="490만원" data-images="2015-12-12-1.webp">
         <div class="hc-top">
           <span class="hc-year">2015<i>12. 12</i></span>
           <span class="tl-tag award">수여</span>
@@ -208,7 +208,7 @@
             사역보고</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2016. 12. 9" data-tag="수여" data-sum="610만원" data-images="2016-12-09-1.jpg,2016-12-09-2.jpg">
+        data-date="2016. 12. 9" data-tag="수여" data-sum="610만원" data-images="2016-12-09-1.webp,2016-12-09-2.webp">
         <div class="hc-top">
           <span class="hc-year">2016<i>12. 9</i></span>
           <span class="tl-tag award">수여</span>
@@ -220,7 +220,7 @@
             사역보고</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2017. 12. 8" data-tag="수여" data-sum="750만원" data-images="2017-12-08-1.jpg,2017-12-08-2.jpg">
+        data-date="2017. 12. 8" data-tag="수여" data-sum="750만원" data-images="2017-12-08-1.webp,2017-12-08-2.webp">
         <div class="hc-top">
           <span class="hc-year">2017<i>12. 8</i></span>
           <span class="tl-tag award">수여</span>
@@ -277,7 +277,7 @@
         <div class="hc-foot"><span class="hc-sum">누적 1,365만원</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2023. 12. 14" data-tag="수여" data-sum="1,545만원" data-images="2023-12-14-1.jpg,2023-12-14-2.jpg,2023-12-14-3.jpg,2023-12-14-4.jpg,2023-12-14-5.jpg,2023-12-14-6.jpg,2023-12-14-7.jpg,2023-12-14-8.jpg">
+        data-date="2023. 12. 14" data-tag="수여" data-sum="1,545만원" data-images="2023-12-14-1.webp,2023-12-14-2.webp,2023-12-14-3.webp,2023-12-14-4.webp,2023-12-14-5.webp,2023-12-14-6.webp,2023-12-14-7.webp,2023-12-14-8.webp">
         <div class="hc-top">
           <span class="hc-year">2023<i>12. 14</i></span>
           <span class="tl-tag award">수여</span>
@@ -289,7 +289,7 @@
             사역보고</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2024. 12. 12" data-tag="수여" data-sum="1,745만원" data-images="2024-12-12-1.jpg,2024-12-12-2.jpg,2024-12-12-3.jpg,2024-12-12-4.jpg,2024-12-12-5.jpg,2024-12-12-6.jpg,2024-12-12-7.jpg,2024-12-12-8.jpg">
+        data-date="2024. 12. 12" data-tag="수여" data-sum="1,745만원" data-images="2024-12-12-1.webp,2024-12-12-2.webp,2024-12-12-3.webp,2024-12-12-4.webp,2024-12-12-5.webp,2024-12-12-6.webp,2024-12-12-7.webp,2024-12-12-8.webp">
         <div class="hc-top">
           <span class="hc-year">2024<i>12. 12</i></span>
           <span class="tl-tag award">수여</span>
@@ -301,7 +301,7 @@
             사역보고</span></div>
       </button>
       <button class="hist-card reveal" type="button" aria-haspopup="dialog"
-        data-date="2025. 12. 11" data-tag="수여" data-sum="1,965만원" data-images="2025-12-11-1.jpg,2025-12-11-2.jpg,2025-12-11-3.jpg,2025-12-11-4.jpg,2025-12-11-5.jpg,2025-12-11-6.jpg,2025-12-11-7.jpg,2025-12-11-8.jpg">
+        data-date="2025. 12. 11" data-tag="수여" data-sum="1,965만원" data-images="2025-12-11-1.webp,2025-12-11-2.webp,2025-12-11-3.webp,2025-12-11-4.webp,2025-12-11-5.webp,2025-12-11-6.webp,2025-12-11-7.webp,2025-12-11-8.webp">
         <div class="hc-top">
           <span class="hc-year">2025<i>12. 11</i></span>
           <span class="tl-tag award">수여</span>
@@ -332,7 +332,7 @@
   <section class="criteria" id="criteria">
     <div class="criteria-inner">
       <figure class="criteria-photo reveal">
-        <img src="images/criteria.png" alt="잔디밭에 둘러누운 학생들">
+        <img src="images/criteria.webp" width="1303" height="1208" loading="lazy" decoding="async" alt="잔디밭에 둘러누운 학생들">
       </figure>
       <div class="criteria-body">
       <div class="section-head reveal">
@@ -404,8 +404,8 @@
 <!-- ══════════ SUPPORT + FOOTER (공통 배경 영상) ══════════ -->
 <div class="page-end">
     <div class="pe-video cover-video" aria-hidden="true">
-      <iframe src="https://player.vimeo.com/video/1213162121?background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1"
-              allow="autoplay" title="배경 영상" loading="lazy"></iframe>
+      <iframe data-src="https://player.vimeo.com/video/1213162121?background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1"
+              allow="autoplay" title="배경 영상"></iframe>
     </div>
   <section class="support" id="support">
     <div class="support-inner">
@@ -482,7 +482,7 @@
 
 <div class="toast" id="toast" role="status">계좌번호가 복사되었습니다</div>
 
-<script src="js/gallery-data.js"></script>
-<script src="js/main.js"></script>
+
+<script src="js/main.js" defer></script>
 </body>
 </html>
