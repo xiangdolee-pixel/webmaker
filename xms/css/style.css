@@ -148,6 +148,9 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 
 .prose { line-height: 1.8; overflow-wrap: anywhere; }
 .prose img { border-radius: 6px; display: inline-block; vertical-align: bottom; max-width: 100%; height: auto; } /* 글처럼 정렬(가운데 · 오른쪽)을 따른다 — 사이트 CSS 가 img 를 block 으로 바꿔도 */
+/* 사진만 있는 줄에 정렬을 누르면 브라우저가 정렬을 사진 자체(style)에 붙인다 → 사진을 그 자리로 */
+.prose img[style*="text-align: center"], .prose img[style*="text-align:center"] { display: block; margin-left: auto; margin-right: auto; }
+.prose img[style*="text-align: right"], .prose img[style*="text-align:right"] { display: block; margin-left: auto; margin-right: 0; }
 .prose blockquote { margin: 1em 0; padding: 4px 16px; border-left: 4px solid var(--line); color: var(--sub); }
 .prose table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; }
 .prose td, .prose th { border: 1px solid var(--line); padding: 6px 10px; }
