@@ -394,6 +394,26 @@ export async function adminApi(ctx) {
   }
 
   // ───── 내 계정 · 관리 로그 ─────
+  // 운영자 모드(xim 의 xms 버튼): 이 사이트 관리자(등급 1) 비밀번호를 바로 바꾼다 — 지금 비밀번호 없이
+  if (path === '/account/admins' && method === 'GET') {
+    if (me.kind !== 'staff') throw forbidden();
+    const { results } = await db.prepare("SELECT id, name, login_id, last_login_at FROM members WHERE site = ? AND level = 1 AND status != 'WITHDRAWN' ORDER BY id").bind(site).all();
+    return json(results);
+  }
+  if (path === '/account/password' && method === 'POST' && me.kind === 'staff') {
+    const raw = await body(request);
+    const t = await db.prepare("SELECT id, name, login_id FROM members WHERE id = ? AND site = ? AND level = 1 AND status != 'WITHDRAWN'").bind(Number(raw.member_id) || 0, site).first();
+    if (!t) throw bad('바꿀 관리자 계정을 골라 주세요.');
+    const next = String(raw.next ?? '');
+    if (next.length < 8 || next.length > 200) throw bad('새 비밀번호는 8자 이상으로 넣어 주세요.');
+    const p = await newPassword(next);
+    await db.batch([
+      db.prepare('UPDATE members SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0 WHERE id = ?').bind(p.pw_hash, p.pw_salt, t.id),
+      db.prepare('DELETE FROM sessions WHERE member_id = ?').bind(t.id), // 그 계정의 다른 로그인은 끊는다
+    ]);
+    await audit(db, site, me, request, 'PASSWORD_CHANGE', `${t.name}(${t.login_id})`, '운영자가 바꿈');
+    return json({ ok: true, who: `${t.name}(${t.login_id})` });
+  }
   if (path === '/account/password' && method === 'POST') {
     if (me.kind !== 'member') throw forbidden('운영자로 들어온 화면에서는 바꿀 수 없습니다.');
     const raw = await body(request);

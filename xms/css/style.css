@@ -253,10 +253,6 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .req-view-head .meta { margin: 0; }
 /* 주고받은 글 */
 .req-count { color: var(--brand); font-size: 13px; font-weight: 700; }
-.staff-note h2 { margin: 0 0 8px; font-size: 18px; }
-.staff-note p { margin: 0 0 10px; }
-.staff-note ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--sub); }
-.staff-note a { color: var(--brand); }
 .new-num { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 7px; border-radius: 99px; background: var(--danger); color: #fff; font-size: 12px; font-style: normal; font-weight: 700; vertical-align: 1px; }
 #side a .new-num { margin-left: auto; }
 .thread { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }

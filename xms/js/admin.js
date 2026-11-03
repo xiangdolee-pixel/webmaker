@@ -57,8 +57,7 @@ function showApp() {
   const s = INFO.site;
   document.title = `${s.name} 관리`;
   // xim 의 [xms] 버튼으로 들어오면 개인 계정 없이 '운영자' 로 들어온 것 (비밀번호가 없다)
-  $('#who').textContent = INFO.me.staff ? '운영자 (xim 에서 들어옴)' : `${INFO.me.name} 님`;
-  $('#who').title = INFO.me.staff ? 'xim 의 [xms] 버튼으로 들어온 운영자 모드입니다. 개인 계정이 아니라서 비밀번호 변경은 없습니다.' : '';
+  $('#who').textContent = INFO.me.staff ? '운영자' : `${INFO.me.name} 님`;
   renderSide();
   route();
 }
@@ -794,29 +793,30 @@ async function storagePage() {
   INFO.site.used_mb = Math.round((u.files / 1048576) * 10) / 10;
   renderSide(); markSide();
 }
-function accountPage() {
-  main.innerHTML = `${head('내 계정', '비밀번호 변경', INFO.me.staff ? '' : `${esc(INFO.me.login_id)} 계정의 비밀번호를 바꿉니다.`)}
-    ${INFO.me.staff ? `<div class="panel pad staff-note">
-      <h2>지금은 운영자 모드입니다</h2>
-      <p>xim 의 <b>[xms]</b> 버튼으로 들어오면, 따로 로그인하지 않고 운영자로 1분짜리 입장권을 써서 들어옵니다. 개인 계정이 아니라서 <b>바꿀 비밀번호가 없습니다.</b></p>
-      <ul>
-        <li><b>업체 관리자 비밀번호를 바꾸려면</b> — <a href="#/members">가입회원</a>에서 그 관리자 줄의 <b>비밀번호 재발급</b>을 누르세요. 바로 새 비밀번호가 나옵니다.</li>
-        <li><b>관리자 계정을 새로 만들려면</b> — xim › 사이트 › <b>관리자</b> 버튼.</li>
-        <li><b>업체 관리자 본인이 바꿀 때</b> — 홈페이지 주소/xms/ 에서 자기 이메일 · 비밀번호로 로그인한 뒤 이 화면에서 바꿉니다.</li>
-      </ul></div>` : ''}
-    <form class="panel pad" id="pform"${INFO.me.staff ? ' hidden' : ''}>
-      <label class="field"><span>지금 비밀번호</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>
+async function accountPage() {
+  const staff = INFO.me.staff;
+  // 운영자 모드: 이 사이트 관리자 계정을 골라 새 비밀번호를 바로 넣는다
+  const admins = staff ? await api('/account/admins') : [];
+  main.innerHTML = `${head('내 계정', '비밀번호 변경', staff
+    ? '운영자 모드입니다. 이 사이트 관리자 계정을 골라 새 비밀번호를 넣으면 바로 바뀝니다 (지금 비밀번호는 몰라도 됩니다).'
+    : `${esc(INFO.me.login_id)} 계정의 비밀번호를 바꿉니다.`)}
+    ${staff && !admins.length ? `<div class="panel">${empty('관리자 계정이 없습니다', 'xim › 사이트 › 관리자 버튼으로 먼저 만들어 주세요.')}</div>` : `
+    <form class="panel pad" id="pform">
+      ${staff ? `<label class="field"><span>바꿀 관리자 계정</span><select class="input" name="member_id" required>
+        ${admins.map((m) => `<option value="${m.id}">${esc(m.name)} · ${esc(m.login_id)}${m.last_login_at ? ` (마지막 로그인 ${fmtDate(m.last_login_at)})` : ''}</option>`).join('')}</select></label>`
+      : '<label class="field"><span>지금 비밀번호</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>'}
       <label class="field"><span>새 비밀번호</span><input class="input" type="password" name="next" autocomplete="new-password" minlength="8" required><small>8자 이상</small></label>
       <label class="field"><span>새 비밀번호 확인</span><input class="input" type="password" name="next2" autocomplete="new-password" required></label>
-      <p class="err" role="alert"></p><div class="actions end"><button class="btn primary" type="submit">비밀번호 바꾸기</button></div></form>`;
+      <p class="err" role="alert"></p><div class="actions end"><button class="btn primary" type="submit">비밀번호 바꾸기</button></div></form>`}`;
   const form = $('#pform');
-  form.addEventListener('submit', (e) => {
+  form?.addEventListener('submit', (e) => {
     e.preventDefault();
     const f = formData(form);
     busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
       if (f.next !== f.next2) throw new Error('새 비밀번호 확인이 서로 다릅니다.');
-      await api('/account/password', { method: 'POST', data: { current: f.current, next: f.next } });
-      form.reset(); toast('비밀번호를 바꿨습니다.');
+      const r = await api('/account/password', { method: 'POST', data: staff ? { member_id: f.member_id, next: f.next } : { current: f.current, next: f.next } });
+      form.reset();
+      toast(staff ? `${r.who} 비밀번호를 바꿨습니다.` : '비밀번호를 바꿨습니다.');
     });
   });
 }
