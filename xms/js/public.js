@@ -122,6 +122,12 @@ if (attachBox) {
       for (const f of input.files) {
         try {
           toast(`${f.name} 올리는 중…`);
+          // 에디터 모드에서는 사진을 본문에 바로 넣는다 (간단입력이면 첨부 목록으로)
+          if (kind === 'IMAGE' && ed && ed.mode() === 'editor') {
+            const up = await uploadFile(board, 'INLINE', await shrinkImage(f));
+            ed.insertHtml(`<p><img src="${up.url}" alt=""></p>`);
+            continue;
+          }
           const up = await uploadFile(board, kind, kind === 'IMAGE' ? await shrinkImage(f) : f);
           attachments.push(up);
           drawAttachments();

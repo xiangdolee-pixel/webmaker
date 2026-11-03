@@ -228,5 +228,15 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
       sync();
     });
   }
-  return { sync, area };
+  // 바깥(첨부의 이미지 버튼)에서 본문에 넣기 — 커서가 본문에 있었으면 그 자리, 없으면 맨 끝
+  area.addEventListener('keyup', save);
+  area.addEventListener('mouseup', save);
+  const insertHtml = (html) => {
+    if (saved && area.contains(saved.startContainer)) { insert(html); return; }
+    area.focus();
+    const r = document.createRange(); r.selectNodeContents(area); r.collapse(false);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    document.execCommand('insertHTML', false, html); save(); sync();
+  };
+  return { sync, area, insertHtml, mode: () => mode };
 }
