@@ -582,26 +582,58 @@ function json(body, status = 200) {
   });
 }
 
+/* 데이터센터 공용 캐시(사용자 도메인 xip.plators.com 에서 동작, workers.dev 에서는 그냥 건너뜀)
+   - ttl 안: 저장본을 바로 준다
+   - ttl 지남 ~ maxStale 안: 저장본을 바로 주고, 뒤에서 새로 받아 바꿔 둔다 (기다리지 않음)
+   - 저장본 없음: 받아서 주고 저장 */
+async function swr(ctx, key, ttlMs, maxStaleMs, loader) {
+  const store = typeof caches !== 'undefined' ? caches.default : null;
+  const req = new Request(`https://cache.xip.internal/${encodeURIComponent(key)}`);
+  const refresh = async () => {
+    const r = await cached(key, ttlMs, loader);
+    if (store && !r.stale) {
+      const body = JSON.stringify({ at: r.at, data: r.data });
+      await store.put(req, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${Math.ceil(maxStaleMs / 1000)}` } })).catch(() => {});
+    }
+    return r;
+  };
+  if (store) {
+    const hit = await store.match(req).catch(() => null);
+    if (hit) {
+      const saved = await hit.json().catch(() => null);
+      if (saved && saved.data) {
+        const age = Date.now() - saved.at;
+        if (age < ttlMs) return { data: saved.data, at: saved.at, stale: false };
+        if (age < maxStaleMs) {
+          ctx.waitUntil(refresh().catch(() => {}));
+          return { data: saved.data, at: saved.at, stale: true };
+        }
+      }
+    }
+  }
+  return refresh();
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
     try {
       if (pathname === '/api/indices') {
-        const r = await cached('indices', 4000, loadIndices);
+        const r = await swr(ctx, 'indices', 5000, 10 * 60e3, loadIndices);
         return json({ ...r.data, fetchedAt: r.at, stale: r.stale });
       }
       if (pathname === '/api/coins') {
-        const r = await cached('coins', 60000, loadCoins);
+        const r = await swr(ctx, 'coins', 60000, 30 * 60e3, loadCoins);
         return json({ coins: r.data, fetchedAt: r.at, stale: r.stale });
       }
       if (pathname === '/api/top') {
         const market = url.searchParams.get('market') === 'us' ? 'us' : 'kr';
-        const r = await cached(`top:${market}`, 8000, () => loadTop(market));
+        const r = await swr(ctx, `top:${market}`, 8000, 10 * 60e3, () => loadTop(market));
         return json({ ...r.data, fetchedAt: r.at, stale: r.stale });
       }
       if (pathname === '/api/market') {
-        const r = await cached('market', 30000, loadMarket);
+        const r = await swr(ctx, 'market', 30000, 30 * 60e3, loadMarket);
         return json({ ...r.data, fetchedAt: r.at });
       }
       // 진단: 이 요청을 처리한 클라우드플레어 데이터센터와 각 원본 서버 응답 상태
@@ -633,7 +665,7 @@ export default {
         const q = url.searchParams.get('q') || '';
         if (q && !/^\d{4}Q[1-4]$/.test(q)) return json({ error: 'bad quarter' }, 400);
         // 최신(분기 지정 없음)은 6시간마다 새 보고서 확인, 지난 분기는 바뀌지 않으니 하루
-        const r = await cached(`13f:${key}:${q}`, q ? 24 * 3600e3 : 6 * 3600e3, () => load13f(key, q));
+        const r = await swr(ctx, `13f:${key}:${q}`, q ? 24 * 3600e3 : 6 * 3600e3, 7 * 24 * 3600e3, () => load13f(key, q));
         return json({ ...r.data, fetchedAt: r.at });
       }
       if (pathname === '/api/chart') {
@@ -646,7 +678,8 @@ export default {
         else if ((kind === 'cmdty' && CMDTY[code]) || (kind === 'fx' && FXS[code])) loader = () => cmdtyChart(code, range);
         else if (kind === 'stock' && /^(\d{6}|[A-Za-z0-9-]{1,10}(\.[A-Z]{1,2})?)$/.test(code || '')) loader = () => stockChart(code, range);
         else return json({ error: 'bad code' }, 400);
-        const r = await cached(`chart:${kind}:${code}:${range}`, range === '1d' ? 30000 : range === '10y' || range === 'all' ? 6 * 3600e3 : 300000, loader);
+        const ttl = range === '1d' ? 30000 : range === '10y' || range === 'all' ? 6 * 3600e3 : 300000;
+        const r = await swr(ctx, `chart:${kind}:${code}:${range}`, ttl, ttl * 4, loader);
         return json({ ...r.data, fetchedAt: r.at });
       }
     } catch (err) {

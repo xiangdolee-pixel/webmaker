@@ -101,11 +101,14 @@
     elConn.setAttribute('data-state', state);
     elConn.querySelector('b').textContent = text;
   }
-  function getJSON(url) {
-    return fetch(url, { cache: 'no-store' }).then(function (r) {
+  // 15초 안에 답이 없으면 실패로 본다(멈춘 채 기다리지 않게)
+  function getJSON(url, ms) {
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var t = ctl && setTimeout(function () { ctl.abort(); }, ms || 15000);
+    return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function (r) {
       if (!r.ok) throw new Error(url + ' ' + r.status);
       return r.json();
-    });
+    }).finally(function () { if (t) clearTimeout(t); });
   }
   function tappable(el, fn) {
     el.classList.add('tap');
@@ -1134,22 +1137,40 @@
   cv.addEventListener('pointerleave', function () { if (chart) { chart.hover = null; drawChart(); } });
   if (window.ResizeObserver) new ResizeObserver(function () { if (chart) drawChart(); }).observe(plot);
 
-  /* ---------- 주기 갱신 (탭을 안 볼 때는 쉰다) ---------- */
+  /* ---------- 주기 갱신 (탭을 안 볼 때는 쉰다) ----------
+     - 앞 요청이 끝나기 전에는 다음 요청을 보내지 않는다(쌓여서 다른 요청까지 막히지 않게)
+     - 장이 열려 있을 때만 자주, 닫혀 있으면 천천히 (호출 수 절약) */
   var timers = [];
+  function marketOpen(key) {
+    var h = key === 'us' ? ['America/New_York', 570, 960] : ['Asia/Seoul', 540, 930];
+    var mk = market && market[key];
+    return session(h[0], h[1], h[2], toMap(mk && mk.holidays), toMap(mk && mk.early)).open;
+  }
+  // fn 을 '끝나고 나서 다음 간격' 으로 반복. every() 가 그때그때 간격(ms)을 정한다
+  function loop(fn, every) {
+    var alive = true, t = null;
+    var run = function () {
+      if (!alive) return;
+      Promise.resolve(fn()).catch(function () {}).then(function () {
+        if (alive) t = setTimeout(run, every());
+      });
+    };
+    run();
+    return function () { alive = false; clearTimeout(t); };
+  }
   function start() {
     stop();
-    loadIndices();
-    loadTop();
-    loadCoins();
-    timers.push(setInterval(loadIndices, INDEX_EVERY));
-    timers.push(setInterval(loadTop, TOP_EVERY));
-    timers.push(setInterval(loadCoins, COINS_EVERY));
-    timers.push(setInterval(renderHours, 30000));
-    loadMarket();
-    timers.push(setInterval(loadMarket, 30000));
+    // 지수·환율·원자재: 국내나 미국 장중이면 7초, 아니면 30초
+    timers.push(loop(loadIndices, function () { return marketOpen('kr') || marketOpen('us') ? INDEX_EVERY : 30000; }));
+    // 거래대금 상위: 보고 있는 시장이 장중이면 10초, 아니면 5분
+    timers.push(loop(loadTop, function () { return marketOpen(topMarket) ? TOP_EVERY : 300000; }));
+    timers.push(loop(loadCoins, function () { return COINS_EVERY; }));
+    timers.push(loop(loadMarket, function () { return 60000; }));
+    var h = setInterval(renderHours, 30000);
+    timers.push(function () { clearInterval(h); });
   }
   function stop() {
-    timers.forEach(clearInterval);
+    timers.forEach(function (s) { s(); });
     timers = [];
   }
   document.addEventListener('visibilitychange', function () {
