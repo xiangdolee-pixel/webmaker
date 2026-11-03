@@ -27,8 +27,8 @@ if (!CI_TOKEN) {
   delete env.CF_API_TOKEN;
 }
 
-function run(cmd, args) {
-  const r = spawnSync([cmd, ...args].join(' '), { cwd: ROOT, env, stdio: 'inherit', shell: true });
+function run(cmd, args, extra = {}) {
+  const r = spawnSync([cmd, ...args].join(' '), { cwd: ROOT, env: { ...env, ...extra }, stdio: 'inherit', shell: true });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
@@ -41,15 +41,17 @@ if (arg === '--login') run('npx', ['wrangler', 'login']);
 else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
 else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
 else {
-  run('node', ['build.mjs', arg]);
-  registerInXim();
-  run('npx', ['wrangler', 'deploy']);
+  // 배포용은 .deploy/<폴더> 에 따로 빌드한다 — 로컬 미리보기(dist · wrangler.jsonc)를 다른 작업이 동시에 고쳐도 섞이지 않게
+  const slug = arg.replace(/[\/]+$/, '');
+  run('node', ['build.mjs', slug], { XIM_DEPLOY: '1' });
+  registerInXim(slug);
+  run('npx', ['wrangler', 'deploy', '--config', `.deploy-${slug}.wrangler.jsonc`]);
 }
 
 // build.mjs 가 xim 연결 대상이라고 적어 둔 사이트를 xim 에 등록하고(처음 한 번), 헤더 메뉴를 xms 메뉴 목록으로 가져온다(처음 한 번).
 // 이미 등록된 사이트 · 이미 가져온 메뉴는 건드리지 않는다. 실패해도 배포는 계속한다(사이트 Worker 는 등록 전에도 정상으로 열린다).
-function registerInXim() {
-  const file = path.join(ROOT, '.xim-connect.json');
+function registerInXim(slug) {
+  const file = path.join(ROOT, `.deploy/${slug}.xim-connect.json`);
   if (!fs.existsSync(file)) return;
   const c = JSON.parse(fs.readFileSync(file, 'utf8'));
   const q = (s) => `'${String(s).replace(/'/g, "''")}'`;

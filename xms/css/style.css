@@ -1,4 +1,4 @@
-/* xms — 관리자 화면(/admin/)과 방문자 화면(/member, /board)이 같이 쓰는 CSS 한 파일 */
+/* xms — 관리자 화면(/admin/)과 방문자 화면(/member, /board)이 같이 쓰는 CSS 한 파일 (2026-11-03 r2) */
 :root {
   --bg: #f4f5f8;
   --surface: #fff;
@@ -346,6 +346,15 @@ tr.dragging td { background: var(--surface); }
 .count { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--mute); }
 .count.warn { color: var(--warn); }
 code.copy { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--line-2); font-size: 14px; overflow-wrap: anywhere; }
+.url-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.url-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
+.url-list li > div { grid-column: 1 / -1; }
+.url-list li.big { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.url-list code.copy { justify-self: start; max-width: 100%; }
+.url-btns { display: flex; gap: 6px; }
+.meta-inline { color: var(--sub); font-size: 13px; }
+p.meta, small.meta { display: block; }
+.url-list + h2 { margin-top: 26px; }
 .robots-now { margin: 0; padding: 12px 14px; border-radius: var(--radius-sm); background: #1f2430; color: #e6e9ef; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 14px; }
 .share-grid, .pop-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: start; }

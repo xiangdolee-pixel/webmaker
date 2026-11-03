@@ -88,7 +88,8 @@ export async function settingsApi(ctx, path, method) {
   if (path === '/settings/seo' && method === 'GET') {
     const seo = await getSeo(db, site);
     const origin = siteOrigin(s, site);
-    return json({ ...seo, siteName: s?.name || site, origin, sitemapUrl: `${origin}/sitemap.xml`, robotsDefault: defaultRobots(), engines: ENGINES });
+    const pages = (await publicPages(env, site)).map(([p]) => origin + p);
+    return json({ ...seo, siteName: s?.name || site, origin, sitemapUrl: `${origin}/sitemap.xml`, rssUrl: `${origin}/rss.xml`, pages, robotsDefault: defaultRobots(), engines: ENGINES });
   }
   if (path === '/settings/seo' && method === 'PUT') {
     const raw = await body(request);
@@ -144,7 +145,8 @@ export async function serveRobots(env, site, origin) {
   return new Response(robotsTxt(await getSeo(env.DB, site), origin), { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
-export async function serveSitemap(env, site, origin) {
+// 검색엔진에 알릴 화면 주소: 첫 화면 · 메뉴 · 공개 게시판 · 공개 글 [[경로, 고친 때]]
+async function publicPages(env, site) {
   const db = env.DB;
   const guest = { kind: 'guest', level: 0 };
   const urls = new Map();
@@ -164,7 +166,12 @@ export async function serveSitemap(env, site, origin) {
       .bind(b.id, now()).all();
     posts.forEach((p) => add(`/board/${b.slug}/${p.id}`, p.updated_at));
   }
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...urls].slice(0, 2000).map(([p, t]) =>
+  return [...urls].slice(0, 2000);
+}
+
+export async function serveSitemap(env, site, origin) {
+  const pages = await publicPages(env, site);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map(([p, t]) =>
     `  <url><loc>${esc(origin + p)}</loc>${t ? `<lastmod>${new Date(t).toISOString().slice(0, 10)}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`;
   return new Response(xml, { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }

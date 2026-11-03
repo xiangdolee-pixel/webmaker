@@ -819,6 +819,14 @@ async function faviconPage() {
 }
 
 // ───────── 검색엔진 ─────────
+// 주소 한 줄: [이름 · 넣는 곳] 주소 [복사] [열기]
+function urlRow(url, name = '', where = '', big = false) {
+  const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
+  return `<li class="${big ? 'big' : ''}">${name ? `<div><b>${esc(name)}</b> <small class="meta-inline">${esc(where)}</small></div>` : ''}
+    <code class="copy">${esc(url)}</code>
+    <span class="url-btns"><button class="btn sm" type="button" data-copy="${esc(url)}">복사</button><a class="btn sm" href="${esc(path)}" target="_blank" rel="noopener">열기</a></span></li>`;
+}
+
 async function seoPage(qs) {
   const d = await api('/settings/seo');
   const tab = qs.get('tab') || 'result';
@@ -843,12 +851,14 @@ async function seoPage(qs) {
       </section>
       ${saveBar('검색엔진 설정을 고치는 중입니다.', '')}
     </form>
-    <section class="panel pad gap" data-sec="sitemap"><h2>사이트맵 주소 <small class="meta">구글 서치콘솔·네이버 서치어드바이저에 넣을 주소입니다</small></h2>
-      <p><code class="copy">${esc(d.sitemapUrl)}</code> <button class="btn sm" type="button" data-copy>복사</button> <a class="btn sm" href="/sitemap.xml" target="_blank" rel="noopener">열어 보기</a></p>
-      <p class="meta">이 주소 한 줄만 등록하면 <b>사이트의 모든 화면</b>을 검색엔진에 알려 줍니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다.</p>
-      <h2 class="gap">RSS 주소 <small class="meta">네이버 서치어드바이저 › 요청 › RSS 제출에 넣을 주소입니다</small></h2>
-      <p><code class="copy">${esc(d.origin)}/rss.xml</code> <a class="btn sm" href="/rss.xml" target="_blank" rel="noopener">열어 보기</a></p>
-      <p class="meta">로그인 없이 볼 수 있는 게시판의 최신 글 50개가 본문 전체(사진 포함)로 들어갑니다. 새 글은 저절로 들어갑니다.</p>
+    <section class="panel pad gap" data-sec="sitemap"><h2>등록할 주소 <small class="meta">구글 서치콘솔 · 네이버 서치어드바이저에 아래 주소를 넣습니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다</small></h2>
+      <ul class="url-list">
+        ${urlRow(d.sitemapUrl, '사이트맵', '네이버 › 요청 › 사이트맵 제출 · 구글 › Sitemaps', true)}
+        ${urlRow(d.rssUrl, 'RSS', '네이버 › 요청 › RSS 제출 — 공개 게시판 최신 글 50개', true)}
+      </ul>
+      <h2 class="gap">웹 페이지 수집 <small class="meta">네이버 › 요청 › 웹 페이지 수집 · 구글 › URL 검사에 하나씩 넣습니다. 사이트맵으로도 들어가므로 <b>빨리 보이게 하고 싶은 화면만</b> 넣어도 됩니다 (네이버는 하루 50개까지)</small></h2>
+      <div class="actions"><button class="btn sm" type="button" data-copy-all>전부 복사 (${d.pages.length}개)</button></div>
+      <ul class="url-list">${d.pages.map((u) => urlRow(u)).join('')}</ul>
     </section>
     <form class="gap" id="seo-robots" data-sec="robots">
       <section class="panel pad"><h2>robots.txt <small class="meta">검색엔진에게 긁어도 되는 곳을 알려 줍니다</small></h2>
@@ -861,7 +871,7 @@ async function seoPage(qs) {
       ${saveBar('robots.txt를 고치는 중입니다.', '')}
     </form>`;
   const show = (k) => { $$('[data-sec]').forEach((el) => { el.hidden = el.dataset.sec !== k; }); };
-  pillTabs($('#seotabs'), [['result', '검색 결과와 소유권'], ['sitemap', '사이트맵 주소'], ['robots', 'robots.txt']], tab, show);
+  pillTabs($('#seotabs'), [['result', '검색 결과와 소유권'], ['sitemap', '등록할 주소'], ['robots', 'robots.txt']], tab, show);
   show(tab);
   const desc = $('#seo-result [name=description]');
   const count = () => { const n = desc.value.trim().length; const el = $('[data-count]'); el.textContent = `${n}자`; el.className = `count${n && (n < 80 || n > 150) ? ' warn' : ''}`; };
@@ -876,7 +886,12 @@ async function seoPage(qs) {
       dirty = false; toast('검색엔진 설정을 저장했습니다.'); go('#/seo?tab=result');
     });
   });
-  $('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(d.sitemapUrl); toast('복사했습니다.'); } catch { toast('복사하지 못했습니다. 주소를 직접 골라 복사해 주세요.'); } };
+  const copy = async (text, msg) => { try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast('복사하지 못했습니다. 주소를 직접 골라 복사해 주세요.'); } };
+  $('[data-sec=sitemap]').addEventListener('click', (e) => {
+    const one = e.target.closest('[data-copy]');
+    if (one) copy(one.dataset.copy, '복사했습니다.');
+    else if (e.target.closest('[data-copy-all]')) copy(d.pages.join(String.fromCharCode(10)), `주소 ${d.pages.length}개를 한 줄에 하나씩 복사했습니다.`);
+  });
   fetch('/robots.txt', { cache: 'no-store' }).then((r) => r.text()).then((t) => { $('[data-now]').textContent = t; }).catch(() => { $('[data-now]').textContent = '지금 나가는 내용을 읽어 오지 못했습니다.'; });
   const rf = $('#seo-robots');
   rf.addEventListener('input', () => { dirty = true; });

@@ -12,7 +12,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(ROOT, 'dist');
+// deploy.mjs 는 XIM_DEPLOY=1 로 부른다 → .deploy/<폴더> 에 따로 모아 다른 작업(로컬 미리보기의 dist 빌드)과 섞이지 않게 한다
+const DEPLOY = process.env.XIM_DEPLOY === '1';
 const MAX_FILE = 25 * 1024 * 1024; // Workers 정적 파일 한 개 최대 크기
 
 function fail(msg) {
@@ -22,6 +23,8 @@ function fail(msg) {
 
 const slug = (process.argv[2] || '').replace(/[\\/]+$/, '');
 if (!slug) fail('폴더 이름을 넣어 주세요.  예) node build.mjs ganghwa');
+const OUT_REL = DEPLOY ? `.deploy/${slug}` : 'dist';
+const OUT = path.join(ROOT, OUT_REL);
 if (!/^[\w.-]+$/.test(slug) || slug.startsWith('.') || ['dist', 'node_modules'].includes(slug)) {
   fail(`쓸 수 없는 폴더 이름입니다: ${slug}`);
 }
@@ -85,7 +88,7 @@ const config = {
   account_id: 'f225d506d8cf6ddf97704a36c69f5ce7',
   compatibility_date: '2026-10-01',
   assets: {
-    directory: './dist',
+    directory: `./${OUT_REL}`,
     ...(fs.existsSync(path.join(OUT, '404.html')) && { not_found_handling: '404-page' }),
   },
 };
@@ -95,7 +98,7 @@ const config = {
 //   ② dist 의 html(원본은 그대로)에서 헤더 첫 <nav> 에 data-xms-menu, 그 안 링크에 data-xms-item(버튼 모양 cta/btn 빼고),
 //      nav 바로 뒤에 계정 버튼 자리 <span data-xms-account> 를 넣는다 — 이미 표시가 있으면 손대지 않는다.
 //   ③ .xim-connect.json(리포 밖으로 안 나감, .gitignore)에 사이트 이름 · 첫 화면 메뉴를 적어 두면 deploy.mjs 가 xim 등록 · xms 메뉴 가져오기를 한다.
-const CONNECT_FILE = path.join(ROOT, '.xim-connect.json');
+const CONNECT_FILE = path.join(ROOT, DEPLOY ? `.deploy/${slug}.xim-connect.json` : '.xim-connect.json');
 const OWN_WORKER = fs.existsSync(path.join(SRC, '_worker', 'index.js'));
 const CONNECT = !['xim', 'xms'].includes(slug) && !OWN_WORKER && !fs.existsSync(path.join(SRC, '.xim-off'));
 fs.rmSync(CONNECT_FILE, { force: true });
@@ -193,9 +196,9 @@ if (!CONNECT && fs.existsSync(WORKER)) {
   console.log(`[build] ${slug}/_worker/index.js 를 Worker 로 함께 올립니다.`);
 }
 fs.writeFileSync(
-  path.join(ROOT, 'wrangler.jsonc'),
+  path.join(ROOT, DEPLOY ? `.deploy-${slug}.wrangler.jsonc` : 'wrangler.jsonc'),
   `// node build.mjs ${slug} 가 만든 파일입니다. 직접 고치지 마세요.\n${JSON.stringify(config, null, 2)}\n`,
 );
 
-console.log(`[build] ${slug} → dist/  파일 ${count}개, ${(bytes / 1024 / 1024).toFixed(1)}MB`);
+console.log(`[build] ${slug} → ${OUT_REL}/  파일 ${count}개, ${(bytes / 1024 / 1024).toFixed(1)}MB`);
 console.log(`[build] Worker 이름: ${name}  (대시보드 Project name 과 같아야 합니다)`);
