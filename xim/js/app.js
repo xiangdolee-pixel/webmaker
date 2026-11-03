@@ -198,11 +198,15 @@ function siteCard(s) {
   const dev = `https://${s.slug}.xiangdolee.workers.dev`;
   const link = (u, label) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label)}</a>`;
   const addr = s.domain ? `${link(s.url, s.domain)}${link(dev, `${s.slug}.workers.dev`)}` : `${link(dev, `${s.slug}.workers.dev`)}<span>도메인 없음</span>`;
+  // 인증 메일 보내는 주소 상태 (대표 도메인 → Email Sending)
+  const MAIL = { ok: ['메일 준비됨', 'done'], added: ['메일 준비됨', 'done'], error: ['메일 등록 실패 · 다시', 'suspended'], skip: ['메일 대기 · 등록', 'new'] };
+  const [mt, mc] = MAIL[s.mail_status] || MAIL.skip;
+  const mailTag = s.domain ? `<button type="button" class="badge ${mc} mail-badge" data-mail="${s.id}" title="${esc(s.mail_note || '아직 등록 전 — 인증 메일이 예비 주소 noreply@plators.com 으로 나갑니다. 누르면 등록합니다.')}">${mt}</button>` : '';
   return `
   <article class="card item" data-site="${s.id}">
     <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
     <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
-    <div class="meta">${addr}</div>
+    <div class="meta">${addr}${mailTag}</div>
     <div class="meta"><span>관리자 ${s.admin_count}명</span><span>처리할 요청 ${s.open_requests}건</span></div>
     <dl class="usage">
       <div><dt>DB</dt><dd>${mb(u.db)}<small>회원 · 글 · 메뉴 등</small></dd></div>
@@ -237,7 +241,7 @@ function siteDialog(site) {
       </div>
       <label class="field"><span>고객</span><select class="input" name="customer_id">${customerOptions(s.customer_id)}</select></label>
       <div class="row2">
-        <label class="field"><span>도메인</span><input class="input" name="domain" value="${esc(s.domain)}" placeholder="example.kr"></label>
+        <label class="field"><span>대표 도메인</span><input class="input" name="domain" value="${esc(s.domain)}" placeholder="example.kr"><small>저장하면 회원가입 인증 메일(noreply@대표 도메인)도 자동으로 준비됩니다</small></label>
         <label class="field"><span>저장 용량 (MB)</span><input class="input" name="quota_mb" type="number" min="0" value="${esc(s.quota_mb)}" required></label>
       </div>
       <label class="field"><span>메모</span><textarea class="input" name="memo">${esc(s.memo)}</textarea></label>
@@ -249,10 +253,10 @@ function siteDialog(site) {
       e.preventDefault();
       busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
         const data = { ...formData(form), status: s.status };
-        if (site) await api(`/sites/${site.id}`, { method: 'PUT', data });
-        else await api('/sites', { method: 'POST', data });
+        const r = site ? await api(`/sites/${site.id}`, { method: 'PUT', data }) : await api('/sites', { method: 'POST', data });
         dlg.close();
-        toast(site ? '저장했습니다.' : `사이트를 만들었습니다. 연결은 Claude 에게 "xim 사이트 ${data.slug} 연결해줘" 라고 하세요.`);
+        const mail = r?.mail ? ` 메일: ${r.mail.message}` : '';
+        toast(site ? `저장했습니다.${mail}` : `사이트를 만들었습니다.${mail}`);
         render();
       });
     });
@@ -510,3 +514,14 @@ function otpOffDialog() {
 }
 
 start();
+
+// 사이트 카드의 메일 표시: 누르면 대표 도메인을 Email Sending 에 (다시) 등록
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mail]');
+  if (!b) return;
+  busy(b, null, async () => {
+    const r = await api(`/sites/${b.dataset.mail}/mail`, { method: 'POST', data: {} });
+    toast(`메일: ${r.mail.message}`);
+    render();
+  });
+});

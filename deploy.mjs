@@ -12,6 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { ensureMailDomain } from './mail-domain.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ACCOUNT_ID = 'f225d506d8cf6ddf97704a36c69f5ce7';
@@ -40,12 +41,24 @@ if (!arg) {
 if (arg === '--login') run('npx', ['wrangler', 'login']);
 else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
 else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
+else if (arg === '--mail') await mailFor(process.argv[3] || '', true); // 예) node deploy.mjs --mail sjccc  (또는 도메인)
 else {
   // 배포용은 .deploy/<폴더> 에 따로 빌드한다 — 로컬 미리보기(dist · wrangler.jsonc)를 다른 작업이 동시에 고쳐도 섞이지 않게
   const slug = arg.replace(/[\/]+$/, '');
   run('node', ['build.mjs', slug], { XIM_DEPLOY: '1' });
   registerInXim(slug);
   run('npx', ['wrangler', 'deploy', '--config', `.deploy-${slug}.wrangler.jsonc`]);
+}
+
+// 대표 도메인을 메일 보내는 도메인으로 (회원가입 인증 메일 = noreply@<도메인>). 평소에는 xim 에서 대표 도메인을 저장하면 자동.
+async function mailFor(target, loud) {
+  let domain = target.includes('.') ? target : '';
+  if (!domain && /^[a-z0-9-]+$/i.test(target)) {
+    const r = spawnSync(`npx wrangler d1 execute xim --remote --json --command "SELECT domain FROM sites WHERE slug = '${target.toLowerCase()}'"`, { cwd: ROOT, env, shell: true, encoding: 'utf8' });
+    try { domain = JSON.parse(r.stdout.slice(r.stdout.indexOf('[')))[0].results[0]?.domain || ''; } catch { domain = ''; }
+  }
+  if (!domain) { if (loud) console.log(`[mail] ${target}: 도메인이 없어 건너뜁니다 (xim 에서 도메인을 넣은 뒤 다시)`); return; }
+  try { await ensureMailDomain(domain); } catch (e) { console.warn(`[mail] ${domain} 메일 등록 실패(배포는 그대로):`, e.message); }
 }
 
 // build.mjs 가 xim 연결 대상이라고 적어 둔 사이트를 xim 에 등록하고(처음 한 번), 헤더 메뉴를 xms 메뉴 목록으로 가져온다(처음 한 번).

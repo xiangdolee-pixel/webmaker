@@ -6,6 +6,7 @@
 //     fetch(request)                    /__suspended (정지 화면). 업체 관리 화면 · 회원 · 게시판은 xms 가 맡는다.
 //
 //   바인딩: DB(D1 xim), XMS_DB(D1 xms: 업체 관리자 계정 · 입장권), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
+import { ensureMailDomain } from './mail-domain.js';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 const DAY = 86400000;
@@ -324,14 +325,24 @@ async function ximApi(request, env, url) {
     const r = await db.prepare(
       'INSERT INTO sites (slug, name, customer_id, domain, status, quota_mb, memo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     ).bind(slug, b.name, b.customer_id, b.domain, b.status, b.quota_mb, b.memo, now()).run();
-    return json({ id: r.meta.last_row_id });
+    const mail = b.domain ? await mailRegister(env, r.meta.last_row_id, b.domain) : null;
+    return json({ id: r.meta.last_row_id, mail });
   }
   m = path.match(/^\/api\/sites\/(\d+)$/);
   if (m && method === 'PUT') {
     const b = siteFields(await body(request));
+    const before = await db.prepare('SELECT domain, mail_status FROM sites WHERE id = ?').bind(+m[1]).first();
     await db.prepare('UPDATE sites SET name = ?, customer_id = ?, domain = ?, status = ?, quota_mb = ?, memo = ? WHERE id = ?')
       .bind(b.name, b.customer_id, b.domain, b.status, b.quota_mb, b.memo, +m[1]).run();
-    return json({ ok: true });
+    // 대표 도메인이 바뀌었거나 아직 메일 등록이 안 됐으면 Email Sending 에 등록
+    const mail = b.domain && (b.domain !== before?.domain || !['ok', 'added'].includes(before?.mail_status)) ? await mailRegister(env, +m[1], b.domain) : null;
+    return json({ ok: true, mail });
+  }
+  m = path.match(/^\/api\/sites\/(\d+)\/mail$/);
+  if (m && method === 'POST') {
+    const s = await db.prepare('SELECT domain FROM sites WHERE id = ?').bind(+m[1]).first();
+    if (!s?.domain) throw bad('대표 도메인을 먼저 넣어 주세요.');
+    return json({ ok: true, mail: await mailRegister(env, +m[1], s.domain) });
   }
   m = path.match(/^\/api\/sites\/(\d+)\/status$/);
   if (m && method === 'POST') {
@@ -508,6 +519,13 @@ function customerFields(raw) {
   if (!name) throw bad('고객 이름을 넣어 주세요.');
   return { name, contact: str(raw.contact, 40), phone: str(raw.phone, 40), email: str(raw.email, 120), memo: str(raw.memo) };
 }
+// 대표 도메인 → Cloudflare Email Sending 등록, 결과를 사이트에 적어 둔다 (카드에 보임)
+async function mailRegister(env, id, domain) {
+  const r = await ensureMailDomain(env.CF_MAIL_TOKEN, domain);
+  await env.DB.prepare('UPDATE sites SET mail_status = ?, mail_note = ? WHERE id = ?').bind(r.status, r.message.slice(0, 300), id).run();
+  return r;
+}
+
 function siteFields(raw) {
   const name = str(raw.name, 80);
   if (!name) throw bad('사이트 이름을 넣어 주세요.');
