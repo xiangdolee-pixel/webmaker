@@ -207,7 +207,7 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .search .input { flex: 1 1 200px; width: auto; }
 .search select.input { flex: 0 1 180px; }
-.search .right { margin-left: auto; }
+.search .right, .actions .right { margin-left: auto; }
 
 /* 표 → 폰에서는 카드 */
 .tbl { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -221,6 +221,29 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .tbl .who-btn { padding: 0; border: 0; background: none; color: var(--ink); font-weight: 700; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px; }
 .tbl small { display: block; color: var(--mute); }
 .tbl .dash { color: var(--mute); }
+/* 수정 요청: 게시판처럼 목록 · 보기 */
+.req-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; }
+.req-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.req-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--sub); font-size: 14px; font-weight: 600; text-decoration: none; transition: background .2s, color .2s, border-color .2s; }
+.req-tab b { font-weight: 700; color: var(--mute); }
+.req-tab.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.req-tab.on b { color: rgba(255, 255, 255, .7); }
+.req-tbl tbody tr { cursor: pointer; transition: background .15s; }
+.req-tbl tbody tr:hover { background: #f7f8fa; }
+.req-tbl .c-no { width: 64px; }
+.req-tbl .c-st { width: 96px; }
+.req-tbl .c-d { width: 110px; white-space: nowrap; color: var(--sub); }
+.req-tbl .c-t a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.req-tbl .c-t a:hover { color: var(--brand); }
+.req-clip svg { width: 15px; height: 15px; vertical-align: -2px; fill: none; stroke: var(--mute); stroke-width: 2; }
+.req-reply { margin-left: 4px; }
+.req-view-head { padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.req-view-head h2 { margin: 8px 0 6px; font-size: 22px; }
+.req-view-head .meta { margin: 0; }
+.req-answer { margin-top: 22px; padding: 16px 18px; border-radius: var(--radius-sm); background: var(--line-2); }
+.req-answer.has { background: var(--ok-soft, #e6f6ee); }
+.req-answer h3 { margin: 0 0 6px; font-size: 15px; }
+.req-answer p { margin: 0; }
 .handle { cursor: grab; touch-action: none; user-select: none; color: var(--mute); font-size: 18px; padding: 4px 6px; border: 0; background: none; }
 .dragging { background: var(--surface); box-shadow: 0 14px 34px -12px rgba(20, 26, 40, .45), 0 0 0 1px var(--line); cursor: grabbing; }
 tr.dragging td { background: var(--surface); }

@@ -83,7 +83,7 @@ function renderSide() {
     <p class="foot">${esc(s.name)} 관리자 화면</p>`;
 }
 function markSide() {
-  const h = location.hash || '#/members';
+  const h = (location.hash || '#/members').split('?')[0];
   const cands = $$('#side a[href^="#/"]');
   const best = cands.filter((a) => h === a.getAttribute('href') || h.startsWith(`${a.getAttribute('href')}/`))
     .sort((a, b) => b.getAttribute('href').length - a.getAttribute('href').length)[0];
@@ -119,7 +119,9 @@ async function route() {
     if (parts[0] === 'menus' && parts[1] === 'new') return await menuPage(null);
     if (parts[0] === 'menus' && parts[1]) return await menuPage(Number(parts[1]));
     if (parts[0] === 'menus') return await menusPage();
-    if (parts[0] === 'requests') return await requestsPage();
+    if (parts[0] === 'requests' && parts[1] === 'new') return requestWrite();
+    if (parts[0] === 'requests' && parts[1]) return await requestView(Number(parts[1]));
+    if (parts[0] === 'requests') return await requestsPage(qs);
     if (parts[0] === 'popups' && parts[1] === 'new') return await popupPage(null);
     if (parts[0] === 'popups' && parts[1]) return await popupPage(Number(parts[1]));
     if (parts[0] === 'popups') return await popupsPage(qs);
@@ -618,32 +620,75 @@ const REQ_LABEL = { new: ['접수', 'warn'], doing: ['진행 중', 'blue'], done
 const ATT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
 const IMG_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>';
 const size = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round((n || 0) / 1024))}KB`);
-async function requestsPage() {
+// 목록 (게시판처럼) — #/requests?status=new&page=2
+const REQ_PAGE = 15;
+async function requestsPage(qs) {
   const list = await api('/requests');
-  main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 운영자에게 요청합니다. 처리되면 아래에 답변이 붙습니다.')}
+  const st = REQ_LABEL[qs.get('status')] ? qs.get('status') : '';
+  const rows = st ? list.filter((r) => r.status === st) : list;
+  const page = Math.max(1, Number(qs.get('page')) || 1);
+  const shown = rows.slice((page - 1) * REQ_PAGE, page * REQ_PAGE);
+  const count = (k) => list.filter((r) => r.status === k).length;
+  const tab = (k, label, n) => `<a class="req-tab${st === k ? ' on' : ''}" href="#/requests${k ? `?status=${k}` : ''}">${label} <b>${n}</b></a>`;
+  main.innerHTML = `${head('사이트', '수정 요청', '홈페이지에서 바꾸고 싶은 곳을 운영자에게 요청합니다. 처리되면 그 요청에 답변이 붙습니다.')}
+    <div class="req-top">
+      <nav class="req-tabs" aria-label="상태">${tab('', '전체', list.length)}${tab('new', '접수', count('new'))}${tab('doing', '진행 중', count('doing'))}${tab('done', '완료', count('done'))}</nav>
+      <a class="btn primary" href="#/requests/new">요청 쓰기</a>
+    </div>
+    <div class="panel">${shown.length ? `<table class="tbl cardy req-tbl"><thead><tr><th class="c-no">번호</th><th>제목</th><th class="c-st">상태</th><th>요청한 사람</th><th class="c-d">등록일</th></tr></thead><tbody>
+      ${shown.map((r, i) => `<tr data-go="#/requests/${r.id}">
+        <td class="c-no num" data-l="번호">${rows.length - (page - 1) * REQ_PAGE - i}</td>
+        <td class="c-t"><a href="#/requests/${r.id}">${esc(r.title)}</a>${r.attachments?.length ? ` <span class="req-clip" title="첨부 ${r.attachments.length}개">${ATT_ICON}</span>` : ''}${r.reply ? ' <span class="tag green req-reply">답변</span>' : ''}</td>
+        <td class="c-st" data-l="상태"><span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span></td>
+        <td data-l="요청한 사람">${esc(r.requester || '')}</td>
+        <td class="c-d" data-l="등록일">${fmtDate(r.created_at)}</td></tr>`).join('')}</tbody></table>`
+    : empty(st ? `${REQ_LABEL[st][0]} 상태인 요청이 없습니다` : '아직 보낸 요청이 없습니다', st ? '다른 상태를 골라 보세요.' : '오른쪽 위 [요청 쓰기] 로 첫 요청을 보내 보세요.', st ? '' : '<a class="btn primary" href="#/requests/new">요청 쓰기</a>')}</div>
+    ${pager(page, REQ_PAGE, rows.length, (n) => `#/requests?${new URLSearchParams({ ...(st ? { status: st } : {}), page: n })}`)}`;
+  // 줄 어디를 눌러도 그 요청으로
+  main.querySelectorAll('tr[data-go]').forEach((tr) => tr.addEventListener('click', (e) => { if (!e.target.closest('a')) go(tr.dataset.go); }));
+}
+
+// 요청 보기 — 본문 · 첨부 · 답변
+async function requestView(id) {
+  const r = (await api('/requests')).find((x) => x.id === id);
+  if (!r) {
+    main.innerHTML = `${head('사이트', '수정 요청')}<div class="panel">${empty('요청을 찾을 수 없습니다', '지워졌거나 없는 요청입니다.', '<a class="btn" href="#/requests">목록으로</a>')}</div>`;
+    return;
+  }
+  const body = r.body ? (r.body.trim().startsWith('<') ? `<div class="prose req-body">${r.body}</div>` : `<p class="pre">${esc(r.body)}</p>`) : '<p class="meta">내용 없음</p>';
+  main.innerHTML = `${head('사이트', '수정 요청')}
+    <article class="panel pad req-view">
+      <div class="req-view-head"><span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span><h2>${esc(r.title)}</h2>
+        <p class="meta"><span>${esc(r.requester || '')}</span><span>등록 ${fmtDate(r.created_at, true)}</span>${r.updated_at && r.updated_at !== r.created_at ? `<span>바뀜 ${fmtDate(r.updated_at, true)}</span>` : ''}</p></div>
+      ${body}
+      ${r.attachments?.length ? `<div class="post-files"><b>첨부</b>${r.attachments.map((a) => `<a href="/xms/upload/${esc(a.id)}?dl=1">${esc(a.name)} <small>${size(a.size)}</small></a>`).join('')}</div>` : ''}
+      <section class="req-answer${r.reply ? ' has' : ''}"><h3>운영자 답변</h3>${r.reply ? `<p class="pre">${esc(r.reply)}</p>` : '<p class="meta">아직 답변이 없습니다. 처리되면 여기에 답변이 붙습니다.</p>'}</section>
+    </article>
+    <div class="actions gap"><a class="btn" href="#/requests">목록으로</a><a class="btn primary right" href="#/requests/new">새 요청 쓰기</a></div>`;
+}
+
+// 요청 쓰기
+function requestWrite() {
+  main.innerHTML = `${head('사이트', '수정 요청 쓰기', '바꾸고 싶은 곳과 내용을 적어 주세요. 사진 · 파일도 붙일 수 있습니다.')}
     <form class="panel pad write-box" id="rform">
       <label class="field"><span>제목</span><input class="input" name="title" maxlength="120" required placeholder="예) 메인 사진 교체 부탁드립니다"></label>
       <div class="field"><span>첨부</span><div class="attach" data-attach>
         <div class="attach-btns"><button type="button" class="pill-btn" data-add="IMAGE">${IMG_ICON}이미지</button><button type="button" class="pill-btn" data-add="FILE">${ATT_ICON}파일</button></div>
         <div class="attach-list" data-list></div></div></div>
       <div class="field"><span>내용</span><div class="editor" data-editor data-board="@request"><textarea name="body" hidden></textarea></div></div>
-      <p class="err" role="alert"></p><div class="actions end"><button class="btn primary" type="submit">요청 보내기</button></div></form>
-    <div class="panel gap">${list.length ? list.map((r) => `<div class="tree-row req-row"><div class="tt"><b>${esc(r.title)}</b> <span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span>
-      <small>${fmtDate(r.created_at, true)}${r.requester ? ` · ${esc(r.requester)}` : ''}</small>
-      ${r.body ? (r.body.trim().startsWith('<') ? `<div class="prose req-body">${r.body}</div>` : `<p class="pre">${esc(r.body)}</p>`) : ''}
-      ${r.attachments?.length ? `<div class="post-files"><b>첨부</b>${r.attachments.map((a) => `<a href="/xms/upload/${esc(a.id)}?dl=1">${esc(a.name)} <small>${size(a.size)}</small></a>`).join('')}</div>` : ''}
-      ${r.reply ? `<div class="notice-bar gap"><span><b>답변</b><br><span class="pre">${esc(r.reply)}</span></span></div>` : ''}</div></div>`).join('')
-    : empty('아직 보낸 요청이 없습니다', '위에서 첫 요청을 보내 보세요.')}</div>`;
+      <p class="err" role="alert"></p><div class="actions"><a class="btn" href="#/requests">취소</a><button class="btn primary right" type="submit">요청 보내기</button></div></form>`;
   const form = $('#rform');
   const ed = mountEditor($('[data-editor]', form), { placeholder: '바꾸고 싶은 곳과 내용을 적어 주세요.' });
   // 첨부: 이미지는 본문에 바로(목록에도 보임), 파일은 목록으로 — 게시판 글쓰기와 같은 mountAttach
   const attach = mountAttach($('[data-attach]', form), { ed, target: '@request' });
+  form.addEventListener('input', () => { dirty = true; });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     ed.sync();
     busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
       await api('/requests', { method: 'POST', data: { title: form.title.value, body: form.body.value, attachments: attach.ids() } });
-      toast('요청을 보냈습니다.'); route();
+      dirty = false;
+      toast('요청을 보냈습니다.'); go('#/requests');
     });
   });
 }
