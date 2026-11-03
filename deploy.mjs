@@ -22,7 +22,7 @@ delete env.CLOUDFLARE_API_TOKEN;
 delete env.CF_API_TOKEN;
 
 function run(cmd, args) {
-  const r = spawnSync(cmd, args, { cwd: ROOT, env, stdio: 'inherit', shell: true });
+  const r = spawnSync([cmd, ...args].join(' '), { cwd: ROOT, env, stdio: 'inherit', shell: true });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
