@@ -1,5 +1,5 @@
 // xms 관리자 화면 (/xms/) — 해시 주소로 화면을 바꾼다: #/members, #/boards/3 …
-import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, formData, openDialog, busy, confirmInline } from './common.js';
+import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, slideTabs, formData, openDialog, busy, confirmInline } from './common.js';
 import { mountEditor, mountAttach } from './editor.js';
 import { sortable, treeFromDepths } from './drag.js';
 
@@ -104,6 +104,8 @@ function markSide() {
   const best = cands.filter((a) => h === a.getAttribute('href') || h.startsWith(`${a.getAttribute('href')}/`))
     .sort((a, b) => b.getAttribute('href').length - a.getAttribute('href').length)[0];
   cands.forEach((a) => a.classList.toggle('on', a === best));
+  // 고른 메뉴의 흰 배경이 다음 메뉴로 미끄러진다 (xim 왼쪽 메뉴와 같은 모양)
+  requestAnimationFrame(() => slideTabs($('#side'), 'a.on'));
 }
 const side = $('#side');
 $('#menu-btn').addEventListener('click', () => side.classList.toggle('open'));
