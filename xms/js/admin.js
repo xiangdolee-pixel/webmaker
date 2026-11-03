@@ -97,10 +97,24 @@ side.addEventListener('click', (e) => { if (e.target.closest('a[href^="#/"]')) s
 // ───────── 화면 바꾸기 ─────────
 addEventListener('hashchange', () => route());
 addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+// 왼쪽 메뉴 '수정 요청' 옆 숫자 = 운영자가 새로 답한 요청 수 (화면을 옮길 때마다 다시 본다)
+async function reqBadge() {
+  try {
+    const { n } = await api('/requests/unread');
+    const a = $('#side a[href="#/requests"]');
+    if (!a) return;
+    let i = a.querySelector('.new-num');
+    if (!n) { i?.remove(); return; }
+    if (!i) { i = document.createElement('i'); i.className = 'new-num'; a.append(i); }
+    i.textContent = n;
+  } catch { /* 숫자는 못 보여도 화면은 그대로 */ }
+}
+
 async function route() {
   if (!INFO) return;
   dirty = false;
   markSide();
+  setTimeout(reqBadge, 300);
   const h = (location.hash || '#/members').slice(1);
   const parts = h.split('?')[0].split('/').filter(Boolean);
   const qs = new URLSearchParams(h.split('?')[1] || '');
@@ -638,7 +652,7 @@ async function requestsPage(qs) {
     <div class="panel">${shown.length ? `<table class="tbl cardy req-tbl"><thead><tr><th class="c-no">번호</th><th>제목</th><th class="c-st">상태</th><th>요청한 사람</th><th class="c-d">등록일</th></tr></thead><tbody>
       ${shown.map((r, i) => `<tr data-go="#/requests/${r.id}">
         <td class="c-no num" data-l="번호">${rows.length - (page - 1) * REQ_PAGE - i}</td>
-        <td class="c-t"><a href="#/requests/${r.id}">${esc(r.title)}</a>${r.attachments?.length ? ` <span class="req-clip" title="첨부 ${r.attachments.length}개">${ATT_ICON}</span>` : ''}${r.msg_count ? ` <span class="req-count" title="주고받은 글">[${r.msg_count}]</span>` : ''}${r.last_side === 'op' || (!r.msg_count && r.reply) ? ' <span class="tag green req-reply">답변</span>' : ''}</td>
+        <td class="c-t"><a href="#/requests/${r.id}">${esc(r.title)}</a>${r.attachments?.length ? ` <span class="req-clip" title="첨부 ${r.attachments.length}개">${ATT_ICON}</span>` : ''}${r.msg_count ? ` <span class="req-count" title="주고받은 글">[${r.msg_count}]</span>` : ''}${r.site_unread ? ` <span class="new-num">새 글 ${r.site_unread}</span>` : r.last_side === 'op' || (!r.msg_count && r.reply) ? ' <span class="tag green req-reply">답변</span>' : ''}</td>
         <td class="c-st" data-l="상태"><span class="tag ${REQ_LABEL[r.status][1]}">${REQ_LABEL[r.status][0]}</span></td>
         <td data-l="요청한 사람">${esc(r.requester || '')}</td>
         <td class="c-d" data-l="등록일">${fmtDate(r.created_at)}</td></tr>`).join('')}</tbody></table>`

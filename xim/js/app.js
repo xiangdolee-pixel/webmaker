@@ -6,6 +6,7 @@ const api = makeApi('/api');
 const view = $('#view');
 let tab = 'sites';
 let reqFilter = '';
+let reqSite = ''; // 사이트 카드의 '처리할 요청' 을 눌러 들어오면 그 사이트만
 let customers = [];
 
 // ───────── 로그인 ─────────
@@ -55,7 +56,11 @@ function showApp() {
   $('#app').hidden = false;
   if (!navReady) {
     navReady = true;
-    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['security', '보안']], tab, (v) => { tab = v; render(); });
+    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['security', '보안']], tab, (v) => {
+      tab = v;
+      if (reqOpen && !(v === 'requests' && /^#req-\d+$/.test(location.hash))) { reqOpen = 0; if (location.hash) history.replaceState(null, '', location.pathname); }
+      render();
+    });
   }
   render();
 }
@@ -70,18 +75,44 @@ async function guarded(fn) {
 // ───────── 요약 타일 ─────────
 async function renderTiles() {
   const s = await api('/summary');
+  navBadge(s.unreadRequests);
   $('#tiles').innerHTML = [
     ['고객', s.customers],
     ['사이트', s.sites],
     ['정지된 사이트', s.suspended],
-    ['처리할 수정요청', s.openRequests, s.openRequests > 0],
-  ].map(([label, n, alert]) => `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`).join('')
+    ['처리할 수정요청', s.openRequests, s.openRequests > 0, 'reqs'],
+  ].map(([label, n, alert, act]) => (act
+    ? `<button type="button" class="card tile tile-btn${alert ? ' alert' : ''}" data-go-reqs><b>${n}${s.unreadRequests ? ` <i class="new-num" title="새 글이 있는 요청">새 글 ${s.unreadRequests}</i>` : ''}</b><span>${label} →</span></button>`
+    : `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`)).join('')
   + (s.storage ? `<div class="card tile wide-tile"><div class="meters-head"><b class="meters-title">전체 사용량</b><span>Cloudflare 무료 한도 대비</span></div>
       <div class="meters">${[
     ['xms DB', '업체 회원 · 글 · 메뉴 등', s.storage.xms_db, 500 * 1048576, 'm1'],
     ['xim DB', '고객 · 사이트 · 요청', s.storage.xim_db, 500 * 1048576, 'm2'],
     ['R2 파일', '사진 · 첨부', s.storage.r2, 10 * 1073741824, 'm3'],
   ].map(([name, sub, used, limit, cls]) => meter(name, sub, used, limit, cls)).join('')}</div></div>` : '');
+}
+
+// 수정요청 탭으로 (slug 가 있으면 그 사이트 요청만)
+function goRequests(slug = '') {
+  reqSite = slug;
+  reqFilter = '';
+  if (reqOpen) { reqOpen = 0; history.replaceState(null, '', location.pathname); }
+  const b = $('#nav [data-v="requests"]');
+  if (b && !b.classList.contains('on')) b.click(); else render();
+  scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-go-reqs]');
+  if (t) goRequests(t.dataset.goReqs || '');
+});
+// 위 탭 '수정요청' 옆 숫자 = 새 글이 있는 요청 수
+function navBadge(n) {
+  const b = $('#nav [data-v="requests"]');
+  if (!b) return;
+  let i = b.querySelector('.nav-num');
+  if (!n) { i?.remove(); return; }
+  if (!i) { i = document.createElement('i'); i.className = 'nav-num'; b.append(i); }
+  i.textContent = n;
 }
 
 // 막대 하나: 이름 · 쓴 양 / 한도 · % — 아주 적어도 막대 끝이 보이게 최소 폭을 둔다
@@ -207,7 +238,7 @@ function siteCard(s) {
     <div class="item-head"><h3><a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}${esc(s.name)} ↗</a></h3>${badge(s.status)}</div>
     <div class="meta"><span>ID ${esc(s.slug)}</span><span>고객 ${esc(s.customer_name || '없음')}</span></div>
     <div class="meta">${addr}${mailTag}</div>
-    <div class="meta"><span>관리자 ${s.admin_count}명</span><span>처리할 요청 ${s.open_requests}건</span></div>
+    <div class="meta"><span>관리자 ${s.admin_count}명</span>${s.open_requests ? `<button type="button" class="link-btn" data-go-reqs="${esc(s.slug)}">처리할 요청 <b>${s.open_requests}</b>건 →</button>` : '<span>처리할 요청 0건</span>'}</div>
     <dl class="usage">
       <div><dt>DB</dt><dd>${mb(u.db)}<small>회원 · 글 · 메뉴 등</small></dd></div>
       <div><dt>파일</dt><dd>${mb(u.files)}<small>${u.file_count}개${u.files ? ` · R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}` : ''}</small></dd></div>
@@ -385,7 +416,9 @@ function customerDialog(c) {
 
 // ───────── 수정요청 ─────────
 let reqTabsBox = null;
+let reqOpen = 0; // 읽고 있는 요청 번호 (0 = 목록)
 async function renderRequests() {
+  if (reqOpen) { reqTabsBox = null; return renderRequestView(reqOpen); }
   const list = await api(`/requests${reqFilter ? `?status=${reqFilter}` : ''}`);
   if (!reqTabsBox || !view.contains(reqTabsBox)) {
     view.innerHTML = `<div class="bar"><h2>수정요청</h2><div class="tabs" id="req-tabs"></div></div><div class="list" id="req-list"></div>`;
@@ -393,15 +426,22 @@ async function renderRequests() {
     pillTabs(reqTabsBox, [['', '전체'], ['new', '접수'], ['doing', '진행 중'], ['done', '완료']], reqFilter, (v) => { reqFilter = v; render(); });
   }
   const box = $('#req-list');
-  box.innerHTML = list.map((r) => `
+  const shown = reqSite ? list.filter((r) => r.slug === reqSite) : list;
+  let only = $('#req-only');
+  if (reqSite) {
+    if (!only) { only = document.createElement('div'); only.id = 'req-only'; only.className = 'req-only'; box.before(only); }
+    only.innerHTML = `<span><b>${esc(shown[0]?.site_name || reqSite)}</b> 요청만 보는 중</span><button type="button" class="link-btn" data-all>전체 보기</button>`;
+    only.querySelector('[data-all]').onclick = () => { reqSite = ''; render(); };
+  } else only?.remove();
+  box.innerHTML = shown.map((r) => `
     <article class="card item clickable" data-id="${r.id}" tabindex="0">
-      <div class="item-head"><h3>${esc(r.title)}${r.msg_count ? ` <small class="req-count">[${r.msg_count}]</small>` : ''}${r.last_side === 'site' ? ' <span class="badge new">새 글</span>' : ''}</h3>${badge(r.status)}</div>
+      <div class="item-head"><h3>${esc(r.title)}${r.msg_count ? ` <small class="req-count">[${r.msg_count}]</small>` : ''}${r.op_unread ? ` <span class="new-num">새 글 ${r.op_unread}</span>` : ''}</h3>${badge(r.status)}</div>
       <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.admin_name || r.username || '')}</span><span>처음 ${fmtDate(r.created_at)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at)}</span>` : ''}</div>
     </article>`).join('') || '<div class="card empty">해당하는 요청이 없습니다.</div>';
   box.querySelectorAll('[data-id]').forEach((el) => {
     const r = list.find((x) => x.id === +el.dataset.id);
-    el.onclick = () => requestDialog(r);
-    el.onkeydown = (e) => { if (e.key === 'Enter') requestDialog(r); };
+    el.onclick = () => openRequest(r.id);
+    el.onkeydown = (e) => { if (e.key === 'Enter') openRequest(r.id); };
   });
 }
 
@@ -418,8 +458,28 @@ const msgItem = (site, side, who, at, bodyHtml, atts, status) => `<li class="msg
   <div class="msg-head"><b>${esc(who)}</b>${side === 'op' ? '<span class="badge doing">운영자</span>' : '<span class="badge active">업체</span>'}<time>${fmtDate(at)}</time>${status ? `<span>→ ${badge(status)}</span>` : ''}</div>
   ${bodyHtml}${msgAtts(site, atts)}</li>`;
 
-async function requestDialog(row) {
-  const r = await api(`/requests/${row.id}`);
+// 읽기 화면 열기 / 목록으로 — 주소 #req-<번호> 를 써서 브라우저 뒤로 가기도 된다
+function openRequest(id) { location.hash = `req-${id}`; }
+function closeRequest() { if (/^#req-\d+$/.test(location.hash)) history.back(); else { reqOpen = 0; render(); } }
+function syncRequestHash() {
+  const m = location.hash.match(/^#req-(\d+)$/);
+  const id = m ? +m[1] : 0;
+  if (id === reqOpen && (!id || tab === 'requests')) return;
+  reqOpen = id;
+  const b = $('#nav [data-v="requests"]');
+  if (id && b && !b.classList.contains('on')) b.click(); else render();
+  scrollTo(0, 0);
+}
+window.addEventListener('hashchange', syncRequestHash);
+if (/^#req-\d+$/.test(location.hash)) { reqOpen = +location.hash.slice(5); tab = 'requests'; }
+
+async function renderRequestView(id) {
+  let r;
+  try { r = await api(`/requests/${id}`); } catch (e) {
+    view.innerHTML = `<div class="bar"><button type="button" class="btn" data-back>← 목록</button></div><div class="card empty">${esc(e.message)}</div>`;
+    view.querySelector('[data-back]').onclick = closeRequest;
+    return;
+  }
   const site = r.site_url || '';
   let status = r.status;
   const files = [];
@@ -428,60 +488,60 @@ async function requestDialog(row) {
       : `<p class="pre">${esc(r.body)}</p>`;
   const text = (t) => (t ? `<p class="pre">${esc(t)}</p>` : '');
   const legacy = r.reply && !r.messages.some((x) => x.side === 'op') ? msgItem(site, 'op', '운영자', r.updated_at, text(r.reply), [], '') : '';
-  openDialog(`
-    <h2>${esc(r.title)}</h2>
-    <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.requester || '')}</span><span>처음 ${fmtDate(r.created_at)}</span></div>
-    <ol class="thread">
-      ${msgItem(site, 'site', r.requester || '업체', r.created_at, firstBody, r.attachments, '')}
-      ${legacy}
-      ${r.messages.map((x) => msgItem(site, x.side, x.author, x.created_at, text(x.body), x.attachments, x.status)).join('')}
-    </ol>
-    <form class="thread-form">
-      <div class="field"><span>상태</span><div class="tabs" data-status></div></div>
-      <label class="field"><span>답변 (업체 관리자에게 보입니다)</span><textarea class="input" name="body" rows="4" maxlength="10000" placeholder="처리한 내용이나 물어볼 것을 적어 주세요."></textarea></label>
-      <div class="att-row"><button type="button" class="btn sm" data-pick>사진 · 파일 붙이기</button><span class="att-chips" data-chips></span></div>
-      <p class="err" role="alert"></p>
-      <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">보내기</button></div>
-    </form>`, (dlg) => {
-    pillTabs(dlg.querySelector('[data-status]'), [['new', '접수'], ['doing', '진행 중'], ['done', '완료']], status, (v) => { status = v; });
-    const form = dlg.querySelector('form');
-    const chips = dlg.querySelector('[data-chips]');
-    const drawChips = () => {
-      chips.innerHTML = files.map((f, i) => `<span class="chip">${f.kind === 'IMAGE' ? `<img src="${esc(site)}/xms/upload/${esc(f.id)}" alt="">` : ''}${esc(f.name)}<button type="button" data-x="${i}" aria-label="빼기">✕</button></span>`).join('');
+  view.innerHTML = `
+    <div class="bar"><button type="button" class="btn" data-back>← 목록</button><h2 class="req-title">수정요청</h2></div>
+    <article class="card item req-read">
+      <div class="item-head"><h3>${esc(r.title)}</h3>${badge(r.status)}</div>
+      <div class="meta"><span>${esc(r.site_name)} (${esc(r.slug)})</span><span>${esc(r.requester || '')}</span><span>처음 ${fmtDate(r.created_at)}</span>${r.updated_at !== r.created_at ? `<span>마지막 ${fmtDate(r.updated_at)}</span>` : ''}</div>
+      <ol class="thread">
+        ${msgItem(site, 'site', r.requester || '업체', r.created_at, firstBody, r.attachments, '')}
+        ${legacy}
+        ${r.messages.map((x) => msgItem(site, x.side, x.author, x.created_at, text(x.body), x.attachments, x.status)).join('')}
+      </ol>
+      <form class="thread-form">
+        <div class="field"><span>상태</span><div class="tabs" data-status></div></div>
+        <label class="field"><span>답변 (업체 관리자에게 보입니다)</span><textarea class="input" name="body" rows="4" maxlength="10000" placeholder="처리한 내용이나 물어볼 것을 적어 주세요."></textarea></label>
+        <div class="att-row"><button type="button" class="btn sm" data-pick>사진 · 파일 붙이기</button><span class="att-chips" data-chips></span></div>
+        <p class="err" role="alert"></p>
+        <div class="actions"><button class="btn" type="button" data-back>목록</button><button class="btn primary" type="submit">보내기</button></div>
+      </form>
+    </article>`;
+  view.querySelectorAll('[data-back]').forEach((b) => { b.onclick = closeRequest; });
+  pillTabs(view.querySelector('[data-status]'), [['new', '접수'], ['doing', '진행 중'], ['done', '완료']], status, (v) => { status = v; });
+  const form = view.querySelector('.thread-form');
+  const chips = view.querySelector('[data-chips]');
+  const drawChips = () => {
+    chips.innerHTML = files.map((f, i) => `<span class="chip">${f.kind === 'IMAGE' ? `<img src="${esc(site)}/xms/upload/${esc(f.id)}" alt="">` : ''}${esc(f.name)}<button type="button" data-x="${i}" aria-label="빼기">✕</button></span>`).join('');
+  };
+  chips.addEventListener('click', (e) => { const x = e.target.closest('[data-x]'); if (x) { files.splice(+x.dataset.x, 1); drawChips(); } });
+  view.querySelector('[data-pick]').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file'; input.multiple = true;
+    input.onchange = async () => {
+      for (const f of input.files) {
+        try {
+          toast(`${f.name} 올리는 중…`);
+          const res = await fetch(`/api/requests/${r.id}/upload`, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name) },
+            body: f,
+          });
+          const out = await res.json().catch(() => null);
+          if (!res.ok) throw new Error(out?.error || '올리지 못했습니다.');
+          files.push(out);
+          drawChips();
+        } catch (er) { toast(er.message); }
+      }
     };
-    chips.addEventListener('click', (e) => { const x = e.target.closest('[data-x]'); if (x) { files.splice(+x.dataset.x, 1); drawChips(); } });
-    dlg.querySelector('[data-pick]').addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file'; input.multiple = true;
-      input.onchange = async () => {
-        for (const f of input.files) {
-          try {
-            toast(`${f.name} 올리는 중…`);
-            const res = await fetch(`/api/requests/${r.id}/upload`, {
-              method: 'POST', credentials: 'same-origin',
-              headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name) },
-              body: f,
-            });
-            const out = await res.json().catch(() => null);
-            if (!res.ok) throw new Error(out?.error || '올리지 못했습니다.');
-            files.push(out);
-            drawChips();
-          } catch (er) { toast(er.message); }
-        }
-      };
-      input.click();
+    input.click();
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+      await api(`/requests/${r.id}/messages`, { method: 'POST', data: { status, body: form.body.value, attachments: files.map((f) => f.id) } });
+      toast('보냈습니다.');
+      render(); // 같은 읽기 화면에 방금 쓴 답변이 아래에 쌓인다
     });
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
-        await api(`/requests/${r.id}/messages`, { method: 'POST', data: { status, body: form.body.value, attachments: files.map((f) => f.id) } });
-        dlg.close();
-        toast('보냈습니다.');
-        render();
-      });
-    });
-    // 맨 아래(최근 글)부터 보이게
-    requestAnimationFrame(() => { const t = dlg.querySelector('.thread'); t?.lastElementChild?.scrollIntoView({ block: 'nearest' }); });
   });
 }
 

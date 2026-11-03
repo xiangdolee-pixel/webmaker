@@ -323,9 +323,16 @@ export async function adminApi(ctx) {
     const s = await ximSite(env, site);
     const { results } = await env.XIM_DB.prepare(`SELECT r.id, r.title, r.status, r.reply, r.requester, r.attachments, r.created_at, r.updated_at,
         (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id) AS msg_count,
-        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side
+        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side,
+        (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id AND m.side = 'op' AND m.created_at > r.site_seen_at) AS site_unread
       FROM requests r WHERE r.site_id = ? ORDER BY r.id DESC LIMIT 300`).bind(s.id).all();
     return json(results.map((r) => ({ ...r, attachments: JSON.parse(r.attachments || '[]') })));
+  }
+  // 왼쪽 메뉴 숫자: 운영자가 새로 답한 요청 수
+  if (path === '/requests/unread' && method === 'GET') {
+    const s = await ximSite(env, site);
+    const r = await env.XIM_DB.prepare("SELECT COUNT(*) AS n FROM requests r WHERE r.site_id = ? AND (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id AND m.side = 'op' AND m.created_at > r.site_seen_at) > 0").bind(s.id).first();
+    return json({ n: r.n });
   }
   // 요청 하나 + 주고받은 글 (요청 → 운영자 답변 → 다시 요청 … 시간 순서)
   if ((m = path.match(/^\/requests\/(\d+)$/)) && method === 'GET') {
@@ -333,6 +340,7 @@ export async function adminApi(ctx) {
     const r = await env.XIM_DB.prepare('SELECT * FROM requests WHERE id = ? AND site_id = ?').bind(+m[1], s.id).first();
     if (!r) throw notFound('요청을 찾을 수 없습니다.');
     const { results } = await env.XIM_DB.prepare('SELECT id, side, author, body, attachments, status, created_at FROM request_messages WHERE request_id = ? ORDER BY id').bind(r.id).all();
+    await env.XIM_DB.prepare('UPDATE requests SET site_seen_at = ? WHERE id = ?').bind(now(), r.id).run(); // 업체가 읽음
     return json({ ...r, attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
   }
   // 이어서 쓰기 (업체 관리자): 완료된 요청에 쓰면 다시 '접수' 로
@@ -350,7 +358,7 @@ export async function adminApi(ctx) {
     await env.XIM_DB.batch([
       env.XIM_DB.prepare("INSERT INTO request_messages (request_id, side, author, body, attachments, status, created_at) VALUES (?, 'site', ?, ?, ?, ?, ?)")
         .bind(r.id, who, text, JSON.stringify(atts), next !== r.status ? next : '', t),
-      env.XIM_DB.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').bind(next, t, r.id),
+      env.XIM_DB.prepare('UPDATE requests SET status = ?, updated_at = ?, site_seen_at = ? WHERE id = ?').bind(next, t, t, r.id),
     ]);
     await audit(db, site, me, request, 'REQUEST_MESSAGE', r.title);
     return json({ ok: true, status: next });
@@ -365,8 +373,8 @@ export async function adminApi(ctx) {
     // 본문은 에디터 HTML (정리해서), 첨부는 이 사이트에 올라간 파일만
     const html = await sanitizeHtml(String(raw.body ?? '').slice(0, 100000));
     const atts = await requestAtts(db, site, raw.attachments);
-    await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(s.id, title, html, 'new', who, JSON.stringify(atts), t, t).run();
+    await env.XIM_DB.prepare('INSERT INTO requests (site_id, admin_id, title, body, status, requester, attachments, created_at, updated_at, site_seen_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(s.id, title, html, 'new', who, JSON.stringify(atts), t, t, t).run();
     await audit(db, site, me, request, 'REQUEST_CREATE', title);
     return json({ ok: true });
   }

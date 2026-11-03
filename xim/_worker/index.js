@@ -258,6 +258,7 @@ async function ximApi(request, env, url) {
       db.prepare('SELECT COUNT(*) AS n FROM customers'),
       db.prepare("SELECT COUNT(*) AS n, SUM(status = 'suspended') AS off FROM sites"),
       db.prepare("SELECT COUNT(*) AS n FROM requests WHERE status != 'done'"),
+      db.prepare("SELECT COUNT(*) AS n FROM requests r WHERE ((CASE WHEN r.created_at > r.op_seen_at THEN 1 ELSE 0 END) + (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id AND m.side = 'site' AND m.created_at > r.op_seen_at)) > 0"),
     ]);
     // 데이터베이스 전체 크기 (D1 이 돌려주는 size_after) · R2 에 올린 파일 합계
     const [ximMeta, xmsMeta, r2] = await Promise.all([
@@ -269,6 +270,7 @@ async function ximApi(request, env, url) {
       sites: r[1].results[0].n,
       suspended: r[1].results[0].off || 0,
       openRequests: r[2].results[0].n,
+      unreadRequests: r[3].results[0].n, // 업체가 새로 쓴 글이 있는 요청 (운영자가 아직 안 봄)
       storage: { xim_db: ximMeta.meta.size_after || 0, xms_db: xmsMeta.meta.size_after || 0, r2: r2.n },
     });
   }
@@ -408,7 +410,8 @@ async function ximApi(request, env, url) {
     const stmt = db.prepare(`
       SELECT r.*, s.slug, s.domain, s.name AS site_name, a.username, COALESCE(r.requester, a.name) AS admin_name,
         (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id) AS msg_count,
-        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side
+        (SELECT side FROM request_messages m WHERE m.request_id = r.id ORDER BY m.id DESC LIMIT 1) AS last_side,
+        ((CASE WHEN r.created_at > r.op_seen_at THEN 1 ELSE 0 END) + (SELECT COUNT(*) FROM request_messages m WHERE m.request_id = r.id AND m.side = 'site' AND m.created_at > r.op_seen_at)) AS op_unread
       FROM requests r JOIN sites s ON s.id = r.site_id LEFT JOIN site_admins a ON a.id = r.admin_id
       ${where} ORDER BY (r.status = 'done'), r.id DESC LIMIT 200`);
     const { results } = await (where ? stmt.bind(status) : stmt).all();
@@ -421,6 +424,7 @@ async function ximApi(request, env, url) {
     const r = await db.prepare(`SELECT r.*, s.slug, s.domain, s.name AS site_name FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?`).bind(+m[1]).first();
     if (!r) throw notFound('요청을 찾을 수 없습니다.');
     const { results } = await db.prepare('SELECT id, side, author, body, attachments, status, created_at FROM request_messages WHERE request_id = ? ORDER BY id').bind(r.id).all();
+    await db.prepare('UPDATE requests SET op_seen_at = ? WHERE id = ?').bind(now(), r.id).run(); // 운영자가 읽음
     return json({ ...r, site_url: siteUrl(r), attachments: JSON.parse(r.attachments || '[]'), messages: results.map((x) => ({ ...x, attachments: JSON.parse(x.attachments || '[]') })) });
   }
   // 운영자 답변: 글 · 파일(없어도 됨) + 상태
@@ -442,7 +446,7 @@ async function ximApi(request, env, url) {
     await db.batch([
       db.prepare("INSERT INTO request_messages (request_id, side, author, body, attachments, status, created_at) VALUES (?, 'op', '운영자', ?, ?, ?, ?)")
         .bind(r.id, text, JSON.stringify(atts), status !== r.status ? status : '', t),
-      db.prepare('UPDATE requests SET status = ?, updated_at = ? WHERE id = ?').bind(status, t, r.id),
+      db.prepare('UPDATE requests SET status = ?, updated_at = ?, op_seen_at = ? WHERE id = ?').bind(status, t, t, r.id),
     ]);
     return json({ ok: true, status });
   }
