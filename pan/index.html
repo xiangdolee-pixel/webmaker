@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>실시간 시세 — 지수 · 코인 TOP 20</title>
+  <meta name="description" content="코스피·코스닥·S&P500·나스닥·다우존스 지수와 시가총액 상위 20개 코인 실시간 시세">
+  <meta name="theme-color" content="#0d1117">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <h1 class="logo">실시간 시세</h1>
+      <div class="top-meta">
+        <span class="fx" id="fx">원/달러 —</span>
+        <span class="conn" id="conn" data-state="wait"><i></i><b>연결 중</b></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">주요 지수</h2>
+        <span class="sec-note">네이버 증권 기준</span>
+      </div>
+      <div class="idx-grid" id="indices">
+        <div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div><div class="card idx skel"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2 class="sec-title">코인 시가총액 TOP 20</h2>
+        <span class="sec-note"><em class="badge live">실시간</em> 바이낸스 · <em class="badge slow">1분</em> 코인게코</span>
+      </div>
+      <div class="card coin-card">
+        <div class="coin-head">
+          <span class="c-rank">#</span>
+          <span class="c-name">코인</span>
+          <span class="c-price">가격</span>
+          <span class="c-chg">24시간</span>
+          <span class="c-cap">시가총액</span>
+        </div>
+        <ol class="coin-list" id="coins"></ol>
+      </div>
+    </section>
+
+    <p class="foot">지수: 네이버 증권 · 코인 순위·시가총액: CoinGecko · 실시간 가격: Binance · 원화는 하나은행 고시 환율로 계산<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
+  </main>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
