@@ -811,7 +811,7 @@ function accountPage() {
 async function auditPage(qs) {
   const page = Number(qs.get('page')) || 1;
   const d = await api(`/audit?page=${page}`);
-  main.innerHTML = `${head('내 계정', '관리 로그', '이 관리 화면에서 한 일이 순서대로 남습니다. 지울 수 없습니다.')}
+  main.innerHTML = `${head('내 계정', '관리 로그', `이 관리 화면에서 한 일이 최근 1개월 동안 남습니다 (지금 ${d.total}건, 한 쪽에 ${d.size}건). 1개월이 지난 기록은 저절로 지워집니다.`)}
     <div class="panel">${d.rows.length ? `<table class="tbl cardy"><thead><tr><th>시각</th><th>주체</th><th>행위</th><th>대상</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr><td>${fmtDate(r.created_at, true)}</td><td data-l="주체">${r.actor_kind === 'staff' ? '<span class="tag warn">운영자</span>' : esc(r.actor_name)}</td>
         <td data-l="행위">${esc(ACTIONS[r.action] || r.action)}</td><td data-l="대상">${esc(r.target)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</td></tr>`).join('')}</tbody></table>`

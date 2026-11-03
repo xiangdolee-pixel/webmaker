@@ -408,6 +408,8 @@ export async function adminApi(ctx) {
     return json({ ok: true });
   }
   if (path === '/audit' && method === 'GET') {
+    // 관리 로그는 1개월만 남긴다 (사용자 지시 2026-11-03)
+    await db.prepare('DELETE FROM audit_log WHERE site = ? AND created_at < ?').bind(site, now() - 31 * DAY).run();
     const page = Math.max(1, Number(q.get('page')) || 1);
     const total = (await db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE site = ?').bind(site).first()).n;
     const { results } = await db.prepare('SELECT * FROM audit_log WHERE site = ? ORDER BY id DESC LIMIT ? OFFSET ?').bind(site, 30, (page - 1) * 30).all();
