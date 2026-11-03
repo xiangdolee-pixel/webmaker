@@ -84,11 +84,13 @@ async function renderTiles() {
   ].map(([label, n, alert, act]) => (act
     ? `<button type="button" class="card tile tile-btn${alert ? ' alert' : ''}" data-go-reqs><b>${n}${s.unreadRequests ? ` <i class="new-num" title="새 글이 있는 요청">새 글 ${s.unreadRequests}</i>` : ''}</b><span>${label} →</span></button>`
     : `<div class="card tile${alert ? ' alert' : ''}"><b>${n}</b><span>${label}</span></div>`)).join('')
-  + (s.storage ? `<div class="card tile wide-tile"><div class="meters-head"><b class="meters-title">전체 사용량</b><span>Cloudflare 무료 한도 대비</span></div>
+  // Workers 유료(Paid) 기준: D1 은 DB 하나 최대 10GB · 계정 전체 5GB 까지 요금에 포함(넘으면 GB당 월 $0.75), R2 는 10GB 까지 무료(넘으면 GB당 월 $0.015)
+  + (s.storage ? `<div class="card tile wide-tile"><div class="meters-head"><b class="meters-title">전체 사용량</b><span>Cloudflare Workers 유료 요금제 기준</span></div>
       <div class="meters">${[
-    ['xms DB', '업체 회원 · 글 · 메뉴 등', s.storage.xms_db, 500 * 1048576, 'm1'],
-    ['xim DB', '고객 · 사이트 · 요청', s.storage.xim_db, 500 * 1048576, 'm2'],
-    ['R2 파일', '사진 · 첨부', s.storage.r2, 10 * 1073741824, 'm3'],
+    ['xms DB', '업체 회원 · 글 · 메뉴 등 — DB 하나 최대 10GB', s.storage.xms_db, 10 * 1073741824, 'm1'],
+    ['xim DB', '고객 · 사이트 · 요청 · 감시 — 최대 10GB', s.storage.xim_db, 10 * 1073741824, 'm2'],
+    ['DB 합계', '요금에 포함 5GB · 넘으면 GB당 월 $0.75', s.storage.xms_db + s.storage.xim_db, 5 * 1073741824, 'm1'],
+    ['R2 파일', '사진 · 첨부 — 무료 10GB · 넘으면 GB당 월 $0.015', s.storage.r2, 10 * 1073741824, 'm3'],
   ].map(([name, sub, used, limit, cls]) => meter(name, sub, used, limit, cls)).join('')}</div></div>` : '');
 }
 
