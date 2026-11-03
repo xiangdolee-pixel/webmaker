@@ -39,7 +39,7 @@ export const fmtPhone = (v) => {
 let toastTimer;
 export function toast(msg) {
   let el = $('.toast');
-  if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); document.body.append(el); }
+  if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); (document.querySelector('.xms-c') || document.body).append(el); }
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
@@ -100,7 +100,8 @@ export function formData(form) {
 export function openDialog(html, setup) {
   const dlg = document.createElement('dialog');
   dlg.innerHTML = `<div class="dlg">${html}</div>`;
-  document.body.append(dlg);
+  // 사이트 안에 끼워 넣은 화면이면 .xms-c 안에 둔다 (게시판 CSS 가 그 안에만 걸리므로)
+  (document.querySelector('.xms-c') || document.body).append(dlg);
   dlg.addEventListener('close', () => dlg.remove());
   dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
   setup?.(dlg);

@@ -2,6 +2,7 @@
 //   <div data-editor data-board="<게시판 주소>"><textarea name="content" hidden>기존 HTML</textarea></div>
 //   도구: 이미지 · 동영상(유튜브) · PDF | 제목1~3 | 굵게 · 기울임 · 밑줄 · 취소선 | 글자 크기 | 목록 · 번호 · 인용 · 코드 | 정렬 | 링크 · 가로줄 | 되돌리기 · 다시
 import { openDialog, toast, slideTabs, esc } from './common.js';
+import { mountBlocks } from './blocks.js';
 
 const I = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ICON = {
@@ -88,18 +89,36 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
       <div class="ed-g">${b('undo', '되돌리기', ICON.undo)}${b('redo', '다시 하기', ICON.redo)}</div>
     </div>
     <div class="ed-area prose" contenteditable="true" role="textbox" aria-multiline="true" data-ph="${placeholder}"></div>
-    <textarea class="ed-simple" hidden placeholder="${placeholder}"></textarea>`);
+`);
   const area = host.querySelector('.ed-area');
-  const simple = host.querySelector('.ed-simple');
   const bar = host.querySelector('.ed-bar');
   area.innerHTML = ta.value;
   let mode = 'editor';
+  // 간단입력(카드) — 편집기 상자 바로 아래에 따로 둔다
+  const blocksHost = document.createElement('div');
+  blocksHost.className = 'ed-blocks';
+  blocksHost.hidden = true;
+  host.after(blocksHost);
+  let blocks = null;
+  const initBlocks = (() => { try { return JSON.parse(host.querySelector('[data-blocks]')?.textContent || 'null'); } catch { return null; } })();
   const sync = () => {
-    if (mode === 'simple') ta.value = textToHtml(simple.value);
+    if (mode === 'simple' && blocks) ta.value = blocks.html();
     else ta.value = area.innerHTML.trim() === '<br>' ? '' : area.innerHTML;
   };
+  // 편집기 내용 → 카드 하나 (사진은 사진 칸으로, 글은 내용 칸으로)
+  const htmlToCard = (h) => {
+    const d = document.createElement('div');
+    d.innerHTML = h;
+    const photos = [...d.querySelectorAll('img')].map((i) => i.getAttribute('src')).filter((u) => /^\/xms\/upload\//.test(u || ''));
+    const yt = [...d.querySelectorAll('iframe')].map((f) => (f.getAttribute('src') || '').match(/embed\/([\w-]{11})/)).find(Boolean);
+    return { order: 'media', cards: [{ sub: '', text: htmlToText(h), photos, video: yt ? yt[1] : '' }] };
+  };
+  const ensureBlocks = (initial) => {
+    if (blocks) { if (initial) blocks.set(initial); return; }
+    blocks = mountBlocks(blocksHost, { initial, upload: async (f) => (await uploadFile(board, 'INLINE', await shrinkImage(f))).url });
+    blocks.onChange(sync);
+  };
   area.addEventListener('input', sync);
-  simple.addEventListener('input', sync);
   area.addEventListener('paste', (e) => {
     const f = [...(e.clipboardData?.files || [])].find((x) => x.type.startsWith('image/'));
     if (f && canUpload) { e.preventDefault(); insertImage(f); return; }
@@ -218,13 +237,13 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
       slideTabs(modeBox);
       mode = btn.dataset.v;
       if (mode === 'simple') {
-        simple.value = htmlToText(area.innerHTML);
-        if (/<(img|iframe|h[2-4]|ul|ol|blockquote|table)/i.test(area.innerHTML)) toast('간단입력에서는 글자만 남습니다. 그림 · 동영상 · 서식은 에디터로 돌아가면 다시 넣어야 합니다.');
-      } else area.innerHTML = textToHtml(simple.value);
-      bar.hidden = mode === 'simple';
-      area.hidden = mode === 'simple';
-      simple.hidden = mode !== 'simple';
-      (mode === 'simple' ? simple : area).focus();
+        const hadFormat = /<(h[2-4]|ul|ol|blockquote|table|pre)/i.test(area.innerHTML);
+        ensureBlocks(initBlocks && !blocks ? initBlocks : (area.innerHTML.trim() ? htmlToCard(area.innerHTML) : null));
+        if (hadFormat) toast('간단입력에서는 제목 · 목록 같은 서식이 빠지고 글과 사진만 남습니다.');
+      } else area.innerHTML = blocks ? blocks.html() : '';
+      host.hidden = mode === 'simple';
+      blocksHost.hidden = mode !== 'simple';
+      if (mode === 'simple') blocks.relayout(); else area.focus();
       sync();
     });
   }
@@ -238,5 +257,7 @@ export function mountEditor(host, { modeBox = null, placeholder = '내용을 입
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
     document.execCommand('insertHTML', false, html); save(); sync();
   };
-  return { sync, area, insertHtml, mode: () => mode };
+  // 간단입력으로 쓴 글을 고칠 때는 카드로 연다
+  if (initBlocks && modeBox) modeBox.querySelector('[data-v="simple"]').click();
+  return { sync, area, insertHtml, mode: () => mode, blocks: () => (mode === 'simple' && blocks ? blocks.value() : null) };
 }

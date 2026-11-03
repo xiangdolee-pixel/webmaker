@@ -52,6 +52,10 @@ function navHtml(items, depth = 0) {
 async function page(ctx, title, content, opts = {}) {
   const { env, site, me } = ctx;
   const info = await siteInfo(env, site);
+  // 사이트 안에 끼워 넣을 때(사이트 Worker 가 X-Xms-Embed 로 부름): 본문만 돌려주고, 머리 · 꼬리 · CSS 는 사이트 것을 그대로 쓴다
+  if (ctx.request.headers.get('X-Xms-Embed') === '1') {
+    return json({ title: `${title} - ${info.name}`, html: `<div class="xms-c">${content}</div>`, status: opts.status || 200, noindex: !!opts.noindex });
+  }
   const menus = await visibleMenus(env.DB, site, me);
   // 로그인 · 계정 메뉴는 모든 서비스 공통 버튼(/xms/js/account.js)이 그린다
   return html(`<!doctype html>
@@ -338,7 +342,7 @@ async function postForm(ctx, b, id) {
       </div>
       <div class="field">
         <div class="content-head"><span>내용</span><div class="tabs mode-tabs" data-mode></div></div>
-        <div class="editor" data-editor data-board="${esc(b.slug)}" data-guest="${guest ? 1 : 0}"><textarea name="content" hidden>${esc(p?.content_html || '')}</textarea></div>
+        <div class="editor" data-editor data-board="${esc(b.slug)}" data-guest="${guest ? 1 : 0}"><textarea name="content" hidden>${esc(p?.content_html || '')}</textarea>${p?.blocks ? `<script type="application/json" data-blocks>${p.blocks.replace(/</g, '\\u003c')}</script>` : ''}</div>
       </div>
       ${admin || b.use_secret ? `<div class="opts">
         ${admin ? `<label class="check"><input type="checkbox" name="is_notice"${p?.is_notice ? ' checked' : ''}> 공지로 지정</label>` : ''}
@@ -478,8 +482,8 @@ export async function publicApi(ctx) {
     const raw = await body(request);
     const v = await postValues(b, me, raw, null);
     const t = now();
-    const r = await db.prepare(`INSERT INTO posts (site, board_id, title, content_html, is_notice, is_secret, writer_id, writer_name, published_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(site, b.id, v.title, v.content, v.is_notice, v.is_secret,
+    const r = await db.prepare(`INSERT INTO posts (site, board_id, title, content_html, blocks, is_notice, is_secret, writer_id, writer_name, published_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(site, b.id, v.title, v.content, v.blocks, v.is_notice, v.is_secret,
       me.kind === 'member' ? me.member.id : null, v.writer_name, v.published_at ?? t, t, t).run();
     await attachToPost(env, site, r.meta.last_row_id, raw.attachments, me);
     return json({ id: r.meta.last_row_id });
@@ -492,8 +496,8 @@ export async function publicApi(ctx) {
     if (method === 'PUT') {
       const raw = await body(request);
       const v = await postValues({ ...b, opt: boardOptions(JSON.parse(b.options || '{}')) }, me, raw, p);
-      await db.prepare('UPDATE posts SET title = ?, content_html = ?, is_notice = ?, is_secret = ?, published_at = ?, updated_at = ? WHERE id = ?')
-        .bind(v.title, v.content, v.is_notice, v.is_secret, v.published_at ?? p.published_at, now(), p.id).run();
+      await db.prepare('UPDATE posts SET title = ?, content_html = ?, blocks = ?, is_notice = ?, is_secret = ?, published_at = ?, updated_at = ? WHERE id = ?')
+        .bind(v.title, v.content, v.blocks, v.is_notice, v.is_secret, v.published_at ?? p.published_at, now(), p.id).run();
       await attachToPost(env, site, p.id, raw.attachments, me);
       return json({ ok: true });
     }
@@ -555,7 +559,28 @@ function memberValues(fields, raw, isSignup) {
   return { cols, extra };
 }
 
+// 간단입력 카드 정리 → { order, cards } (사진은 우리 업로드 주소만, 동영상은 유튜브 id 만)
+function cleanBlocks(v) {
+  if (!v || !Array.isArray(v.cards)) return null;
+  const cards = v.cards.slice(0, 50).map((c) => ({
+    sub: str(c?.sub, 100),
+    text: String(c?.text ?? '').slice(0, 5000),
+    photos: (Array.isArray(c?.photos) ? c.photos : []).map(String).filter((u) => /^\/xms\/upload\/[0-9a-f]{32}$/.test(u)).slice(0, 30),
+    video: /^[\w-]{11}$/.test(String(c?.video || '')) ? String(c.video) : '',
+  })).filter((c) => c.sub || c.text.trim() || c.photos.length || c.video);
+  return cards.length ? { order: v.order === 'text' ? 'text' : 'media', cards } : null;
+}
+function blocksHtml(v) {
+  return v.cards.map((c) => {
+    const media = `${c.photos.map((u) => `<p><img src="${u}" alt=""></p>`).join('')}${c.video ? `<iframe src="https://www.youtube.com/embed/${c.video}" width="560" height="315" allowfullscreen></iframe>` : ''}`;
+    const text = c.text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+    return `${c.sub ? `<h3>${esc(c.sub)}</h3>` : ''}${v.order === 'text' ? text + media : media + text}`;
+  }).join('');
+}
+
 async function postValues(b, me, raw, cur) {
+  const blocks = raw.mode === 'simple' ? cleanBlocks(raw.blocks) : null;
+  if (blocks) raw = { ...raw, content: blocksHtml(blocks) };
   const title = str(raw.title, 200);
   if (!title) throw bad('제목을 넣어 주세요.');
   const content = await sanitizeHtml(raw.content);
@@ -573,7 +598,7 @@ async function postValues(b, me, raw, cur) {
     if (Number.isFinite(t)) published = t;
   }
   return {
-    title, content, writer_name: writer, published_at: published,
+    title, content, writer_name: writer, published_at: published, blocks: blocks ? JSON.stringify(blocks) : null,
     is_notice: admin ? (raw.is_notice ? 1 : 0) : (cur?.is_notice || 0),
     is_secret: b.use_secret ? (raw.is_secret ? 1 : 0) : (cur?.is_secret || 0),
   };

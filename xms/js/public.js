@@ -141,6 +141,8 @@ onForm('post', async (form, data) => {
   ed?.sync();
   data.content = form.querySelector('[name=content]').value;
   data.attachments = attachments.map((u) => u.id);
+  data.mode = ed ? ed.mode() : 'editor';
+  data.blocks = ed ? ed.blocks() : null;
   const { board, id } = form.dataset;
   if (id) {
     await api(`/posts/${id}`, { method: 'PUT', data });

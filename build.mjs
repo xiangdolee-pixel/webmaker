@@ -161,7 +161,15 @@ if (CONNECT) {
   config.main = './xim/_worker/site-worker.js';
   config.assets.binding = 'ASSETS';
   config.assets.run_worker_first = true;
-  config.vars = { XIM_SITE: name };
+  // 게시판 · 회원 화면을 끼워 넣을 틀: 사이트의 기존 페이지 하나(머리 · 꼬리 · CSS 그대로, <main> 자리에만 게시판).
+  //   _layout.html 이 있으면 그것, 없으면 <main> 이 있는 첫 하위 페이지(index 말고), 그것도 없으면 첫 화면.
+  const htmls = fs.readdirSync(OUT).filter((f) => /\.html?$/i.test(f) && f !== '404.html').sort();
+  const hasMain = (f) => /<main[\s>]/i.test(fs.readFileSync(path.join(OUT, f), 'utf8'));
+  const shellFile = htmls.find((f) => f === '_layout.html')
+    || htmls.find((f) => !/^index\.html?$/i.test(f) && hasMain(f))
+    || 'index.html';
+  const shell = /^index\.html?$/i.test(shellFile) ? '/' : `/${shellFile.replace(/\.html?$/i, '')}`;
+  config.vars = { XIM_SITE: name, XIM_SHELL: shell };
   config.services = [
     { binding: 'XIM', service: 'xim', entrypoint: 'Engine' },
     { binding: 'XMS', service: 'xms', entrypoint: 'Cms' },

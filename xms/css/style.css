@@ -420,6 +420,47 @@ code.copy { display: inline-block; padding: 6px 10px; border-radius: 8px; backgr
   .ed-bar button.wide span { display: none; }
 }
 
+
+/* ── 간단입력(카드) ── */
+.ed-blocks[hidden], .editor[hidden] { display: none; }
+.blk-order { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0; margin-bottom: 14px; }
+.blk-order button { position: relative; z-index: 1; min-height: 64px; border: 0; border-radius: 12px; background: #f3f4f6; color: var(--sub); font-size: 18px; font-weight: 700; cursor: pointer; transition: color .3s, background .3s; }
+.blk-order button.on { color: #fff; background: transparent; }
+.blk-ind { position: absolute; left: 6px; top: 0; height: 100%; border-radius: 12px; background: #1f3047; transition: transform .36s cubic-bezier(.22, .8, .24, 1), width .36s cubic-bezier(.22, .8, .24, 1); }
+.blk-order:not(:has(.blk-ind[style])) button.on { background: #1f3047; }
+.blk-list { display: grid; gap: 14px; }
+.blk-card { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; will-change: transform; }
+.blk-new { animation: rise .35s cubic-bezier(.22, .8, .24, 1); }
+.blk-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.blk-no { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #1f3047; color: #fff; font-size: 15px; }
+.blk-tools { display: flex; gap: 6px; }
+.blk-tools button { display: grid; place-items: center; min-width: 44px; height: 40px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: #fff; color: var(--sub); font-size: 15px; cursor: pointer; }
+.blk-tools button:disabled { opacity: .4; cursor: default; }
+.blk-tools svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.blk-body { display: grid; gap: 12px; padding: 18px; border-radius: 12px; background: #f3f4f6; }
+.blk-media { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.blk-slot, .blk-thumb { position: relative; width: 120px; height: 120px; border-radius: 14px; }
+.blk-slot { display: grid; place-items: center; border: 1.5px solid #4a8be0; background: #fff; color: #2f74d0; cursor: pointer; transition: transform .15s, box-shadow .2s; }
+.blk-slot:hover { box-shadow: 0 6px 16px -8px rgba(47, 116, 208, .6); }
+.blk-slot:active { transform: scale(.96); }
+.blk-slot svg { width: 46px; height: 46px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.blk-slot i { position: absolute; top: -10px; right: -10px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #2f74d0; color: #fff; font-style: normal; font-size: 20px; font-weight: 700; }
+.blk-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; border: 1px solid var(--line); }
+.blk-thumb button { position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: #1f2328; color: #fff; font-size: 12px; cursor: pointer; }
+.blk-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+.blk-play svg { width: 40px; height: 40px; fill: rgba(0, 0, 0, .45); stroke: #fff; stroke-width: 1.5; }
+.blk-subbtn { justify-self: start; min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+.blk-sub { font-weight: 700; }
+.blk-text { min-height: 200px; font-size: 17px; }
+.blk-add { width: 100%; min-height: 64px; margin-top: 14px; border: 1px solid #2f6b45; border-radius: 12px; background: #eef5ef; color: #1f4d33; font-size: 18px; font-weight: 700; cursor: pointer; }
+.blk-preview { width: 100%; min-height: 64px; margin-top: 14px; border: 1px solid #1f3047; border-radius: 12px; background: #fff; color: #1f2328; font-size: 18px; font-weight: 700; cursor: pointer; }
+.blk-pv { max-height: 70vh; overflow-y: auto; }
+@media (max-width: 767px) {
+  .blk-slot, .blk-thumb { width: 96px; height: 96px; }
+  .blk-body { padding: 12px; }
+  .blk-order button { min-height: 52px; font-size: 16px; }
+}
+
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 

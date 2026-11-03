@@ -16,6 +16,7 @@ import { publicApi, publicPage, visibleMenus } from './public.js';
 import { serveFile, serveRobots, serveSitemap, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
 import { uploadApi, serveUpload } from './uploads.js';
+import { embedCss } from './css-scope.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 
@@ -41,6 +42,7 @@ export class Cms extends WorkerEntrypoint {
       if (fm) return await serveFile(env, site, fm[1]);
       const um = p.match(/^[/]xms[/]upload[/]([0-9a-f]{32})$/);
       if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1');
+      if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
       if (p.startsWith('/xms/')) {

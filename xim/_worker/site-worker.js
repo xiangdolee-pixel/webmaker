@@ -43,10 +43,42 @@ export default {
     const { pathname } = new URL(request.url);
     const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/xms/') || pathname.startsWith('/xms-api/');
     if (!isAdmin && (await siteStatus(env)) === 'suspended') return forward(env.XIM, request, env, '/__suspended');
+    // 게시판 · 회원 화면: 사이트의 기존 페이지(틀)에 끼워 넣는다 — 머리 · 꼬리 · CSS 는 사이트 그대로
+    if (request.method === 'GET' && /^\/(board|member)(\/|$)/.test(pathname)) return embedPage(request, env);
     if (XMS_PATHS.test(pathname)) return forward(env.XMS, request, env);
     return withXms(await env.ASSETS.fetch(request), request, env);
   },
 };
+
+// xms 에게 본문만 받아(X-Xms-Embed) 틀 페이지의 <main> 안을 그것으로 바꾼다. 틀이 없거나 실패하면 xms 화면 그대로.
+async function embedPage(request, env) {
+  const url = new URL(request.url);
+  const req = new Request(url, request);
+  req.headers.set('X-Xim-Site', env.XIM_SITE);
+  req.headers.set('X-Xms-Embed', '1');
+  const xr = await env.XMS.fetch(req);
+  if (!(xr.headers.get('Content-Type') || '').includes('application/json')) return xr; // 이동(로그인 뒤 등) · 오류는 그대로
+  const d = await xr.json();
+  const shell = await env.ASSETS.fetch(new Request(new URL(env.XIM_SHELL || '/', url.origin)));
+  if (!shell.ok || !(shell.headers.get('Content-Type') || '').includes('text/html')) return forward(env.XMS, request, env);
+  const headers = new Headers(shell.headers);
+  ['ETag', 'Last-Modified', 'Content-Length'].forEach((h) => headers.delete(h));
+  headers.set('Cache-Control', 'no-store');
+  let replaced = false;
+  const framed = new HTMLRewriter()
+    .on('title', { element(el) { el.setInnerContent(d.title); } })
+    .on('main', { element(el) { if (!replaced) { el.setInnerContent(d.html, { html: true }); replaced = true; } } })
+    .on('body', { element(el) { el.onEndTag((end) => { if (!replaced) end.before(d.html, { html: true }); }); } }) // <main> 이 없는 틀
+    .on('head', {
+      element(el) {
+        // 틀 페이지의 상대 주소(css/style.css 등)가 게시판 주소 밑에서도 사이트 기준으로 풀리도록
+        el.prepend('<base href="/">', { html: true });
+        el.append(`<link rel="stylesheet" href="/xms/css/embed.css">\n<script type="module" src="/xms/js/public.js"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
+      },
+    })
+    .transform(new Response(shell.body, { status: d.status || 200, headers }));
+  return withXms(framed, request, env);
+}
 
 const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

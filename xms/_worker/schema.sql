@@ -220,3 +220,6 @@ CREATE TABLE IF NOT EXISTS uploads (
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_post ON uploads(post_id, sort);
 CREATE INDEX IF NOT EXISTS idx_uploads_site ON uploads(site);
+
+-- 2026-11-03 간단입력(카드) 글의 구조 — 한 번만 실행:  ALTER TABLE posts ADD COLUMN blocks TEXT;
+--   { order: 'media' | 'text', cards: [{ sub, text, photos: ['/xms/upload/…'], video: '<YouTube id>' }] }
