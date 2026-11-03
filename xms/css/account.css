@@ -8,7 +8,7 @@
 .xa-avatar svg{width:22px;height:22px;display:block}
 .xa-avatar:focus-visible,.xa-menu a:focus-visible,.xa-menu button:focus-visible{outline:2px solid #2f5fd0;outline-offset:2px}
 .xa-float .xa-login{display:inline-flex;align-items:center;min-height:38px;padding:0 16px;border-radius:99px;background:#fff;color:#1d2433;
-  font:600 14px/1 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;text-decoration:none;box-shadow:0 2px 10px -3px rgba(0,0,0,.3)}
+  font:600 14px/1 "Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;text-decoration:none;box-shadow:0 2px 10px -3px rgba(0,0,0,.3)}
 .xa-menu{position:fixed;z-index:2147483000;min-width:220px;padding:10px 0;margin:0;list-style:none;background:#fff;color:#1d2433;
   border:1px solid #e3e5ea;border-radius:18px;box-shadow:0 18px 50px -14px rgba(10,14,30,.35);
   font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;

@@ -7,6 +7,7 @@
 //
 //   바인딩: DB(D1 xim), XMS_DB(D1 xms: 업체 관리자 계정 · 입장권), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
 import { ensureMailDomain, ensureTurnstile } from './mail-domain.js';
+import { deleteRequest } from './request-files.js';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 const DAY = 86400000;
@@ -653,24 +654,6 @@ async function mailRegister(env, id, domain) {
   return { status: ok(mail) && ok(bot) ? 'ok' : mail.status === 'error' || bot.status === 'error' ? 'error' : 'skip', message: `메일: ${mail.message} · ${bot.message}` };
 }
 
-// 수정 요청 지우기: 주고받은 글 · 붙인 파일(R2 + xms uploads)까지 함께
-async function deleteRequest(ximDb, xmsDb, files, requestId, slug) {
-  const r = await ximDb.prepare('SELECT attachments FROM requests WHERE id = ?').bind(requestId).first();
-  if (!r) return false;
-  const { results } = await ximDb.prepare('SELECT attachments FROM request_messages WHERE request_id = ?').bind(requestId).all();
-  const ids = [r, ...results].flatMap((x) => { try { return JSON.parse(x.attachments || '[]'); } catch { return []; } }).map((a) => a.id).filter((id) => /^[0-9a-f]{32}$/.test(id));
-  {
-    const { results: ups } = await xmsDb.prepare(`SELECT id, r2_key FROM uploads WHERE site = ? AND (post_id = ?${ids.length ? ` OR id IN (${ids.map(() => '?').join(',')})` : ''})`).bind(slug, -requestId, ...ids).all();
-    const keys = ups.map((u) => u.r2_key).filter(Boolean);
-    if (keys.length && files) await files.delete(keys);
-    if (ups.length) await xmsDb.prepare(`DELETE FROM uploads WHERE site = ? AND id IN (${ups.map(() => '?').join(',')})`).bind(slug, ...ups.map((u) => u.id)).run();
-  }
-  await ximDb.batch([
-    ximDb.prepare('DELETE FROM request_messages WHERE request_id = ?').bind(requestId),
-    ximDb.prepare('DELETE FROM requests WHERE id = ?').bind(requestId),
-  ]);
-  return true;
-}
 
 function siteFields(raw) {
   const name = str(raw.name, 80);
@@ -778,6 +761,32 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       try { return await ximApi(request, env, url); } catch (e) { return fail(e); }
     }
-    return env.ASSETS.fetch(request);
+    return staticFile(request, env, url);
   },
 };
+
+// 화면 파일: 배포 번호(?v=)를 붙여 한 번 받으면 브라우저가 다시 묻지 않게 (배포하면 번호가 바뀌어 새로 받음)
+//   index.html → css · js 주소에 ?v=번호,  js 안의 import './x.js' 에도 같은 번호.  번호 붙은 파일 = 1년, 첫 화면 = 매번 확인
+async function staticFile(request, env, url) {
+  const v = String(env.VER?.id || 'dev').slice(0, 8);
+  const res = await env.ASSETS.fetch(request);
+  if (!res.ok) return res;
+  const p = url.pathname;
+  if (p === '/' || p === '/index.html') {
+    const out = new HTMLRewriter()
+      .on('link[href^="css/"]', { element(el) { el.setAttribute('href', `${el.getAttribute('href')}?v=${v}`); } })
+      .on('script[src^="js/"]', { element(el) { el.setAttribute('src', `${el.getAttribute('src')}?v=${v}`); } })
+      .transform(res);
+    const r = new Response(out.body, out);
+    r.headers.set('Cache-Control', 'no-cache');
+    return r;
+  }
+  let r;
+  if (p.endsWith('.js')) {
+    const js = (await res.text()).replace(/((?:from|import)\s*\(?\s*['"])(\.\/[\w-]+\.js)(['"])/g, `$1$2?v=${v}$3`);
+    r = new Response(js, res);
+    r.headers.delete('Content-Length');
+  } else r = new Response(res.body, res);
+  r.headers.set('Cache-Control', url.searchParams.has('v') ? 'public, max-age=31536000, immutable' : 'public, max-age=60');
+  return r;
+}
