@@ -65,19 +65,20 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 
 ## Cloudflare 배포: 폴더 하나 = Worker 하나
 
+- **계정: 반드시 xiangdolee@gmail.com 의 Cloudflare 계정**(account id `f225d506d8cf6ddf97704a36c69f5ce7`, https://dash.cloudflare.com/f225d506d8cf6ddf97704a36c69f5ce7/workers-and-pages). design 의 master@webchon.com 계정(`7ce9…`, master-7ce.workers.dev)에는 절대 올리지 않는다. (사용자 지시, 2026-11-03 "매우 중요")
+- 그래서 `npx wrangler deploy` 를 그냥 치지 않는다(기본 로그인이 master@webchon.com). **항상 `node deploy.mjs <폴더>`** — xiangdolee 전용 로그인(`%USERPROFILE%\.wrangler-xiangdolee`, 리포 밖)으로 빌드 + 배포한다. `build.mjs` 가 wrangler.jsonc 에 account_id 를 박아 두어 다른 계정으로는 올라가지 않는다.
+- 로그인이 풀렸으면 `node deploy.mjs --login` (브라우저 승인 필요 — 엣지에 xiangdolee 계정이 로그인돼 있음, 계정 고르는 화면에서 xiangdolee 를 고르라고 사용자에게 한 줄로 안내). 확인은 `node deploy.mjs --whoami`.
 - "배포해줘" 요청을 받으면 Claude 가 직접 배포하고 주소를 알려준다.
-- 리포 루트(`E:\ws\WebMaker2`)에서 두 줄:
+- 리포 루트(`E:\ws\WebMaker2`)에서 한 줄:
   ```
-  node build.mjs <폴더>
-  npx wrangler deploy
+  node deploy.mjs <폴더>
   ```
-  `build.mjs` 가 그 폴더만 `dist/` 로 모으고(메모 `.md` · 설정 · 숨김 파일 제외) `wrangler.jsonc`(name = 폴더 이름)를 만든다.
+  (안에서 `node build.mjs <폴더>` → `npx wrangler deploy`.) `build.mjs` 가 그 폴더만 `dist/` 로 모으고(메모 `.md` · 설정 · 숨김 파일 제외) `wrangler.jsonc`(name = 폴더 이름)를 만든다.
 - **리포 전체를 올리지 않는다.** `build.mjs` 없이 `wrangler deploy` 하지 않고, 리포 루트를 통째로 assets 로 쓰지 않고, `webmaker` 이름의 Worker 를 만들지 않는다.
-- design 과 같은 Cloudflare 계정이다 → **design 에 같은 이름 폴더(Worker)가 있으면 덮어쓰게 되니 배포 전에 확인하고, 겹치면 사용자에게 한 줄로 묻는다.**
 - 어느 폴더인지: 요청에 폴더 이름이 있으면 그것, 없으면 지금 작업 중인 폴더. 애매하면 한 줄로 묻는다.
 - 로컬 파일을 그대로 올린다(커밋 · 푸시 전이어도 된다).
 - 배포 뒤 curl 로 확인: `/` 가 200, `README.md` · 다른 폴더 같은 리포 파일은 404.
-- 주소: `https://<Worker이름>.master-7ce.workers.dev` — Worker 이름은 폴더 이름 소문자, `_` · `.` 은 `-` (`4D` → `4d`).
+- 주소: `https://<Worker이름>.<xiangdolee 계정 workers.dev 서브도메인>.workers.dev` (배포 결과에 나오는 주소를 그대로 알려준다) — Worker 이름은 폴더 이름 소문자, `_` · `.` 은 `-` (`4D` → `4d`).
 - Worker 삭제처럼 되돌릴 수 없는 작업은 먼저 묻는다.
 - 첫 화면: index.html 이 없으면 landing.html(또는 html 이 하나뿐이면 그 파일).
 - 서버 기능이 필요한 폴더는 `<폴더>/_worker/index.js`(+ `bindings.json` 에 D1 · KV 연결)를 두면 build.mjs 가 정적 파일과 함께 Worker 로 올린다. `_worker/` 는 웹에 공개되지 않는다. 비밀값은 `npx wrangler secret put` (리포에 두지 않음).

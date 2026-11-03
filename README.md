@@ -13,8 +13,8 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 
 ## Cloudflare 배포
 
+xiangdolee@gmail.com 계정(f225d506…)에만 올린다.
+
 ```
-node build.mjs <폴더>
-npx wrangler deploy
+node deploy.mjs <폴더>
 ```
-→ `https://<폴더이름 소문자>.master-7ce.workers.dev`
