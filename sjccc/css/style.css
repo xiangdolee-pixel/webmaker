@@ -26,6 +26,8 @@
   --gutter: clamp(0.75rem, 3vw, 3rem);
   --header-h: 5rem;
   --sec-y: clamp(4.5rem, 9vw, 7.5rem);
+  /* 화면 가장자리 → 내용 시작까지: 넓은 화면에서도 첫 화면 글자가 아래 섹션 · 머리와 같은 줄에서 시작 */
+  --edge: max(var(--gutter), calc((100% - var(--wrap)) / 2)); /* 100% = 쓰는 곳의 폭(스크롤바 제외) */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -171,7 +173,7 @@ ul, ol { list-style: none; }
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: calc(var(--header-h) + 2rem) var(--gutter) 0;
+  padding: calc(var(--header-h) + 2rem) var(--edge) 0;
   position: relative;
   overflow: hidden;
   background: var(--deep);
@@ -273,7 +275,7 @@ ul, ol { list-style: none; }
 
 .hero-scroll {
   position: absolute;
-  right: var(--gutter);
+  right: var(--edge);
   bottom: 2rem;
   display: flex;
   align-items: center;
