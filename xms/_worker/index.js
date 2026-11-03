@@ -15,6 +15,7 @@ import { adminApi } from './admin-api.js';
 import { publicApi, publicPage, visibleMenus } from './public.js';
 import { serveFile, serveRobots, serveSitemap, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
+import { uploadApi, serveUpload } from './uploads.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 
@@ -38,6 +39,8 @@ export class Cms extends WorkerEntrypoint {
       // 올린 파일 (파비콘 · 공유 그림 · 팝업 그림)
       let fm = p.match(/^\/xms\/file\/(favicon-(?:32|180|192|512)|og|popup-\d+)(?:\.png)?$/);
       if (fm) return await serveFile(env, site, fm[1]);
+      const um = p.match(/^[/]xms[/]upload[/]([0-9a-f]{32})$/);
+      if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1');
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
       if (p.startsWith('/xms/')) {
@@ -68,6 +71,7 @@ export class Cms extends WorkerEntrypoint {
         const [menu, head, popups] = await Promise.all([visibleMenus(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
         return new Response(JSON.stringify({ menu, head, popups }), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
+      if (p === '/xms-api/uploads' && request.method === 'POST') return await uploadApi(ctx);
       if (p.startsWith('/xms-api/admin/')) return await adminApi(ctx);
       if (p.startsWith('/xms-api/')) return await publicApi(ctx);
       if (p.startsWith('/member/') || p.startsWith('/board/') || p === '/board') return await publicPage(ctx);

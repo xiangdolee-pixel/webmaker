@@ -202,3 +202,21 @@ CREATE TABLE IF NOT EXISTS popups (
   updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_popups_site ON popups(site, sort);
+
+-- 올린 파일 (글 첨부 · 본문 사진 · PDF). R2 를 켜기 전까지는 data(base64) 에, 켜면 r2_key 에.
+CREATE TABLE IF NOT EXISTS uploads (
+  id         TEXT PRIMARY KEY,               -- 추측할 수 없는 임의 값 (주소에 쓰인다)
+  site       TEXT NOT NULL,
+  post_id    INTEGER,                         -- 첨부로 붙은 글 (본문에만 쓰인 그림은 NULL 이어도 된다)
+  kind       TEXT NOT NULL,                   -- IMAGE | FILE | INLINE (본문 안 그림 · PDF)
+  name       TEXT NOT NULL,
+  mime       TEXT NOT NULL,
+  size       INTEGER NOT NULL,
+  data       TEXT,
+  r2_key     TEXT,
+  sort       INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_uploads_post ON uploads(post_id, sort);
+CREATE INDEX IF NOT EXISTS idx_uploads_site ON uploads(site);

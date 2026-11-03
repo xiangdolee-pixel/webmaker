@@ -168,10 +168,26 @@ export async function sanitizeHtml(input) {
     .on('*', {
       element(el) {
         const tag = el.tagName.toLowerCase();
+        // iframe 은 유튜브 영상과 우리 PDF 만
+        if (tag === 'iframe') {
+          const s = (el.getAttribute('src') || '').trim();
+          const yt = /^https:\/\/www\.youtube(-nocookie)?\.com\/embed\/[\w-]{6,20}(\?[\w=&;-]*)?$/.test(s);
+          const pdf = /^\/xms\/upload\/[0-9a-f]{32}$/.test(s);
+          if (!yt && !pdf) { el.remove(); return; }
+          for (const [name] of [...el.attributes]) if (!['src', 'width', 'height', 'allowfullscreen'].includes(name.toLowerCase())) el.removeAttribute(name);
+          el.setAttribute('class', yt ? 'ed-video' : 'ed-pdf');
+          el.setAttribute('loading', 'lazy');
+          if (yt) el.setAttribute('allowfullscreen', '');
+          return;
+        }
         if (DROP_WITH_CONTENT.has(tag)) { el.remove(); return; }
         if (!KEEP_TAGS.has(tag)) { el.removeAndKeepContent(); return; }
         const keep = KEEP_ATTR[tag] || [];
+        // style 은 정렬 · 글자 크기만 남긴다
+        const style = (el.getAttribute('style') || '').split(';').map((d) => d.trim()).filter((d) =>
+          /^text-align\s*:\s*(left|center|right|justify)$/i.test(d) || /^font-size\s*:\s*([89]|[1-4]\d)px$/i.test(d)).join('; ');
         for (const [name] of [...el.attributes]) if (!keep.includes(name.toLowerCase())) el.removeAttribute(name);
+        if (style) el.setAttribute('style', style);
         for (const name of ['href', 'src']) {
           const v = el.getAttribute(name);
           if (v !== null && !SAFE_URL.test(v.trim())) el.removeAttribute(name);

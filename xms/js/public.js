@@ -1,6 +1,6 @@
 // xms 방문자 화면: 메뉴 열기 · 로그인 · 가입 · 마이페이지 · 글쓰기 · 댓글
 import { $, $$, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
-import { mountEditor } from './editor.js';
+import { mountEditor, shrinkImage, uploadFile } from './editor.js';
 
 const api = makeApi('/xms-api');
 
@@ -95,12 +95,46 @@ $$('[data-doc]').forEach((b) => b.addEventListener('click', () => {
     <div class="dlg-foot"><button class="btn primary" type="button" data-close>닫기</button></div>`);
 }));
 
-// 글쓰기
+// 글쓰기: 에디터(↔ 간단입력) · 첨부(이미지 · 파일)
 const edHost = $('[data-editor]');
-const ed = edHost ? mountEditor(edHost) : null;
+const ed = edHost ? mountEditor(edHost, { modeBox: $('[data-mode]') }) : null;
+const attachBox = $('[data-attach]');
+let attachments = [];
+const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
+function drawAttachments() {
+  const list = $('[data-list]', attachBox);
+  list.innerHTML = attachments.map((u, i) => `<div class="att" data-i="${i}">${u.kind === 'IMAGE' ? `<img src="${u.url}" alt="">` : '<span class="att-ico">📄</span>'}
+    <span class="att-name">${u.name.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}<small>${sizeText(u.size)}</small></span>
+    <button type="button" class="att-x" aria-label="빼기">✕</button></div>`).join('');
+  list.querySelectorAll('.att-x').forEach((b) => b.addEventListener('click', () => { attachments.splice(+b.closest('.att').dataset.i, 1); drawAttachments(); }));
+}
+if (attachBox) {
+  try { attachments = JSON.parse($('[data-init]', attachBox).textContent) || []; } catch { attachments = []; }
+  drawAttachments();
+  const board = $('form[data-form=post]').dataset.board;
+  attachBox.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', () => {
+    const kind = btn.dataset.add;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    if (kind === 'IMAGE') input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    input.onchange = async () => {
+      for (const f of input.files) {
+        try {
+          toast(`${f.name} 올리는 중…`);
+          const up = await uploadFile(board, kind, kind === 'IMAGE' ? await shrinkImage(f) : f);
+          attachments.push(up);
+          drawAttachments();
+        } catch (e) { toast(e.message); }
+      }
+    };
+    input.click();
+  }));
+}
 onForm('post', async (form, data) => {
   ed?.sync();
   data.content = form.querySelector('[name=content]').value;
+  data.attachments = attachments.map((u) => u.id);
   const { board, id } = form.dataset;
   if (id) {
     await api(`/posts/${id}`, { method: 'PUT', data });

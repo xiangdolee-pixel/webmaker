@@ -4,6 +4,7 @@ import {
   createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
+import { postAttachments, attachToPost } from './uploads.js';
 
 const LOCK_AFTER = 5;
 const LOCK_MS = 15 * 60000;
@@ -281,13 +282,18 @@ async function postView(ctx, b, id) {
     </section>`;
   }
   const mine = me.level === 1 || isMine(p, me);
+  const atts = await postAttachments(env, ctx.site, p.id);
+  const imgs = atts.filter((u) => u.kind === 'IMAGE');
+  const files = atts.filter((u) => u.kind === 'FILE');
   return page(ctx, p.title, `<section class="pub-box wide">
     <p class="crumb"><a href="/board/${b.slug}">${esc(b.name)}</a></p>
     <article class="post">
       <h1>${p.is_notice ? '<span class="tag notice">공지</span>' : ''}${p.is_secret ? '<span class="tag">비밀</span>' : ''}${esc(p.title)}</h1>
       <div class="meta">${vs.writer ? `<span>${esc(writerOf(b, p, me))}</span>` : ''}${vs.date ? `<span>${fmtDate(p.published_at, true)}</span>` : ''}${vs.views ? `<span>조회 ${p.view_count + 1}</span>` : ''}
         ${p.published_at > now() ? `<span class="tag warn">${fmtDate(p.published_at, true)} 공개 예약</span>` : ''}</div>
+      ${imgs.length ? `<div class="post-photos">${imgs.map((u) => `<a href="${u.url}" target="_blank" rel="noopener"><img src="${u.url}" alt="${esc(u.name)}" loading="lazy"></a>`).join('')}</div>` : ''}
       <div class="prose">${p.content_html}</div>
+      ${files.length ? `<div class="post-files"><b>첨부파일</b>${files.map((u) => `<a href="${u.url}?dl=1">${esc(u.name)} <small>${fmtSize(u.size)}</small></a>`).join('')}</div>` : ''}
     </article>
     <div class="actions"><a class="btn" href="/board/${b.slug}">목록</a>${mine ? `<a class="btn" href="/board/${b.slug}/${p.id}/edit">수정</a>
       <button class="btn danger" type="button" data-del-post="${p.id}" data-back="/board/${b.slug}">삭제</button>` : ''}</div>
@@ -295,6 +301,9 @@ async function postView(ctx, b, id) {
   </section>`);
 }
 
+const fmtSize = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
+
+// 글쓰기 · 수정 — 제목 / 작성자 / 작성일(관리자) / 첨부(이미지 · 파일) / 내용(에디터 ↔ 간단입력)
 async function postForm(ctx, b, id) {
   const { env, me, url } = ctx;
   let p = null;
@@ -305,20 +314,38 @@ async function postForm(ctx, b, id) {
   } else if (!canWrite(b, me)) return me.level ? noRight(ctx) : needLogin(ctx, url.pathname);
   const admin = me.level === 1;
   const local = (ms) => new Date(ms + 9 * 3600000).toISOString().slice(0, 16);
-  return page(ctx, id ? '글 수정' : '글쓰기', `<section class="pub-box wide">
-    <p class="crumb"><a href="/board/${b.slug}">${esc(b.name)}</a></p>
-    <h1>${id ? '글 수정' : '글쓰기'}</h1>
+  const atts = id ? await postAttachments(env, ctx.site, id) : [];
+  const writer = p ? p.writer_name : me.kind === 'member' ? (me.member.nickname || me.member.name) : me.kind === 'staff' ? '관리자' : '';
+  const guest = me.kind === 'guest';
+  return page(ctx, id ? '글 수정' : '글쓰기', `<section class="pub-box wide write-box">
+    <header class="write-head"><h1>${id ? '글 수정' : '글쓰기'}</h1><a class="write-board" href="/board/${esc(b.slug)}">${esc(b.name)}</a></header>
     <form data-form="post" data-board="${esc(b.slug)}" data-id="${id || ''}">
-      <label class="field"><span>제목</span><input class="input" name="title" maxlength="200" required value="${esc(p?.title)}"></label>
-      ${me.kind === 'guest' ? '<label class="field"><span>이름</span><input class="input" name="writer_name" maxlength="20" required><small>비회원으로 남기는 글입니다. 수정·삭제는 관리자에게 문의해 주세요.</small></label>' : ''}
-      <div class="field"><span>내용</span><div class="editor" data-editor><textarea name="content" hidden>${esc(p?.content_html || '')}</textarea></div></div>
-      <div class="opts">
+      <label class="field"><span>제목</span><input class="input big" name="title" maxlength="200" required value="${esc(p?.title)}"></label>
+      ${guest
+        ? '<label class="field"><span>이름</span><input class="input half" name="writer_name" maxlength="20" required><small>비회원으로 남기는 글입니다. 수정·삭제는 관리자에게 문의해 주세요.</small></label>'
+        : `<div class="field"><span>작성자</span><input class="input half readonly" value="${esc(writer)}" readonly tabindex="-1"></div>`}
+      ${admin ? `<label class="field"><span>작성일</span><input class="input half" type="datetime-local" name="published_at" value="${local(p ? p.published_at : Date.now())}">
+        <small>미래로 정하면 그때까지 숨겨집니다(예약 발행).</small></label>` : ''}
+      <div class="field"><span>첨부</span>
+        ${guest ? '<p class="meta">사진과 파일은 로그인한 뒤 올릴 수 있습니다.</p>' : `<div class="attach" data-attach>
+          <div class="attach-btns">
+            <button type="button" class="pill-btn" data-add="IMAGE"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>이미지</button>
+            <button type="button" class="pill-btn" data-add="FILE"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>파일</button>
+          </div>
+          <div class="attach-list" data-list></div>
+          <script type="application/json" data-init>${JSON.stringify(atts).replace(/</g, '\\u003c')}</script>
+        </div>`}
+      </div>
+      <div class="field">
+        <div class="content-head"><span>내용</span><div class="tabs mode-tabs" data-mode></div></div>
+        <div class="editor" data-editor data-board="${esc(b.slug)}" data-guest="${guest ? 1 : 0}"><textarea name="content" hidden>${esc(p?.content_html || '')}</textarea></div>
+      </div>
+      ${admin || b.use_secret ? `<div class="opts">
         ${admin ? `<label class="check"><input type="checkbox" name="is_notice"${p?.is_notice ? ' checked' : ''}> 공지로 지정</label>` : ''}
         ${b.use_secret ? `<label class="check"><input type="checkbox" name="is_secret"${p?.is_secret ? ' checked' : ''}> 비밀글</label>` : ''}
-        ${admin ? `<label class="field inline"><span>작성일</span><input class="input" type="datetime-local" name="published_at" value="${p ? local(p.published_at) : ''}"><small>비워 두면 지금. 미래로 정하면 그때까지 숨겨집니다(예약 발행).</small></label>` : ''}
-      </div>
+      </div>` : ''}
       <p class="err" role="alert"></p>
-      <div class="actions"><a class="btn" href="${id ? `/board/${b.slug}/${id}` : `/board/${b.slug}`}">취소</a><button class="btn primary" type="submit">${id ? '수정' : '등록'}</button></div>
+      <div class="actions end write-actions"><a class="btn big" href="${id ? `/board/${esc(b.slug)}/${id}` : `/board/${esc(b.slug)}`}">취소</a><button class="btn big dark" type="submit">${id ? '수정' : '등록'}</button></div>
     </form>
   </section>`, { noindex: true });
 }
@@ -448,11 +475,13 @@ export async function publicApi(ctx) {
     const b = await loadBoard(db, site, m[1]);
     if (!b) throw notFound('없는 게시판입니다.');
     if (!canWrite(b, me)) throw forbidden('이 게시판에 글을 쓸 수 없습니다.');
-    const v = await postValues(b, me, await body(request), null);
+    const raw = await body(request);
+    const v = await postValues(b, me, raw, null);
     const t = now();
     const r = await db.prepare(`INSERT INTO posts (site, board_id, title, content_html, is_notice, is_secret, writer_id, writer_name, published_at, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(site, b.id, v.title, v.content, v.is_notice, v.is_secret,
       me.kind === 'member' ? me.member.id : null, v.writer_name, v.published_at ?? t, t, t).run();
+    await attachToPost(env, site, r.meta.last_row_id, raw.attachments, me);
     return json({ id: r.meta.last_row_id });
   }
   if ((m = path.match(/^\/posts\/(\d+)$/))) {
@@ -461,9 +490,11 @@ export async function publicApi(ctx) {
     if (!(me.level === 1 || isMine(p, me))) throw forbidden('쓴 사람과 관리자만 고칠 수 있습니다.');
     const b = await db.prepare('SELECT * FROM boards WHERE id = ?').bind(p.board_id).first();
     if (method === 'PUT') {
-      const v = await postValues({ ...b, opt: boardOptions(JSON.parse(b.options || '{}')) }, me, await body(request), p);
+      const raw = await body(request);
+      const v = await postValues({ ...b, opt: boardOptions(JSON.parse(b.options || '{}')) }, me, raw, p);
       await db.prepare('UPDATE posts SET title = ?, content_html = ?, is_notice = ?, is_secret = ?, published_at = ?, updated_at = ? WHERE id = ?')
         .bind(v.title, v.content, v.is_notice, v.is_secret, v.published_at ?? p.published_at, now(), p.id).run();
+      await attachToPost(env, site, p.id, raw.attachments, me);
       return json({ ok: true });
     }
     if (method === 'DELETE') {
@@ -528,7 +559,7 @@ async function postValues(b, me, raw, cur) {
   const title = str(raw.title, 200);
   if (!title) throw bad('제목을 넣어 주세요.');
   const content = await sanitizeHtml(raw.content);
-  if (!plainText(content) && !/<img/i.test(content)) throw bad('내용을 넣어 주세요.');
+  if (!plainText(content) && !/<(img|iframe)/i.test(content) && !(Array.isArray(raw.attachments) && raw.attachments.length)) throw bad('내용을 넣어 주세요.');
   const admin = me.level === 1;
   let writer = '';
   if (!cur) {
