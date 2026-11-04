@@ -6,10 +6,14 @@
 <title>plators</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="css/style.css">
+<script src="js/site.js" defer></script>
 </head>
 <body>
+<!-- 계정(로그인) 버튼 자리 — 이 사이트는 숨김 (자리가 없으면 오른쪽 위에 떠서 나오므로 일부러 둔다) -->
+<span class="xms-account" data-xms-account hidden></span>
 <main>
-  <a class="mail" href="mailto:master@plators.com">master@plators.com</a>
+  <button type="button" class="mail" data-copy="master@plators.com" aria-label="master@plators.com 복사">master@plators.com</button>
+  <p class="toast" role="status" aria-live="polite"></p>
 </main>
 </body>
 </html>
