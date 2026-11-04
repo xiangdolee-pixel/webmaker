@@ -580,6 +580,8 @@ tr.dragging td { background: var(--surface); }
 .fav-row figcaption { font-size: 12px; color: var(--mute); }
 .count { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--mute); }
 .count.warn { color: var(--warn); }
+.count.over { color: var(--danger); }
+.input.over, .input.over:focus { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 code.copy { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--line-2); font-size: 14px; overflow-wrap: anywhere; }
 .url-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .url-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }

@@ -321,6 +321,17 @@ async function levelsPage() {
 
 // ───────── 가입 항목 ─────────
 const TYPE_LABEL = { TEXT: '입력', NUMBER: '숫자', DATE: '날짜', SELECT: '리스트선택', RADIO: '선택', CHECKBOX: '다중선택' };
+// 글자 수 세기: "n / 최대자", 넘으면 글자 수와 입력칸 테두리가 빨갛게 (검색엔진 설명글은 80자 이내 — 사용자 지시 2026-11-04)
+function charLimit(input, el, max) {
+  const run = () => {
+    const n = input.value.trim().length;
+    el.textContent = `${n} / ${max}자${n > max ? ` · ${n - max}자 넘음` : ''}`;
+    el.classList.toggle('over', n > max);
+    input.classList.toggle('over', n > max);
+  };
+  input.addEventListener('input', run);
+  run();
+}
 const MODE_LABEL = { REQUIRED: '필수', OPTIONAL: '선택', EXCLUDED: '안 받음' };
 async function fieldsPage() {
   const d = await api('/fields');
@@ -1109,8 +1120,8 @@ async function seoPage(qs) {
     <form class="gap" id="seo-result" data-sec="result">
       <section class="panel pad"><h2>검색 결과에 보이는 글 <small class="meta">네이버·구글 검색 결과의 제목과 그 아래 두 줄입니다</small></h2>
         <label class="field"><span>제목</span><input class="input" name="title" maxlength="70" value="${esc(d.title)}" placeholder="${esc(d.siteName)}"><small>비우면 홈페이지 원래 제목이 그대로 쓰입니다.</small></label>
-        <label class="field"><span>설명글 <b class="count" data-count>0자</b></span><textarea class="input" name="description" maxlength="300" placeholder="어떤 곳인지 한두 문장으로 적습니다. 예) ${esc(d.siteName)} 공식 홈페이지입니다. 소식과 안내를 전합니다.">${esc(d.description)}</textarea>
-          <small>검색 결과에서 <b>제목 아래 두 줄</b>로 잘려 보입니다. <b>80~150자</b>가 알맞습니다 — 짧으면 검색엔진이 본문에서 아무 문장이나 골라 쓰고, 길면 뒤가 잘립니다. 대화방 미리보기(카카오톡·페이스북)에도 이 글이 나갑니다 — 거기만 다르게 쓰려면 <a href="#/share">카카오톡 미리보기</a>에서 따로 적습니다.</small></label>
+        <label class="field"><span>설명글 <b class="count" data-count>0 / 80자</b></span><textarea class="input" name="description" maxlength="300" placeholder="어떤 곳인지 한두 문장으로 적습니다. 예) ${esc(d.siteName)} 공식 홈페이지입니다. 소식과 안내를 전합니다.">${esc(d.description)}</textarea>
+          <small>검색 결과에서 <b>제목 아래 두 줄</b>로 보입니다. <b>80자 이내</b>로 적어야 잘리지 않고 그대로 보입니다(검색엔진 최적화) — 넘으면 글자 수가 빨갛게 바뀝니다. 대화방 미리보기(카카오톡·페이스북)에도 이 글이 나갑니다 — 거기만 다르게 쓰려면 <a href="#/share">카카오톡 미리보기</a>에서 따로 적습니다.</small></label>
       </section>
       <section class="panel pad"><h2>소유권 확인 코드 <small class="meta">사이트를 등록할 때 「내 사이트가 맞다」를 증명하는 한 줄입니다</small></h2>
         <p class="meta">검색엔진이 준 <b>태그를 통째로 붙여넣어도 됩니다</b> — 저장할 때 필요한 값만 꺼냅니다. 확인이 끝난 뒤에도 지우지 마세요. 코드가 사라지면 소유권도 함께 풀립니다.</p>
@@ -1143,8 +1154,7 @@ async function seoPage(qs) {
   pillTabs($('#seotabs'), [['result', '검색 결과와 소유권'], ['sitemap', '등록할 주소'], ['robots', 'robots.txt']], tab, show);
   show(tab);
   const desc = $('#seo-result [name=description]');
-  const count = () => { const n = desc.value.trim().length; const el = $('[data-count]'); el.textContent = `${n}자`; el.className = `count${n && (n < 80 || n > 150) ? ' warn' : ''}`; };
-  desc.addEventListener('input', count); count();
+  charLimit(desc, $('[data-count]'), 80);
   const fr = $('#seo-result');
   ctrlS(fr);
   fr.addEventListener('submit', (e) => {
@@ -1184,7 +1194,7 @@ async function sharePage() {
     <div class="share-grid">
       <div>
         <form class="panel pad" id="share-form"><h2>미리보기 설명 <small class="meta">대화방에서 제목 아래 작은 글씨로 붙습니다</small></h2>
-          <label class="field"><span>설명</span><textarea class="input" name="share_description" maxlength="200" placeholder="대화방에 붙을 설명을 적어 주세요">${esc(d.share_description || d.seo_description || '')}</textarea>
+          <label class="field"><span>설명 <b class="count" data-share-count>0 / 80자</b></span><textarea class="input" name="share_description" maxlength="200" placeholder="대화방에 붙을 설명을 적어 주세요">${esc(d.share_description || d.seo_description || '')}</textarea>
             <small>${d.share_description ? '이 화면에서 따로 적은 설명입니다.' : '지금은 <b>검색엔진 화면의 설명글</b>이 그대로 들어가 있습니다. 고쳐서 저장하면 대화방에는 고친 글이 나갑니다.'} 대화방에서는 두 줄쯤에서 잘리니 <b>40~80자</b>가 알맞습니다. 비우고 저장하면 검색엔진 설명글을 따라갑니다.</small></label>
           ${saveBar('미리보기 설명을 고치는 중입니다.', '')}
         </form>
@@ -1209,6 +1219,7 @@ async function sharePage() {
   const ta = form.share_description;
   const pv = () => { $('[data-pv-desc]').textContent = ta.value.trim() || d.seo_description || ''; };
   ta.addEventListener('input', pv); pv();
+  charLimit(ta, $('[data-share-count]'), 80);
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     busy(form.querySelector('[type=submit]'), null, async () => {
