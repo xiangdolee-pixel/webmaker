@@ -138,13 +138,21 @@
     </section>
    </div>
    <div class="col" data-col="3">
-    <section class="sec sec-tiles" data-block="bonds" style="--rows: 4">
+    <section class="sec sec-macro" data-block="macro">
       <div class="sec-head">
-        <h2 class="sec-title">미국채 금리</h2>
-        <span class="sec-note">네이버 증권 · 연 % · 실시간</span>
+        <h2 class="sec-title">미국 경제지표</h2>
+        <span class="sec-note">연준 · BLS · BEA · 예상치 Forex Factory</span>
       </div>
-      <div class="tile-grid bd-grid" id="bonds">
-        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
+      <div class="card mc-card" id="macro">
+        <div class="mc-fed">
+          <div class="mc-rate"><span class="mc-k">연준 기준금리</span><b id="mc-rate">불러오는 중…</b><small id="mc-next"></small></div>
+          <div class="mc-fw" id="mc-fw"></div>
+        </div>
+        <table class="mc-table">
+          <thead><tr><th>지표</th><th>실제</th><th>예상</th><th>이전</th></tr></thead>
+          <tbody id="mc-rows"><tr class="mc-wait"><td colspan="4">불러오는 중…</td></tr></tbody>
+        </table>
+        <p class="list-note" id="mc-note">예상치는 발표 주에 Forex Factory 달력에서 받아 둔 값 · 본 적 없으면 —</p>
       </div>
     </section>
 
@@ -175,21 +183,13 @@
     </section>
    </div>
    <div class="col" data-col="4">
-    <section class="sec sec-macro" data-block="macro">
+    <section class="sec sec-tiles" data-block="bonds" style="--rows: 4">
       <div class="sec-head">
-        <h2 class="sec-title">미국 경제지표</h2>
-        <span class="sec-note">연준 · BLS · BEA · 예상치 Forex Factory</span>
+        <h2 class="sec-title">미국채 금리</h2>
+        <span class="sec-note">네이버 증권 · 연 % · 실시간</span>
       </div>
-      <div class="card mc-card" id="macro">
-        <div class="mc-fed">
-          <div class="mc-rate"><span class="mc-k">연준 기준금리</span><b id="mc-rate">불러오는 중…</b><small id="mc-next"></small></div>
-          <div class="mc-fw" id="mc-fw"></div>
-        </div>
-        <table class="mc-table">
-          <thead><tr><th>지표</th><th>실제</th><th>예상</th><th>이전</th></tr></thead>
-          <tbody id="mc-rows"><tr class="mc-wait"><td colspan="4">불러오는 중…</td></tr></tbody>
-        </table>
-        <p class="list-note" id="mc-note">예상치는 발표 주에 Forex Factory 달력에서 받아 둔 값 · 본 적 없으면 —</p>
+      <div class="tile-grid bd-grid" id="bonds">
+        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
       </div>
     </section>
    </div>

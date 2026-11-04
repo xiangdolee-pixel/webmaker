@@ -620,6 +620,9 @@ body.editing { padding-bottom: 70px; }
   /* 표(거래대금 · 코인 · 13F)와 같은 칸에 놓인 지수 · 환율 · 원자재 · 미국채: 줄 높이만큼만, 남은 높이는 표가 갖는다 */
   .col:has(.sec-list:not([hidden]):not(.lim)) .sec-tiles { flex: none; }
   .col:has(.sec-list:not([hidden]):not(.lim)) .tile-grid { grid-auto-rows: 36px; }
+  /* 칸에 칸 블록(예: 미국채) 하나만 있으면 화면 높이만큼 늘이지 않는다 */
+  .col > .sec-tiles:only-child { flex: none; }
+  .col > .sec-tiles:only-child .tile-grid { grid-auto-rows: 48px; }
   /* 줄 수를 줄인 표(5 · 10 · 15개): 그 줄만큼만 높이를 쓰고, 남는 높이는 같은 칸의 다른 블록이 쓴다 */
   .sec-list.lim { flex: none; }
   .sec-list.lim .list-card { flex: none; }

@@ -12,7 +12,7 @@ const BLOCKS = {
 };
 const LISTS = ['top', 'coins', 'f13'];
 const COUNTS = [5, 10, 15, 20];
-const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'f13'], ['macro']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
+const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['macro', 'f13'], ['bonds']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
 const KEY = 'xip:layout:v1';
 const MAXC = 5; // 칸은 1~5개 (칸 가장자리에 놓으면 새 칸)
 
