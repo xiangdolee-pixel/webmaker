@@ -380,6 +380,8 @@ tr.dragging td { background: var(--surface); }
 .sub-links { display: grid; gap: 4px; margin: 16px 0 0; font-size: 14px; color: var(--mute); text-align: center; }
 /* 비밀번호 칸 + 눈 모양 보기 버튼 */
 .pw-wrap { position: relative; display: block; }
+/* 엣지 · IE 가 비밀번호 칸에 저절로 넣는 눈 · 지우기 단추는 숨긴다 (우리 눈 단추와 겹치지 않게) */
+.pw-wrap input::-ms-reveal, .pw-wrap input::-ms-clear { display: none; }
 .pw-wrap .input { width: 100%; padding-right: 48px; }
 .pw-eye { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--mute); cursor: pointer; }
 .pw-eye svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
