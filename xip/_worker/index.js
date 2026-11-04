@@ -6,6 +6,7 @@
 //   /api/13f     : 유명 투자자 최신 13F 에서 새로 산·늘린 미국 주식 (?m=buffett|ackman|druck|tepper, SEC EDGAR)
 //   /api/chart   : 지수·환율·원자재·미국채·종목 차트 (?kind=index|fx|cmdty|bond|stock&code=…&range=1d|1w|1m|1y|10y|all)
 //   /api/all     : 위 지수·거래대금·휴장/서킷브레이커를 한 번에 (?top=kr|us) — 웹소켓이 안 될 때 쓰는 예비
+//   /api/prefs   : 회원별 화면 구성(블록 보이기 · 순서 · 칸 · 목록 개수) GET/PUT — xms 로그인(같은 xms_sess 쿠키) 회원만, Prefs(Durable Object)에 저장
 //   /ws          : 웹소켓. Hub(Durable Object) 하나가 값을 받아 바뀔 때만 모든 화면에 밀어준다
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
@@ -750,10 +751,60 @@ export class Hub extends DurableObject {
   }
 }
 
+/* ---------- 회원별 화면 구성 ---------- */
+// 회원 한 명 = Prefs 하나 (이름: xip:<아이디>). 값은 layout 하나뿐이라 아주 작다.
+export class Prefs extends DurableObject {
+  async getLayout() { return (await this.ctx.storage.get('layout')) || null; }
+  async setLayout(v) { await this.ctx.storage.put('layout', v); }
+}
+const BLOCK_IDS = ['hours', 'indices', 'fx', 'cmdty', 'bonds', 'top', 'coins', 'f13'];
+const LIST_IDS = ['top', 'coins', 'f13'];
+// 화면이 보낸 값을 믿지 않고 다시 만든다: 아는 블록만, 한 번씩, 4칸, 개수는 5·10·15·20
+function cleanLayout(v) {
+  const seen = new Set();
+  const cols = [0, 1, 2, 3].map((i) => (Array.isArray(v?.cols?.[i]) ? v.cols[i] : [])
+    .filter((id) => BLOCK_IDS.includes(id) && !seen.has(id) && seen.add(id)));
+  for (const id of BLOCK_IDS) if (!seen.has(id)) cols[3].push(id);
+  const hidden = (Array.isArray(v?.hidden) ? v.hidden : []).filter((id, i, a) => BLOCK_IDS.includes(id) && a.indexOf(id) === i);
+  const counts = {};
+  for (const id of LIST_IDS) counts[id] = [5, 10, 15, 20].includes(v?.counts?.[id]) ? v.counts[id] : 20;
+  return { cols, hidden, counts };
+}
+// 지금 로그인한 xms 회원의 아이디(이메일). 손님 · 운영자 모드 · xms 응답 없음 → null
+async function memberId(request, env) {
+  const cookie = request.headers.get('Cookie') || '';
+  if (!env.XMS || !/(?:^|;\s*)xms_sess=/.test(cookie)) return null;
+  try {
+    const req = new Request(`${new URL(request.url).origin}/xms-api/me`, { headers: { Cookie: cookie, 'X-Xim-Site': env.XIM_SITE } });
+    const res = await env.XMS.fetch(req);
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d.login_id ? String(d.login_id).toLowerCase() : null;
+  } catch { return null; }
+}
+async function prefsApi(request, env) {
+  const id = await memberId(request, env);
+  if (!id) return json({ error: '회원 로그인이 필요합니다.' }, 401);
+  const stub = env.PREFS.get(env.PREFS.idFromName(`xip:${id}`));
+  if (request.method === 'GET') return json({ layout: await stub.getLayout() }, 200);
+  if (request.method === 'PUT') {
+    // 다른 사이트에서 보낸 요청은 받지 않는다
+    const origin = request.headers.get('Origin');
+    if (origin && origin !== new URL(request.url).origin) return json({ error: 'bad origin' }, 403);
+    let v;
+    try { v = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    const layout = v && v.reset ? null : cleanLayout(v);
+    await stub.setLayout(layout);
+    return json({ ok: true, layout });
+  }
+  return json({ error: 'method' }, 405);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
+    if (pathname === '/api/prefs' && env.PREFS) return prefsApi(request, env);
     if (pathname === '/ws' && env.HUB) {
       return env.HUB.get(env.HUB.idFromName('main')).fetch(request);
     }

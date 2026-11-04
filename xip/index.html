@@ -27,14 +27,16 @@
         <span class="fx" id="fx">원/달러 —</span>
         <span class="conn" id="conn" data-state="wait"><i></i><b>연결 중</b></span>
       </div>
+      <a class="top-flow" id="top-flow" href="/member/signup" hidden><span class="flow-in"><span>✨ 회원가입하면 내 화면으로 편집할 수 있어요 — 블록 보이기·숨기기 · 순서 · 칸 바꾸기 · 목록 개수(5~20개)</span><span aria-hidden="true">✨ 회원가입하면 내 화면으로 편집할 수 있어요 — 블록 보이기·숨기기 · 순서 · 칸 바꾸기 · 목록 개수(5~20개)</span></span></a>
+      <button class="top-edit" id="top-edit" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>화면 편집</span></button>
       <span class="top-acc" data-xms-account></span>
     </div>
   </header>
 
   <main class="wrap">
    <div class="dash">
-   <div class="col col-a">
-    <section class="sec sec-hours">
+   <div class="col" data-col="0">
+    <section class="sec sec-hours" data-block="hours">
       <div class="hours" id="hours">
         <div class="card hr" id="hr-kr">
           <div class="hr-top"><b>국내 증시</b><em class="badge close" data-st>—</em></div>
@@ -55,7 +57,7 @@
       </div>
     </section>
 
-    <section class="sec sec-tiles" style="--rows: 5">
+    <section class="sec sec-tiles" data-block="indices" style="--rows: 5">
       <div class="sec-head">
         <h2 class="sec-title">주요 지수</h2>
         <span class="sec-note">네이버 증권 기준 · 누르면 차트 · <i class="dot-open"></i>장중</span>
@@ -65,7 +67,7 @@
       </div>
     </section>
 
-    <section class="sec sec-tiles" style="--rows: 4">
+    <section class="sec sec-tiles" data-block="fx" style="--rows: 4">
       <div class="sec-head">
         <h2 class="sec-title">환율</h2>
         <span class="sec-note">네이버 증권 · 하나은행 고시 기준</span>
@@ -75,7 +77,7 @@
       </div>
     </section>
 
-    <section class="sec sec-tiles" style="--rows: 6">
+    <section class="sec sec-tiles" data-block="cmdty" style="--rows: 6">
       <div class="sec-head">
         <h2 class="sec-title">원자재</h2>
         <span class="sec-note">네이버 증권 기준 · 선물 · 약 10분 지연</span>
@@ -86,8 +88,8 @@
     </section>
 
    </div>
-   <div class="col col-b">
-    <section class="sec sec-list">
+   <div class="col" data-col="1">
+    <section class="sec sec-list" data-block="top">
       <div class="sec-head">
         <h2 class="sec-title">거래대금 상위 종목</h2>
         <span class="sec-note">네이버 증권</span>
@@ -112,10 +114,10 @@
     </section>
 
    </div>
-   <div class="col col-c">
-    <section class="sec sec-list">
+   <div class="col" data-col="2">
+    <section class="sec sec-list" data-block="coins">
       <div class="sec-head">
-        <h2 class="sec-title">코인 시가총액 TOP 20</h2>
+        <h2 class="sec-title">코인 시가총액 TOP <span data-coin-n>20</span></h2>
         <span class="sec-note src-legend"><em class="src bn" title="바이낸스 실시간">BN</em>바이낸스 <em class="src cg" title="코인게코 1분마다">CG</em>코인게코 <em class="src up" title="업비트 원화">UP</em>업비트</span>
       </div>
       <div class="card list-card">
@@ -130,8 +132,8 @@
       </div>
     </section>
    </div>
-   <div class="col col-d">
-    <section class="sec sec-tiles sec-bonds" style="--rows: 4">
+   <div class="col" data-col="3">
+    <section class="sec sec-tiles" data-block="bonds" style="--rows: 4">
       <div class="sec-head">
         <h2 class="sec-title">미국채 금리</h2>
         <span class="sec-note">네이버 증권 · 연 % · 실시간</span>
@@ -141,7 +143,7 @@
       </div>
     </section>
 
-    <section class="sec sec-list">
+    <section class="sec sec-list" data-block="f13">
       <div class="sec-head">
         <h2 class="sec-title">13F 매수 종목</h2>
         <div class="seg seg-sm" id="f13-seg" role="tablist">
@@ -212,6 +214,25 @@
     </div>
   </div>
 
+  <div class="sheet" id="ed" hidden>
+    <div class="sheet-bg" data-ed-close></div>
+    <div class="sheet-box ed-box" role="dialog" aria-modal="true" aria-labelledby="ed-title">
+      <div class="ch-head">
+        <div class="ch-title"><h3 id="ed-title">화면 편집</h3><span>⠿ 를 끌어 순서 · 칸을 바꾸고, 보이기 · 개수를 고르세요. 폰에서는 1열부터 차례로 보입니다.</span></div>
+        <button class="ch-close" type="button" data-ed-close aria-label="닫기">×</button>
+      </div>
+      <ul class="ed-list" id="ed-list"></ul>
+      <p class="ed-err" id="ed-err" role="alert"></p>
+      <div class="ed-foot">
+        <button class="btn-l" type="button" id="ed-reset">기본값으로</button>
+        <span class="ed-gap"></span>
+        <button class="btn-l" type="button" data-ed-close>취소</button>
+        <button class="btn-l pri" type="button" id="ed-save">저장</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/main.js?v=__HASH__"></script>
+  <script type="module" src="js/layout.js?v=__HASH__"></script>
 </body>
 </html>

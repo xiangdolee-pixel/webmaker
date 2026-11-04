@@ -54,6 +54,43 @@ button { font: inherit; color: inherit; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8.2' r='4'/%3E%3Cpath d='M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8.2' r='4'/%3E%3Cpath d='M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7'/%3E%3C/svg%3E") center / contain no-repeat; }
 .top-acc .xa-login:hover { background: #dfe4ea; }
+/* 손님: 회원가입하면 편집할 수 있다는 흐르는 글자 (끝없이 이어지게 같은 글을 두 번) */
+.top-flow { flex: 1 1 0; min-width: 0; overflow: hidden; margin: 0 6px 0 14px; color: var(--sub); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
+.top-flow:hover { color: var(--down); }
+.flow-in { display: inline-flex; gap: 64px; padding-left: 16px; animation: flow 26s linear infinite; }
+.top-flow:hover .flow-in { animation-play-state: paused; }
+@keyframes flow { to { transform: translateX(calc(-50% - 32px)); } }
+/* 회원: 화면 편집 버튼 */
+.top-edit { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; margin-right: 8px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--text); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.top-edit:hover { background: var(--panel-2); }
+.top-edit svg { width: 16px; height: 16px; }
+.top-flow[hidden], .top-edit[hidden], [data-block][hidden], .col[hidden] { display: none !important; }
+/* 목록 줄 수 (화면 편집에서 고름) */
+.lim-5 > li:nth-child(n+6), .lim-10 > li:nth-child(n+11), .lim-15 > li:nth-child(n+16) { display: none; }
+
+/* 화면 편집 창 */
+.ed-box { max-width: 520px; }
+.ed-list { list-style: none; margin: 14px 0 0; padding: 0; }
+.ed-col { padding: 14px 4px 6px; font-size: 13px; color: var(--sub); border-bottom: 1px dashed var(--line); }
+.ed-col:first-child { padding-top: 0; }
+.ed-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 4px; margin-top: 6px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.ed-row.off .ed-name { color: #a3aab4; text-decoration: line-through; }
+.ed-row.dragging { box-shadow: 0 10px 28px rgba(16, 24, 40, .18); }
+.handle { flex: none; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: #8b95a1; font-size: 18px; cursor: grab; touch-action: none; }
+.handle:hover { background: var(--panel-2); }
+.is-sorting, .is-sorting * { cursor: grabbing !important; user-select: none; }
+.ed-name { flex: 1; min-width: 0; font-weight: 700; font-size: 16px; }
+.ed-cnt { flex: none; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; font-size: 14px; }
+.ed-sw { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sub); cursor: pointer; }
+.ed-sw input { width: 18px; height: 18px; accent-color: var(--dark); }
+.ed-err { min-height: 20px; margin: 10px 0 0; color: var(--up); font-size: 14px; }
+.ed-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.ed-gap { flex: 1; }
+.btn-l { height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.btn-l:hover { background: var(--panel-2); }
+.btn-l.pri { background: var(--dark); border-color: var(--dark); color: #fff; }
+.btn-l:disabled { opacity: .6; cursor: default; }
 /* 게시판 · 회원 화면(_layout.html): 한 화면 대시보드 규칙 없이 보통 페이지로 */
 .doc main.wrap { padding-top: 8px; padding-bottom: 48px; }
 .fx { min-width: 0; }
@@ -263,6 +300,11 @@ button { font: inherit; color: inherit; }
   .top-in { flex-wrap: wrap; row-gap: 2px; padding-top: 8px; padding-bottom: 8px; min-height: 0; }
   .logo { font-size: 20px; }
   .top-meta { order: 3; width: 100%; justify-content: space-between; gap: 10px; font-size: 14px; }
+  .logo-sub { display: none; }
+  .top-flow { margin-left: 10px; font-size: 13px; }
+  .top-edit { padding: 0; width: 38px; justify-content: center; margin-right: 6px; }
+  .top-edit span { display: none; }
+  .ed-name { font-size: 15px; }
   .sec { margin-top: 26px; }
   .sec-title { font-size: 21px; }
   .sec-note { font-size: 13px; }
@@ -348,7 +390,7 @@ button { font: inherit; color: inherit; }
   .logo { font-size: 20px; }
   .top-meta { font-size: 15px; }
   body:not(.doc) main.wrap { max-width: none; padding: var(--dgap) 12px; height: calc(100vh - var(--topH) - 1px); }
-  .dash { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .9fr); gap: 12px; height: 100%; }
+  .dash { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 12px; height: 100%; }
   .col { display: flex; flex-direction: column; gap: var(--dgap); min-height: 0; min-width: 0; }
   .foot { display: none; }
   .sec { margin: 0; min-height: 0; }
@@ -356,8 +398,8 @@ button { font: inherit; color: inherit; }
   .sec-title { font-size: 18px; white-space: nowrap; }
   .sec-note { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .seg-sm button { padding: 4px 11px; font-size: 14px; }
-  .col-d .sec-head { flex-wrap: wrap; row-gap: 4px; }
-  .col-d .seg-sm button { padding: 4px 9px; font-size: 13px; }
+  [data-block="f13"] .sec-head { flex-wrap: wrap; row-gap: 4px; }
+  [data-block="f13"] .seg-sm button { padding: 4px 9px; font-size: 13px; }
 
   /* 장 시간: 두 칸을 나란히, 작게 */
   .sec-hours { flex: none; }
@@ -392,9 +434,9 @@ button { font: inherit; color: inherit; }
 
   /* 표: 20줄이 남은 높이를 나눠 갖는다 */
   .sec-list { flex: 1; display: flex; flex-direction: column; }
-  /* 미국채 금리: 13F 칸 위에 네 줄만 (표가 남은 높이를 갖는다) */
-  .sec-bonds { flex: none; }
-  .sec-bonds .tile-grid { grid-auto-rows: 36px; }
+  /* 표(거래대금 · 코인 · 13F)와 같은 칸에 놓인 지수 · 환율 · 원자재 · 미국채: 줄 높이만큼만, 남은 높이는 표가 갖는다 */
+  .col:has(.sec-list:not([hidden])) .sec-tiles { flex: none; }
+  .col:has(.sec-list:not([hidden])) .tile-grid { grid-auto-rows: 36px; }
   .list-card { flex: 1; min-height: 0; display: flex; flex-direction: column; border-radius: 12px; }
   .list-head { min-height: 32px; }
   .list-head span { font-size: 12px; }
@@ -458,12 +500,25 @@ button { font: inherit; color: inherit; }
   .c-name img { width: 26px; height: 26px; }
 }
 
-/* 1200~1499: 13F 칸은 아래로 (그때만 페이지 스크롤) */
+/* 1200~1499: 네 칸 그대로(아래로 밀리지 않게), 글자 · 간격을 조금 줄인다 */
 @media (min-width: 1200px) and (max-width: 1499px) and (min-height: 680px) {
-  body { overflow: auto; }
-  main.wrap { height: auto; }
-  .dash { grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 1.12fr); grid-template-rows: calc(100vh - var(--topH) - 21px) 740px; height: auto; }
-  .col-d { grid-column: 1 / -1; }
+  .dash { gap: 10px; }
+  main.wrap { padding-left: 10px; padding-right: 10px; }
+  /* 칸: 이름은 윗줄, 값 · 등락은 아랫줄 (좁아도 이름이 잘리지 않게) */
+  .tile { padding: 2px 10px; column-gap: 8px; row-gap: 0; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "top top" "price chg"; align-content: center; }
+  .tile-top { grid-area: top; }
+  .tile-price, .cm-grid .tile-price { grid-area: price; font-size: 17px; text-align: left; }
+  .tile-chg { grid-area: chg; font-size: 13px; }
+  .tile-name { font-size: 14px; }
+  .tile-top .ic { width: 18px; height: 18px; }
+  .col:has(.sec-list:not([hidden])) .tile-grid { grid-auto-rows: 46px; }
+  /* 코인 표: 원화 줄 · 출처 표시 빼고 */
+  .c-krw, .c-l1 .src { display: none; }
+  .sec-title { font-size: 17px; }
+  .c-sym, .s-name { font-size: 14px; }
+  .c-usd { font-size: 15px; }
+  .hr { padding: 8px 10px; }
+  .hr-main { font-size: 15px; }
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
@@ -471,4 +526,6 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .flash-up, .flash-down, .skel, .conn[data-state="live"] i, .sheet-bg, .sheet-box { animation: none; }
   .seg-ind, .seg button { transition: none; }
+  .flow-in { animation: none; }
+  .flow-in > span + span { display: none; }
 }
