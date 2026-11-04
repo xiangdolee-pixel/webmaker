@@ -12,7 +12,9 @@ let seen = [];
 try { seen = JSON.parse(localStorage.getItem('ob_seen') || '[]'); } catch {}
 let busy = false;
 // 로그인 = 사이트 회원(xms, 같은 xms_sess 쿠키) — 2026-11-04 자체 로그인에서 옮김
+// 빨리 뜨게(사용자 지시 2026-11-04 "너무 느려"): 지난번 로그인 상태로 바로 시작하고, 서버 확인은 뒤에서 한다
 let token = ''; // '1' = 로그인함 (이름만 남김: 아래 코드가 그대로 쓰게)
+try { token = localStorage.getItem('ob_authed') || ''; } catch {}
 
 // 로그인 안 했으면 소개 문구만, 하단에 로그인·가입
 const INTRO = { id: 0, text: '가입하고,\n올리브를 모으듯\n나만의 영감을 담아보세요.', source: '올리브바스켓', stars: 1 };
@@ -24,11 +26,15 @@ function setAuthed(on) {
 const authReady = fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' })
   .then(r => (r.ok ? r.json() : {}))
   .then(me => {
+    const was = token;
     token = me.email ? '1' : '';
-    try { localStorage.setItem('ob_authed', token); if (me.email) localStorage.setItem('ob_email', me.email); } catch {}
+    try { localStorage.setItem('ob_authed', token); if (me.email) localStorage.setItem('ob_email', me.email); else localStorage.removeItem('ob_ahead'); } catch {}
+    setAuthed(!!token);
+    if (was !== token && idx === 0) { ahead.length = 0; hist.length = 0; idx = -1; next(); } // 로그인 상태가 바뀌었으면 첫 화면을 다시
+    else fillAhead();
   })
-  .catch(() => { try { token = localStorage.getItem('ob_authed') || ''; } catch {} })
-  .then(() => setAuthed(!!token));
+  .catch(() => {});
+setAuthed(!!token);
 
 // 배경 장면 6가지를 두 겹으로 교차 페이드 (직전 장면은 피함)
 const SCENES = 6;
@@ -134,6 +140,8 @@ async function fetchRandom() {
 // 다음 구절을 2개까지 미리 받아 둠 → 넘길 때 서버를 기다리지 않음
 const AHEAD = 2;
 const ahead = [];
+try { (JSON.parse(localStorage.getItem('ob_ahead') || '[]') || []).forEach(x => x && x.id && ahead.push(x)); } catch {}
+const saveAhead = () => { try { localStorage.setItem('ob_ahead', JSON.stringify(ahead)); } catch {} };
 let filling = null; // 받는 중인 Promise (동시에 두 번 받아 같은 구절이 겹치지 않게)
 function fillAhead() {
   if (filling || !token) return filling;
@@ -142,6 +150,7 @@ function fillAhead() {
       const item = await fetchRandom();
       if (!item || !item.id) break; // 빈 바구니·오프라인 안내문은 쌓아 두지 않음
       ahead.push(item);
+      saveAhead();
     }
   })().finally(() => { filling = null; });
   return filling;
@@ -155,6 +164,7 @@ function next() {
     transition(async () => {
       if (!ahead.length && filling) await filling;
       const item = ahead.length ? ahead.shift() : await fetchRandom();
+      saveAhead();
       setTimeout(fillAhead, 0);
       hist.push(item);
       if (hist.length > 100) { hist.shift(); }
@@ -222,7 +232,8 @@ $stage.addEventListener('click', e => {
   else next();
 });
 
-authReady.then(next);
+// 첫 구절: 미리 받아 둔 게 있으면 바로, 없으면 받아서
+if (token && ahead.length) next(); else authReady.then(next);
 
 // 시작 화면은 앱을 열 때 한 번만 (당겨서 새로고침 때는 생략)
 const $splash = document.getElementById('splash');

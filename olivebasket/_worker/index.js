@@ -16,15 +16,22 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 const MODES = ['random', 'recent', 'stars', 'short', 'long'];
 
 // 지금 로그인한 xms 회원 { email, admin } | null
+const seen = new Map(); // 세션 쿠키 → { me, at }
 async function member(request, env) {
   const cookie = request.headers.get('Cookie') || '';
-  if (!env.XMS || !/(?:^|;\s*)xms_sess=/.test(cookie)) return null;
+  const sess = (cookie.match(/(?:^|;\s*)xms_sess=([^;]+)/) || [])[1];
+  if (!env.XMS || !sess) return null;
+  const hit = seen.get(sess);
+  if (hit && Date.now() - hit.at < 60000) return hit.me;
+  if (seen.size > 500) seen.clear();
   try {
     const req = new Request(`${new URL(request.url).origin}/xms-api/me`, { headers: { Cookie: cookie, 'X-Xim-Site': env.XIM_SITE } });
     const res = await env.XMS.fetch(req);
     if (!res.ok) return null;
     const d = await res.json();
-    return d.login_id ? { email: String(d.login_id).toLowerCase(), admin: !!d.admin } : null;
+    const me = d.login_id ? { email: String(d.login_id).toLowerCase(), admin: !!d.admin } : null;
+    seen.set(sess, { me, at: Date.now() });
+    return me;
   } catch { return null; }
 }
 // 회원 이메일 → 올리브바스켓 users.id (처음이면 만든다)
