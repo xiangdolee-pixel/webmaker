@@ -149,6 +149,24 @@ header{
   font-size:17px;color:var(--ink-soft);
 }
 .icon-btn:active{background:var(--line)}
+/* 계정 버튼(사람 모양): 로그인 전 = 테두리만, 로그인 뒤 = 먹색으로 채움(프로필 사진이 있으면 사진) */
+.acct-ico{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
+  border:1.5px solid var(--ink-soft);color:var(--ink-soft);overflow:hidden}
+.acct-ico svg{width:18px;height:18px;fill:currentColor;margin-top:3px}
+.acct-btn.on .acct-ico{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.acct-ico img{width:100%;height:100%;object-fit:cover}
+.acct-pop{position:fixed;z-index:60;bottom:calc(var(--barh) + 8px);min-width:170px;padding:6px;
+  background:var(--paper);border:1px solid var(--gilt-soft);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.16);
+  font-family:var(--ui);opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .18s,transform .18s}
+.acct-pop.open{opacity:1;transform:none;pointer-events:auto}
+.acct-pop .who{padding:8px 12px 9px;font-size:13px;color:var(--panel-soft);border-bottom:1px solid var(--line);margin-bottom:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.acct-pop a,.acct-pop button{display:block;width:100%;text-align:left;padding:11px 12px;border-radius:9px;font-size:15px;
+  font-weight:500;color:var(--panel-ink);text-decoration:none;background:none;border:0;font-family:inherit}
+.acct-pop a:active,.acct-pop button:active{background:var(--line)}
+@media (prefers-reduced-motion:reduce){.acct-pop{transition:none}}
+/* 좁은 폰(360px 이하): 버튼이 하나 늘어 칸을 조금 좁힌다 */
+@media (max-width:360px){.bar{gap:2px;padding:0 4px}.icon-btn{width:34px}}
 .hl-ico{ /* 형광펜 버튼: 회색이 칠해진 '가' */
   font-size:15px;font-weight:700;color:var(--ink);
   background:rgba(158,158,168,.55);box-shadow:inset 0 -3px 0 rgba(74,72,80,1);
@@ -677,6 +695,7 @@ main{
     <button class="icon-btn nav-arrow" id="nextBtn" aria-label="다음 장">›</button>
     <button class="icon-btn" id="pvBtn" aria-label="오늘의 잠언" style="font-weight:800">잠</button>
     <button class="icon-btn" id="qtBtn" aria-label="오늘의 큐티" style="font-weight:800;display:none">Q</button>
+    <button class="icon-btn acct-btn" id="acctBtn" aria-label="로그인" aria-haspopup="menu"><span class="acct-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.9"/><path d="M4.6 20c0-4 3.3-6.4 7.4-6.4s7.4 2.4 7.4 6.4"/></svg></span></button>
   </div>
 </header>
 
@@ -2768,8 +2787,33 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
       },700);}
     }
   }
+  const acctBtn=$("acctBtn"),acctIco=acctBtn.querySelector(".acct-ico"),ICO=acctIco.innerHTML;
+  let pop=null;
+  function closePop(){if(pop){pop.classList.remove("open");}}
+  function openPop(){
+    if(!pop){pop=document.createElement("div");pop.className="acct-pop";pop.setAttribute("role","menu");document.body.append(pop);
+      document.addEventListener("pointerdown",e=>{if(pop.classList.contains("open")&&!pop.contains(e.target)&&!acctBtn.contains(e.target))closePop();});}
+    const esc=t=>String(t||"").replace(/[&<>"]/g,c=>"&#"+c.charCodeAt(0)+";");
+    pop.innerHTML='<div class="who">'+esc(user.name?user.name+" · "+user.login_id:user.login_id)+'</div>'
+      +'<a role="menuitem" href="/member/mypage">내 정보</a>'
+      +(user.admin?'<a role="menuitem" href="/xms/">관리</a>':'')
+      +'<button type="button" role="menuitem" data-out>로그아웃</button>';
+    pop.querySelector("[data-out]").onclick=()=>{closePop();logout();};
+    const r=acctBtn.getBoundingClientRect();
+    const w=pop.offsetWidth||180;   // 메뉴 순서가 뒤집혀(왼쪽) 있어도 화면 안에
+    pop.style.left=Math.max(8,Math.min(innerWidth-8-w,r.right-w))+"px";
+    requestAnimationFrame(()=>pop.classList.add("open"));
+  }
+  acctBtn.onclick=()=>{
+    if(!user){location.href="/member/login";return;}
+    pop&&pop.classList.contains("open")?closePop():openPop();
+  };
   function setUser(u){
     user=u;
+    acctBtn.classList.toggle("on",!!u);
+    acctBtn.setAttribute("aria-label",u?"내 계정":"로그인");
+    acctIco.innerHTML=u&&u.avatar?'<img alt="" src="'+String(u.avatar).replace(/"/g,"")+'">':ICO;
+    if(!u)closePop();
     if(u){
       btn.textContent="로그아웃";
       st.textContent=(u.login_id||u.name||"회원")+" · 동기화 켜짐";
@@ -2820,12 +2864,12 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     }
   }
 
-  btn.onclick=async()=>{
-    if(!user){location.href="/member/login";return;}
+  btn.onclick=()=>{ if(!user){location.href="/member/login";return;} logout(); };
+  async function logout(){
     if(!await askConfirm("로그아웃할까요?\n이 기기의 형광펜·가름끈은 그대로 남습니다."))return;
     try{await fetch("/xms-api/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});}catch(e){}
     setUser(null);toast("로그아웃했습니다");
-  };
+  }
 
   /* 예전 구글(Firebase) 기록 한 번 옮겨오기 — 그때만 Firebase 를 받는다 */
   function loadJs(src){return new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc);});}

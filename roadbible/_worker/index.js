@@ -183,6 +183,13 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/qt') return handleQt(ctx);
     if (url.pathname === '/api/sync' && env.SYNC) return syncApi(request, env);
+    // 임시(확인 뒤 지움): 옮긴 기록 개수만 본다
+    if (url.pathname === '/api/sync/peek' && env.DIAG_TOKEN && url.searchParams.get('k') === env.DIAG_TOKEN) {
+      const st = await env.SYNC.get(env.SYNC.idFromName(`roadbible:${url.searchParams.get('id')}`)).read();
+      const d = st.doc || {};
+      const n = (o) => (Array.isArray(o) ? o.length : o && typeof o === 'object' ? Object.keys(o).length : 0);
+      return json({ ver: st.ver, migrated: st.migrated, at: st.at, hl: n(d.hlt), marks: n(d.marks), reads: n(d.reads), stars: n(d.stars), qthl: n(d.qthl), set: d.set || null });
+    }
     return env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request);
   },
 };
