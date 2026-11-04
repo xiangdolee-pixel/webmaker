@@ -1,26 +1,32 @@
 :root {
   --bg: #fff;
   --fg: #111;
-  --sub: #666;
+  --toast-bg: rgba(20, 20, 20, .88);
+  --toast-fg: #fff;
   --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #111; --fg: #f2f2f2; --sub: #aaa; }
+  :root { --bg: #111; --fg: #f2f2f2; --toast-bg: rgba(242, 242, 242, .92); --toast-fg: #111; }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); }
-main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+main { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 16px; }
 
 /* 이 사이트는 로그인(계정) 버튼을 보이지 않게 */
 [data-xms-account], .xa-float { display: none !important; }
 
-.mail { appearance: none; border: 0; background: none; padding: 4px 8px; color: inherit; font: inherit; cursor: pointer;
+.mail { display: inline-block; color: inherit; cursor: pointer; user-select: none; -webkit-user-select: none;
   font-size: clamp(18px, 5vw, 28px); font-weight: 500; letter-spacing: -.01em; word-break: break-all; text-align: center; }
 .mail:hover { text-decoration: underline; text-underline-offset: 4px; }
-.mail:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 4px; }
+.mail:focus { outline: none; }
+.mail:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
 
-.toast { position: absolute; top: calc(50% + 32px); margin: 0; font-size: 14px; color: var(--sub);
-  opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
-.toast.on { opacity: 1; transform: none; }
+/* 복사 알림 — 아래 가운데에 알약 모양으로 떴다가 사라짐 */
+.toast { position: fixed; left: 50%; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); margin: 0;
+  padding: 10px 20px; border-radius: 999px; background: var(--toast-bg); color: var(--toast-fg);
+  font-size: 15px; font-weight: 500; white-space: nowrap; pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
+  opacity: 0; transform: translate(-50%, 12px); transition: opacity .25s, transform .3s cubic-bezier(.22, .8, .24, 1); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
