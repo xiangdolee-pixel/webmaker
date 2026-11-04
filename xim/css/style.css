@@ -263,6 +263,7 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 .tbl td { padding: 8px 10px; border-bottom: 1px solid #f0f2f5; vertical-align: middle; white-space: nowrap; }
 .tbl tr.hit td { background: #fff4f4; }
 .mon-tbl .path { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.audit-tbl .detail { min-width: 220px; max-width: 520px; white-space: normal; color: var(--sub); }
 .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
 .blocked { color: var(--danger, #c63a3a); }
 .allow-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }

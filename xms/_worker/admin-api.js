@@ -435,8 +435,8 @@ export async function adminApi(ctx) {
     await db.prepare('DELETE FROM audit_log WHERE site = ? AND created_at < ?').bind(site, now() - 31 * DAY).run();
     const page = Math.max(1, Number(q.get('page')) || 1);
     const total = (await db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE site = ?').bind(site).first()).n;
-    const { results } = await db.prepare('SELECT * FROM audit_log WHERE site = ? ORDER BY id DESC LIMIT ? OFFSET ?').bind(site, 30, (page - 1) * 30).all();
-    return json({ total, page, size: 30, rows: results });
+    const { results } = await db.prepare('SELECT * FROM audit_log WHERE site = ? ORDER BY id DESC LIMIT ? OFFSET ?').bind(site, 20, (page - 1) * 20).all();
+    return json({ total, page, size: 20, rows: results });
   }
 
   // 파비콘 · 검색엔진 · 카카오톡 미리보기 · 팝업

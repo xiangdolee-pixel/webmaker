@@ -55,6 +55,7 @@ const NAV_ICON = {
   customers: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.9-5 5.5-5s4.9 2 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.2c2.4.2 4.3 1.9 4.9 4.8"/></svg>',
   requests: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
   monitor: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M8.5 12h2l1-2.5 2 5 1-2.5h1"/></svg>',
+  audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
   security: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
 };
 let navReady = false;
@@ -63,7 +64,7 @@ function showApp() {
   $('#app').hidden = false;
   if (!navReady) {
     navReady = true;
-    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['monitor', '감시'], ['security', '보안']], tab, (v) => {
+    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['monitor', '감시'], ['security', '보안'], ['audit', '관리 로그']], tab, (v) => {
       tab = v;
       if (reqOpen && !(v === 'requests' && /^#req-\d+$/.test(location.hash))) { reqOpen = 0; if (location.hash) history.replaceState(null, '', location.pathname); }
       render();
@@ -150,6 +151,7 @@ function render() {
     if (tab === 'requests') tasks.push(renderRequests());
     if (tab === 'security') tasks.push(renderSecurity());
     if (tab === 'monitor') tasks.push(renderMonitor());
+    if (tab === 'audit') tasks.push(renderAudit());
     await Promise.all(tasks);
   });
 }
@@ -690,6 +692,29 @@ async function renderMonitor() {
     if (view.contains(document.activeElement) && document.activeElement.matches('input, select')) { monTimer = setTimeout(tick, 10000); return; }
     guarded(renderMonitor);
   }, 10000);
+}
+
+// ───────── 관리 로그: 운영자가 xim 에서 한 일 (1개월 보관, 20개씩) ─────────
+const AUDIT_ACTIONS = {
+  LOGIN: '로그인', LOGOUT: '로그아웃', OTP_ON: 'OTP 등록', OTP_OFF: 'OTP 해제',
+  CUSTOMER_CREATE: '고객 추가', CUSTOMER_UPDATE: '고객 수정', CUSTOMER_DELETE: '고객 삭제',
+  SITE_CREATE: '사이트 만들기', SITE_UPDATE: '사이트 수정', SITE_SUSPEND: '사이트 정지', SITE_RESUME: '사이트 재개', SITE_MAIL: '메일 · 봇확인 등록',
+  ADMIN_CREATE: '관리자 계정 추가', ADMIN_DELETE: '관리자 계정 삭제', STAFF_ENTER: 'xms 들어가기',
+  SEC_BLOCK: 'IP 차단', SEC_UNBLOCK: 'IP 차단 풀기', SEC_ALLOW: '막지 않을 IP 추가', SEC_UNALLOW: '막지 않을 IP 빼기',
+  REQUEST_REPLY: '수정요청 답변', REQUEST_STATUS: '수정요청 상태', REQUEST_DELETE: '수정요청 삭제', CONNECT: 'GitHub에서 연결',
+};
+let auditPage = 1;
+async function renderAudit() {
+  const d = await api(`/audit?page=${auditPage}`);
+  if (tab !== 'audit') return;
+  if (auditPage > 1 && !d.rows.length && d.total) { auditPage = Math.ceil(d.total / d.size); return renderAudit(); }
+  view.innerHTML = `
+    <div class="bar"><h2>관리 로그 ${d.total}</h2></div>
+    <p class="meta mon-rule">운영자가 xim 에서 한 일이 최근 1개월 동안 남습니다 (한 쪽에 ${d.size}건). 1개월이 지난 기록은 저절로 지워집니다.</p>
+    <section class="card item">${d.rows.length ? `<div class="tbl-wrap"><table class="tbl audit-tbl"><thead><tr><th>시각</th><th>행위</th><th>대상</th><th>내용</th><th>IP</th></tr></thead><tbody>
+      ${d.rows.map((r) => `<tr><td>${fmtDate(r.created_at, true)}</td><td><b>${esc(AUDIT_ACTIONS[r.action] || r.action)}</b></td><td>${esc(r.target)}</td><td class="detail">${esc(r.detail)}</td><td class="mono">${esc(r.ip)}</td></tr>`).join('')}</tbody></table></div>${monPager('au', d.page, d.size, d.total)}`
+    : '<p class="meta">아직 기록이 없습니다. 사이트 · 고객 · 감시 등에서 바꾸면 여기에 남습니다.</p>'}</section>`;
+  view.querySelectorAll('[data-mon-page]').forEach((b) => { b.onclick = () => { auditPage = +b.dataset.monPage.split(':')[1]; guarded(renderAudit); scrollTo(0, 0); }; });
 }
 
 // ───────── 보안: 구글 OTP ─────────

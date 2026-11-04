@@ -171,6 +171,10 @@ async function readSession(db, request, cookieName, kind) {
 }
 
 const clientIp = (request) => request.headers.get('CF-Connecting-IP') || 'local';
+// 관리 로그: 운영자가 xim 에서 한 일 (1개월 보관 — xms 관리 로그와 같은 방식)
+const audit = (db, request, action, target = '', detail = '') =>
+  db.prepare('INSERT INTO audit_log (action, target, detail, ip, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(action, String(target).slice(0, 200), String(detail).slice(0, 500), clientIp(request), now()).run().catch((e) => console.error('관리 로그 실패', e));
 
 // ───────────────────────── 운영자 API ─────────────────────────
 
@@ -206,6 +210,7 @@ async function ximApi(request, env, url) {
     }
     const token = await newSession(db, 'xim', null, null, expires);
     cookies.push(setCookie(XIM_COOKIE, token, Math.round((expires - now()) / 1000)));
+    await audit(db, request, 'LOGIN', '운영자', secret ? 'OTP 사용' : '');
     const res = json({ ok: true });
     cookies.forEach((c) => res.headers.append('Set-Cookie', c));
     return res;
@@ -216,6 +221,7 @@ async function ximApi(request, env, url) {
 
   if (path === '/api/logout' && method === 'POST') {
     await db.prepare('DELETE FROM sessions WHERE token = ?').bind(session.token).run();
+    await audit(db, request, 'LOGOUT', '운영자');
     return json({ ok: true }, 200, { 'Set-Cookie': setCookie(XIM_COOKIE, '', 0) });
   }
   if (path === '/api/me') return json({ ok: true });
@@ -241,6 +247,7 @@ async function ximApi(request, env, url) {
       db.prepare("DELETE FROM settings WHERE key = 'totp_pending'"),
       db.prepare('DELETE FROM otp_trust'),
     ]);
+    await audit(db, request, 'OTP_ON', '구글 OTP');
     const t = await trustBrowser(db); // 지금 이 브라우저는 방금 OTP 를 넣었으니 24시간 믿는다
     return json({ ok: true }, 200, { 'Set-Cookie': t.cookie });
   }
@@ -253,6 +260,7 @@ async function ximApi(request, env, url) {
       db.prepare("DELETE FROM settings WHERE key IN ('totp_secret', 'totp_pending')"),
       db.prepare('DELETE FROM otp_trust'),
     ]);
+    await audit(db, request, 'OTP_OFF', '구글 OTP');
     return json({ ok: true });
   }
 
@@ -289,19 +297,24 @@ async function ximApi(request, env, url) {
     const b = customerFields(await body(request));
     const r = await db.prepare('INSERT INTO customers (name, contact, phone, email, memo, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(b.name, b.contact, b.phone, b.email, b.memo, now()).run();
+    await audit(db, request, 'CUSTOMER_CREATE', b.name);
     return json({ id: r.meta.last_row_id });
   }
   let m = path.match(/^\/api\/customers\/(\d+)$/);
   if (m && method === 'PUT') {
     const b = customerFields(await body(request));
+    const before = await db.prepare('SELECT * FROM customers WHERE id = ?').bind(+m[1]).first();
     await db.prepare('UPDATE customers SET name = ?, contact = ?, phone = ?, email = ?, memo = ? WHERE id = ?')
       .bind(b.name, b.contact, b.phone, b.email, b.memo, +m[1]).run();
+    await audit(db, request, 'CUSTOMER_UPDATE', b.name, changed(before, b, { name: '이름', contact: '담당자', phone: '전화', email: '이메일', memo: '메모' }));
     return json({ ok: true });
   }
   if (m && method === 'DELETE') {
     const used = await db.prepare('SELECT COUNT(*) AS n FROM sites WHERE customer_id = ?').bind(+m[1]).first();
     if (used.n) throw bad('이 고객에 연결된 사이트가 있어 지울 수 없습니다. 사이트의 고객을 먼저 바꿔 주세요.');
+    const c = await db.prepare('SELECT name FROM customers WHERE id = ?').bind(+m[1]).first();
     await db.prepare('DELETE FROM customers WHERE id = ?').bind(+m[1]).run();
+    await audit(db, request, 'CUSTOMER_DELETE', c?.name || `#${m[1]}`);
     return json({ ok: true });
   }
 
@@ -332,29 +345,35 @@ async function ximApi(request, env, url) {
       'INSERT INTO sites (slug, name, customer_id, domain, status, quota_mb, memo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     ).bind(slug, b.name, b.customer_id, b.domain, b.status, b.quota_mb, b.memo, now()).run();
     const mail = b.domain ? await mailRegister(env, r.meta.last_row_id, b.domain) : null;
+    await audit(db, request, 'SITE_CREATE', `${b.name} (${slug})`, b.domain ? `도메인 ${b.domain}` : '');
     return json({ id: r.meta.last_row_id, mail });
   }
   m = path.match(/^\/api\/sites\/(\d+)$/);
   if (m && method === 'PUT') {
     const b = siteFields(await body(request));
-    const before = await db.prepare('SELECT domain, mail_status FROM sites WHERE id = ?').bind(+m[1]).first();
+    const before = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();
     await db.prepare('UPDATE sites SET name = ?, customer_id = ?, domain = ?, status = ?, quota_mb = ?, memo = ? WHERE id = ?')
       .bind(b.name, b.customer_id, b.domain, b.status, b.quota_mb, b.memo, +m[1]).run();
     // 대표 도메인이 바뀌었거나 아직 메일 등록이 안 됐으면 Email Sending 에 등록
     const mail = b.domain && (b.domain !== before?.domain || !['ok', 'added'].includes(before?.mail_status)) ? await mailRegister(env, +m[1], b.domain) : null;
+    await audit(db, request, 'SITE_UPDATE', `${b.name} (${before?.slug || m[1]})`, changed(before, b, { name: '이름', customer_id: '고객', domain: '도메인', status: '상태', quota_mb: '용량(MB)', memo: '메모' }));
     return json({ ok: true, mail });
   }
   m = path.match(/^\/api\/sites\/(\d+)\/mail$/);
   if (m && method === 'POST') {
-    const s = await db.prepare('SELECT domain FROM sites WHERE id = ?').bind(+m[1]).first();
+    const s = await db.prepare('SELECT slug, domain FROM sites WHERE id = ?').bind(+m[1]).first();
     if (!s?.domain) throw bad('대표 도메인을 먼저 넣어 주세요.');
-    return json({ ok: true, mail: await mailRegister(env, +m[1], s.domain) });
+    const mail = await mailRegister(env, +m[1], s.domain);
+    await audit(db, request, 'SITE_MAIL', s.slug, `${s.domain} — ${mail?.message || ''}`);
+    return json({ ok: true, mail });
   }
   m = path.match(/^\/api\/sites\/(\d+)\/status$/);
   if (m && method === 'POST') {
     const { status } = await body(request);
     if (!['active', 'suspended'].includes(status)) throw bad('상태 값이 잘못됐습니다.');
     await db.prepare('UPDATE sites SET status = ? WHERE id = ?').bind(status, +m[1]).run();
+    const s = await db.prepare('SELECT slug, name FROM sites WHERE id = ?').bind(+m[1]).first();
+    await audit(db, request, status === 'suspended' ? 'SITE_SUSPEND' : 'SITE_RESUME', s ? `${s.name} (${s.slug})` : `#${m[1]}`);
     return json({ ok: true });
   }
 
@@ -381,6 +400,7 @@ async function ximApi(request, env, url) {
       const t = now();
       await xms.prepare('INSERT INTO members (site, login_id, pw_hash, pw_salt, name, level, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)')
         .bind(site.slug, username, await hashPassword(password, salt), salt, str(raw.name, 40) || username, t).run();
+      await audit(db, request, 'ADMIN_CREATE', site.slug, `${str(raw.name, 40) || username} (${username})`);
       return json({ ok: true });
     }
   }
@@ -388,10 +408,12 @@ async function ximApi(request, env, url) {
   if (m && method === 'DELETE') {
     const site = await db.prepare('SELECT slug FROM sites WHERE id = ?').bind(+m[1]).first();
     if (!site) throw new HttpError(404, '사이트가 없습니다.');
+    const who = await env.XMS_DB.prepare('SELECT name, login_id FROM members WHERE id = ? AND site = ?').bind(+m[2], site.slug).first();
     await env.XMS_DB.batch([
       env.XMS_DB.prepare("UPDATE members SET status = 'WITHDRAWN', withdrawn_at = ?, withdraw_reason = 'xim 에서 관리자 계정 삭제' WHERE id = ? AND site = ? AND level = 1").bind(now(), +m[2], site.slug),
       env.XMS_DB.prepare('DELETE FROM sessions WHERE member_id = ?').bind(+m[2]),
     ]);
+    await audit(db, request, 'ADMIN_DELETE', site.slug, who ? `${who.name} (${who.login_id})` : `#${m[2]}`);
     return json({ ok: true });
   }
 
@@ -403,6 +425,7 @@ async function ximApi(request, env, url) {
     const token = randomHex(32);
     await env.XMS_DB.prepare('DELETE FROM staff_tickets WHERE expires_at < ?').bind(now()).run();
     await env.XMS_DB.prepare('INSERT INTO staff_tickets (token, site, expires_at) VALUES (?, ?, ?)').bind(token, site.slug, now() + 60000).run();
+    await audit(db, request, 'STAFF_ENTER', `${site.name} (${site.slug})`, 'xms 관리 화면 들어가기');
     return json({ url: `${siteUrl(site)}/xms/?staff=${token}` });
   }
 
@@ -440,11 +463,13 @@ async function ximApi(request, env, url) {
       ON CONFLICT(ip) DO UPDATE SET reason = excluded.reason, until = excluded.until, last_at = excluded.last_at, manual = 1`)
       .bind(ip, str(raw.memo, 100) || '운영자가 직접 차단', t + days * DAY, t, t).run();
     await db.prepare('DELETE FROM sec_allow WHERE ip = ?').bind(ip).run();
+    await audit(db, request, 'SEC_BLOCK', ip, days >= 3650 ? '계속' : `${days}일`);
     return json({ ok: true });
   }
   m = path.match(/^\/api\/sec\/blocks\/([0-9a-fA-F:.%]+)$/);
   if (m && method === 'DELETE') {
     await db.prepare('UPDATE sec_blocks SET until = 0 WHERE ip = ?').bind(decodeURIComponent(m[1])).run(); // 기록은 남겨 다시 걸리면 7일
+    await audit(db, request, 'SEC_UNBLOCK', decodeURIComponent(m[1]));
     return json({ ok: true });
   }
   if (path === '/api/sec/allow' && method === 'POST') {
@@ -455,11 +480,13 @@ async function ximApi(request, env, url) {
       db.prepare('INSERT OR REPLACE INTO sec_allow (ip, memo, created_at) VALUES (?, ?, ?)').bind(ip, str(raw.memo, 100), now()),
       db.prepare('UPDATE sec_blocks SET until = 0 WHERE ip = ?').bind(ip),
     ]);
+    await audit(db, request, 'SEC_ALLOW', ip, str(raw.memo, 100));
     return json({ ok: true });
   }
   m = path.match(/^\/api\/sec\/allow\/([0-9a-fA-F:.%]+)$/);
   if (m && method === 'DELETE') {
     await db.prepare('DELETE FROM sec_allow WHERE ip = ?').bind(decodeURIComponent(m[1])).run();
+    await audit(db, request, 'SEC_UNALLOW', decodeURIComponent(m[1]));
     return json({ ok: true });
   }
 
@@ -489,9 +516,10 @@ async function ximApi(request, env, url) {
   }
   // 요청 지우기 (운영자)
   if (m && method === 'DELETE') {
-    const r = await db.prepare('SELECT s.slug FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?').bind(+m[1]).first();
+    const r = await db.prepare('SELECT s.slug, r.title FROM requests r JOIN sites s ON s.id = r.site_id WHERE r.id = ?').bind(+m[1]).first();
     if (!r) throw notFound('요청을 찾을 수 없습니다.');
     await deleteRequest(db, env.XMS_DB, env.FILES, +m[1], r.slug);
+    await audit(db, request, 'REQUEST_DELETE', `${r.slug} #${m[1]}`, r.title || '');
     return json({ ok: true });
   }
   // 운영자 답변: 글 · 파일(없어도 됨) + 상태
@@ -515,6 +543,7 @@ async function ximApi(request, env, url) {
         .bind(r.id, text, JSON.stringify(atts), status !== r.status ? status : '', t),
       db.prepare('UPDATE requests SET status = ?, updated_at = ?, op_seen_at = ? WHERE id = ?').bind(status, t, t, r.id),
     ]);
+    await audit(db, request, 'REQUEST_REPLY', `${r.slug} #${r.id}`, [status !== r.status ? `상태 ${STATUS_NAME[r.status]} → ${STATUS_NAME[status]}` : '', atts.length ? `파일 ${atts.length}개` : '', text.slice(0, 80)].filter(Boolean).join(' · '));
     return json({ ok: true, status });
   }
   // 운영자가 답변에 붙일 파일 → 그 사이트 xms 저장소(R2 + xms uploads)로. 주소는 사이트주소/xms/upload/<id>
@@ -544,6 +573,7 @@ async function ximApi(request, env, url) {
     if (!STATUSES.includes(raw.status)) throw bad('상태 값이 잘못됐습니다.');
     await db.prepare('UPDATE requests SET status = ?, reply = ?, updated_at = ? WHERE id = ?')
       .bind(raw.status, str(raw.reply, 5000), now(), +m[1]).run();
+    await audit(db, request, 'REQUEST_STATUS', `#${m[1]}`, STATUS_NAME[raw.status]);
     return json({ ok: true });
   }
 
@@ -555,6 +585,7 @@ async function ximApi(request, env, url) {
       if (!list.some((f) => f.type === 'file' && /\.html?$/i.test(f.name))) throw bad(`"${folder}" 폴더에 html 파일이 없습니다. 정적 홈페이지 폴더를 넣어 주세요.`);
     }, (e) => { throw e.status === 404 ? bad(`저장소에 "${folder}" 폴더가 없습니다. 먼저 GitHub 에 올라가 있어야 합니다.`) : e; });
     await github(env, `/actions/workflows/${WORKFLOW}/dispatches`, { ref: 'main', inputs: { folder } });
+    await audit(db, request, 'CONNECT', folder, 'GitHub에서 연결');
     return json({ ok: true, folder });
   }
   if (path === '/api/connect/runs' && method === 'GET') {
@@ -568,7 +599,25 @@ async function ximApi(request, env, url) {
     });
   }
 
+  // 관리 로그 — 1개월만 남긴다 (xms 와 같음)
+  if (path === '/api/audit' && method === 'GET') {
+    await db.prepare('DELETE FROM audit_log WHERE created_at < ?').bind(now() - 31 * DAY).run();
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const total = (await db.prepare('SELECT COUNT(*) AS n FROM audit_log').first()).n;
+    const { results } = await db.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?').bind(20, (page - 1) * 20).all();
+    return json({ total, page, size: 20, rows: results });
+  }
+
   throw new HttpError(404, '없는 주소입니다.');
+}
+
+const STATUS_NAME = { new: '접수', doing: '처리 중', done: '완료' };
+// 고친 항목만 "이름: 가 → 나" 로 (길면 자름)
+function changed(before, after, labels) {
+  if (!before) return '';
+  const cut = (v) => { const t = String(v ?? '').replace(/\s+/g, ' '); return t.length > 30 ? `${t.slice(0, 30)}…` : t || '(없음)'; };
+  return Object.entries(labels).filter(([k]) => String(before[k] ?? '') !== String(after[k] ?? ''))
+    .map(([k, l]) => (k === 'memo' ? `${l} 고침` : `${l}: ${cut(before[k])} → ${cut(after[k])}`)).join(' · ');
 }
 
 // ───────── 사이트별 사용량 (xms DB 기준, 바이트) ─────────

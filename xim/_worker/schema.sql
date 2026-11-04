@@ -138,3 +138,14 @@ CREATE TABLE IF NOT EXISTS otp_trust (
 --   ALTER TABLE requests ADD COLUMN attachments TEXT;   -- 수정 요청 첨부 [{ id, name, size, kind }] (파일은 그 사이트 xms 업로드)
 --   ALTER TABLE requests ADD COLUMN site_seen_at INTEGER NOT NULL DEFAULT 0;  -- 업체 관리자가 마지막으로 본 때 (운영자 새 글 표시)
 --   ALTER TABLE requests ADD COLUMN op_seen_at INTEGER NOT NULL DEFAULT 0;    -- 운영자가 마지막으로 본 때 (업체 새 글 표시)
+
+-- 관리 로그: 운영자가 xim 에서 한 일 (2026-11-04, 1개월 보관 — xms audit_log 와 같은 방식)
+CREATE TABLE IF NOT EXISTS audit_log (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  action     TEXT NOT NULL,
+  target     TEXT NOT NULL DEFAULT '',
+  detail     TEXT NOT NULL DEFAULT '',
+  ip         TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(created_at);
