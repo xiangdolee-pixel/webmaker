@@ -65,6 +65,7 @@ em { font-style: normal; }
 }
 .top-btn::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--lime); }
 .top.dark .top-btn { background: var(--lime); color: var(--night); }
+.top.dark .top-btn::after { background: var(--night); }   /* 버튼이 라임색이면 점은 반대로 어둡게 */
 
 /* ── 1. 첫 화면 ─────────────────────── */
 .hero { position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; }
