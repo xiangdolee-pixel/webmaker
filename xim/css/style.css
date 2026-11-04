@@ -295,7 +295,8 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 .crow { grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(160px, 1.4fr) auto auto; }
 .srow.off { background: #f6f7f9; }
 .srow > div, .crow > div { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; color: var(--sub); }
-.sr-name small { color: var(--mute); }
+.sr-meta { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.sr-meta small { color: var(--mute); }
 .sr-name .site-name b, .cr-name b { color: var(--ink); font-size: 15px; }
 .sr-cust b { color: var(--ink); font-weight: 600; }
 .srow a, .crow a { color: var(--brand); text-decoration: none; overflow-wrap: anywhere; }
@@ -362,7 +363,12 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
 @media (min-width: 900px) {
   .sr-use { grid-template-columns: repeat(3, max-content); white-space: nowrap; font-size: 12.5px !important; }
   .sr-name { flex-wrap: nowrap !important; white-space: nowrap; }
-  .sr-name .site-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .sr-name .site-name { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+  .sr-name .site-name b { overflow: hidden; text-overflow: ellipsis; }
+  .site-fav { flex: none; }
+  /* 버튼 칸을 좁게: 윗줄 포트폴리오 스위치, 아랫줄 버튼 → 이름 · 사용량 칸이 넓어져 덜 잘린다 */
+  .srow .sr-act { flex-wrap: wrap !important; align-content: center; row-gap: 5px !important; max-width: 280px; }
+  .srow .pf-sw { flex-basis: 100%; justify-content: flex-end; margin: 0; }
 }
 
 /* Cloudflare 요금제 */

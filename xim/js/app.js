@@ -294,10 +294,9 @@ function siteRow(s) {
   return `
   <article class="card srow${s.status === 'active' ? '' : ' off'}" data-site="${s.id}" data-find="${esc(find)}">
     <div class="sr-name">
-      <a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}<b>${esc(s.name)}</b></a>
-      <small>${esc(s.slug)}</small>${badge(s.status)}
+      <a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)} — 홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}<b>${esc(s.name)}</b></a>
     </div>
-    <div class="sr-cust"${c ? ` title="${esc([c.name, c.contact, c.phone, c.email].filter(Boolean).join(' · '))}"` : ''}>${c ? `<b>${esc(c.name)}</b>${c.contact ? `<span>${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}` : '<span class="dim">고객 없음</span>'}</div>
+    <div class="sr-cust"${c ? ` title="${esc([c.name, c.contact, c.phone, c.email].filter(Boolean).join(' · '))}"` : ''}><span class="sr-meta">${badge(s.status)}<small>${esc(s.slug)}</small></span>${c ? `<b>${esc(c.name)}</b>${c.contact ? `<span>${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}` : '<span class="dim">고객 없음</span>'}</div>
     <div class="sr-addr">${s.domain ? link(s.url, s.domain) : '<span class="dim">도메인 없음</span>'}${link(dev, 'workers.dev')}${tags}</div>
     <div class="sr-num"><span class="sr-made" title="사이트를 만든 날 ${esc(fmtDate(s.created_at))}">제작 <b>${esc(fmtDate(s.created_at).slice(0, 10))}</b></span><span>관리자 <b>${s.admin_count}</b></span>${s.open_requests ? `<button type="button" class="link-btn" data-go-reqs="${esc(s.slug)}">요청 <b>${s.open_requests}</b></button>` : '<span>요청 0</span>'}</div>
     <div class="sr-use" title="DB ${mb(u.db)} · 파일 ${u.file_count}개(R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}) · 홈페이지 ${s.static_mb || 0}MB">
