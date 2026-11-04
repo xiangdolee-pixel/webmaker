@@ -150,6 +150,14 @@ async function handle(request, env) {
     const { pathname } = url;
     const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/xms/') || pathname.startsWith('/xms-api/');
     // CSS · JS · 그림 같은 파일은 정지 확인 없이 바로 (페이지가 막히면 파일만으로는 쓸 수 없다) — 파일마다 xim 에 묻지 않게
+    // /favicon.ico 가 사이트에 없으면 xms 파비콘(192px PNG)으로 — 구글 · 일부 브라우저는 이 주소부터 찾는다
+    if (pathname === '/favicon.ico' && request.method === 'GET') {
+      const r = await env.ASSETS.fetch(request);
+      if (r.status !== 404 || !env.XMS) return cacheStatic(r, pathname);
+      const x = await forward(env.XMS, request, env, '/xms/file/favicon-192.png');
+      if (x.ok) return new Response(x.body, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' } });
+      return r;
+    }
     if (!isAdmin && request.method === 'GET' && !looksHtml(pathname) && !XMS_PATHS.test(pathname)) return cacheStatic(await env.ASSETS.fetch(request), pathname);
     if (!isAdmin && (await siteStatus(env, request)) === 'suspended') return forward(env.XIM, request, env, '/__suspended');
     // 게시판 · 회원 화면: 사이트의 기존 페이지(틀)에 끼워 넣는다 — 머리 · 꼬리 · CSS 는 사이트 그대로

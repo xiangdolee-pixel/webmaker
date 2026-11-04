@@ -308,3 +308,41 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
   .crow .sr-act { justify-content: flex-start; }
 }
 @media (max-width: 767px) { .srow, .crow { grid-template-columns: minmax(0, 1fr); } .bar .search-q { max-width: none; margin-left: 0; order: 3; flex-basis: 100%; } }
+
+/* ── 한눈에 보이게 (사용자 지시 2026-11-04 "사이트 5개인데 벌써 스크롤") — 요약 칸 · 사이트 줄 높이를 줄인다 ── */
+.tiles { gap: 8px; margin-bottom: 14px; }
+.tile { padding: 10px 14px; }
+.tile > b { display: inline; font-size: 22px; margin-right: 8px; }
+.tile > span { font-size: 13.5px; }
+.wide-tile { padding: 12px 16px 14px; }
+.meters-head { margin-bottom: 8px; }
+.meters { gap: 8px; }
+.meter { padding: 8px 12px 10px; border-radius: 12px; }
+.m-val { margin: 2px 0 6px; }
+.m-val strong { font-size: 17px; }
+.m-sub { display: none; }   /* 설명은 칸에 마우스를 올리면 (title) */
+@media (min-width: 768px) { .meters { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; } }
+
+.rows { gap: 6px; }
+.srow { padding: 9px 14px; gap: 4px 14px; }
+.srow > div { font-size: 13.5px; gap: 2px 8px; }
+.sr-name .site-name b { font-size: 14.5px; }
+.sr-act .btn.sm { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.sr-num { max-width: 150px; }
+@media (min-width: 900px) {
+  /* 넓은 화면: 한 사이트 = 두 줄 카드 — 윗줄 이름 · 주소 · 사용량, 아랫줄 고객 · 숫자, 버튼은 오른쪽에 한 줄 */
+  .srow {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr) minmax(0, 1fr) auto;
+    grid-template-areas: "name addr use act" "cust addr num act"; gap: 3px 18px;
+  }
+  .sr-name { grid-area: name; } .sr-cust { grid-area: cust; } .sr-addr { grid-area: addr; }
+  .sr-use { grid-area: use; } .sr-num { grid-area: num; max-width: none; flex-wrap: nowrap !important; white-space: nowrap; }
+  .srow .sr-act { grid-area: act; grid-column: auto; flex-wrap: nowrap !important; justify-content: flex-end; }
+  .sr-cust { flex-wrap: nowrap !important; white-space: nowrap; overflow: hidden; }
+  .sr-cust a[href^="mailto:"] { display: none; }   /* 메일은 칸에 마우스를 올리면 (title) */
+}
+@media (min-width: 900px) {
+  .sr-use { grid-template-columns: repeat(3, max-content); white-space: nowrap; font-size: 12.5px !important; }
+  .sr-name { flex-wrap: nowrap !important; white-space: nowrap; }
+  .sr-name .site-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}

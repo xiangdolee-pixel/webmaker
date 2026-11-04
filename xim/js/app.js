@@ -135,7 +135,7 @@ function meter(name, sub, used, limit, cls) {
   const pct = limit ? (used / limit) * 100 : 0;
   const pctText = pct === 0 ? '0%' : pct < 0.1 ? '0.1% 미만' : pct < 10 ? `${pct.toFixed(1)}%` : `${Math.round(pct)}%`;
   const limitText = limit >= 1073741824 ? `${limit / 1073741824}GB` : `${limit / 1048576}MB`;
-  return `<div class="meter ${cls}${pct >= 90 ? ' hot' : ''}">
+  return `<div class="meter ${cls}${pct >= 90 ? ' hot' : ''}" title="${sub}">
     <div class="m-head"><span class="m-name">${name}</span><span class="m-pct">${pctText}</span></div>
     <div class="m-val"><strong>${mb(used)}</strong><span>/ ${limitText}</span></div>
     <div class="meter-bar" role="meter" aria-label="${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct.toFixed(2)}"><i style="width:${Math.min(100, Math.max(pct, used ? 0.8 : 0))}%"></i></div>
@@ -285,7 +285,7 @@ function siteRow(s) {
       <a class="site-name" href="${esc(s.url)}" target="_blank" rel="noopener" title="홈페이지 열기">${s.favicon ? `<img class="site-fav" src="${esc(s.favicon)}" alt="" width="20" height="20" onerror="this.remove()">` : ''}<b>${esc(s.name)}</b></a>
       <small>${esc(s.slug)}</small>${badge(s.status)}
     </div>
-    <div class="sr-cust">${c ? `<b>${esc(c.name)}</b>${c.contact ? `<span>${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}` : '<span class="dim">고객 없음</span>'}</div>
+    <div class="sr-cust"${c ? ` title="${esc([c.name, c.contact, c.phone, c.email].filter(Boolean).join(' · '))}"` : ''}>${c ? `<b>${esc(c.name)}</b>${c.contact ? `<span>${esc(c.contact)}</span>` : ''}${c.phone ? `<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>` : ''}${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}` : '<span class="dim">고객 없음</span>'}</div>
     <div class="sr-addr">${s.domain ? link(s.url, s.domain) : '<span class="dim">도메인 없음</span>'}${link(dev, 'workers.dev')}${tags}</div>
     <div class="sr-num"><span class="sr-made" title="사이트를 만든 날 ${esc(fmtDate(s.created_at))}">제작 <b>${esc(fmtDate(s.created_at).slice(0, 10))}</b></span><span>관리자 <b>${s.admin_count}</b></span>${s.open_requests ? `<button type="button" class="link-btn" data-go-reqs="${esc(s.slug)}">요청 <b>${s.open_requests}</b></button>` : '<span>요청 0</span>'}</div>
     <div class="sr-use" title="DB ${mb(u.db)} · 파일 ${u.file_count}개(R2 ${mb(u.r2)} · DB ${mb(u.d1_files)}) · 홈페이지 ${s.static_mb || 0}MB">
