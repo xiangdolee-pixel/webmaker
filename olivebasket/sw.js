@@ -1,6 +1,6 @@
-const CACHE = 'olivebasket-v34';
+const CACHE = 'olivebasket-v35';
 const SHELL = [
-  './',
+  '/app',
   'basket',
   'style.css?v=29',
   'app.js?v=32',
@@ -29,20 +29,20 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || /^\/(api|xms-api|xms|member|board|login)(\/|$)/.test(url.pathname)) return;
 
   // 첫 화면: 저장본을 바로 보여 주고 뒤에서 새로 받아 둔다 — 앱이 기다리지 않고 뜨게 (새 버전은 다음에 열 때)
-  if (e.request.mode === 'navigate' && (url.pathname === '/' || url.pathname === '/index.html')) {
+  if (e.request.mode === 'navigate' && url.pathname === '/app') {
     const net = fetch(e.request).then(res => {
-      if (res.ok && !res.redirected) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./', copy)); }
+      if (res.ok && !res.redirected) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/app', copy)); }
       return res;
     });
     e.waitUntil(net.catch(() => {}));
-    e.respondWith(caches.match('./').then(hit => hit || net));
+    e.respondWith(caches.match('/app').then(hit => hit || net));
     return;
   }
   // 그 밖의 페이지 이동: 네트워크 우선, 실패(오프라인) 시 캐시
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() =>
-        caches.match(e.request, { ignoreSearch: true }).then(hit => hit || caches.match('./'))
+        caches.match(e.request, { ignoreSearch: true }).then(hit => hit || caches.match('/app'))
       )
     );
     return;

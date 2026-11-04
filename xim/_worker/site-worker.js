@@ -294,9 +294,9 @@ async function withXms(res, request, env, data) {
     element(el) {
       const k = (el.getAttribute('property') || '').slice(3);
       if (k in og) og[k] = true;
-      // 미리보기 그림 · 주소는 전체 주소여야 네이버 · 카톡이 읽는다 (/img/… → https://도메인/img/…)
+      // 미리보기 그림 · 주소는 전체 주소여야 네이버 · 카톡이 읽는다 (/img/… · assets/… → https://도메인/…)
       const c = el.getAttribute('content') || '';
-      if ((k === 'image' || k === 'url') && c.startsWith('/') && !c.startsWith('//')) el.setAttribute('content', url.origin + c);
+      if ((k === 'image' || k === 'url') && c && !/^[a-z][a-z0-9+.-]*:/i.test(c)) { try { el.setAttribute('content', new URL(c, url).href); } catch { /* 이상한 주소는 그대로 */ } }
     },
   });
   rw = rw.on('meta[name="description"]', { element(el) { hasDesc = true; if (home && h.description) el.setAttribute('content', h.description); } });

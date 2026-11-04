@@ -6,6 +6,7 @@
      /api/items     GET · POST · PUT · DELETE?id=
      /api/settings  GET · PUT { weight_mode }
      /api/random    GET ?not=본 id들&last=직전 id → 구절 하나 { id, text, source, stars, mode, cycled } | { empty: true }
+   - /       소개 페이지(로그인했으면 /app 으로) · /app 구절 앱 · /basket 담기
    - /login → /member/login (예전 주소로 들어와도)
    - 그 밖: xim 공통 사이트 Worker (회원 화면 · 계정 버튼 · 정적 파일) */
 import site from '../../xim/_worker/site-worker.js';
@@ -140,6 +141,10 @@ export default {
     }
     // 예전 담기 화면 주소(/admin)를 홈 화면에 저장해 둔 경우
     if (url.pathname === '/admin.html') return Response.redirect(`${url.origin}/basket`, 302);
+    // 첫 화면(/) = 소개 페이지. 로그인한 회원이면 바로 구절 앱(/app)으로 (사용자 지시 2026-11-04: "가입하면 기존 서비스가 나오게")
+    if ((url.pathname === '/' || url.pathname === '/index.html') && request.method === 'GET' && (await member(request, env))) {
+      return new Response(null, { status: 302, headers: { Location: '/app', 'Cache-Control': 'no-store' } });
+    }
     if (url.pathname === '/login' || url.pathname === '/login.html') {
       const signup = url.searchParams.get('mode') === 'signup';
       return Response.redirect(`${url.origin}/member/${signup ? 'signup' : 'login'}`, 302);

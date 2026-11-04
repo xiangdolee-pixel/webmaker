@@ -1,49 +1,335 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>올리브바스켓</title>
-<meta name="description" content="책에서 모은 아포리즘을 한 구절씩">
-<meta name="theme-color" content="#5a6740">
-<link rel="manifest" href="manifest.webmanifest">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>올리브바스켓 — 그만 넘기고, 한 줄 담기</title>
+<meta name="description" content="마음에 담고 싶은 문장을 적어 두면, 열 때마다 한 줄씩 다시 보여 주는 웹. 브라우저로 열고 폰 홈 화면에 설치해요.">
+<meta name="theme-color" content="#FFFFFF">
+<meta property="og:title" content="올리브바스켓 — 그만 넘기고, 한 줄 담기">
+<meta property="og:description" content="마음에 담고 싶은 문장을 적어 두면, 열 때마다 한 줄씩 다시 보여 줘요.">
+<meta property="og:image" content="assets/img/app/q-seneca.webp">
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.2.5/index.css" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="style.css?v=29">
-<!-- 시작 화면(로고 · 이름): 설치한 앱으로 열면 휴대폰이 이미 로고 · 이름 화면을 보여 주므로 한 번 더 띄우지 않는다 (사용자 지시 2026-11-04).
-     브라우저로 열 때만, 그것도 처음 한 번만 (당겨서 새로고침 때는 생략) -->
-<script>try { if (sessionStorage.getItem('ob_splash') || matchMedia('(display-mode: standalone)').matches || navigator.standalone) document.documentElement.classList.add('nosplash'); } catch {}</script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=JetBrains+Mono:wght@500&family=Noto+Serif+KR:wght@300;400;600&display=swap">
+<link rel="stylesheet" href="assets/css/styles.css?v=10">
 </head>
-<body class="lock">
-<div class="splash" id="splash" aria-hidden="true">
-  <img src="icons/icon-512.png" alt="">
-  <div class="splash-name">올리브바스켓</div>
-</div>
-<div class="bg" id="bgA" aria-hidden="true"></div>
-<div class="bg" id="bgB" aria-hidden="true"></div>
-<div class="ptr" id="ptr" aria-hidden="true">↻</div>
-<header class="ob-top">
-  <a class="ob-logo" href="/"><span class="leaf-mark" aria-hidden="true"></span>올리브바스켓</a>
-  <span class="ob-acc" data-xms-account></span>
-</header>
-<main class="stage" id="stage" aria-live="polite">
-  <div class="stars top-stars" id="stars" aria-label="중요도"></div>
+<body>
 
-  <div class="quote-card">
-    <p class="quote" id="quote">&nbsp;</p>
-    <div class="meta" id="meta">
-      <div class="source" id="source"></div>
+<!-- 올리브 한 알 (색은 currentColor) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="olive" viewBox="0 0 40 52">
+    <path d="M22 9c3-5 9-8 15-7-2 6-8 9-15 7z" fill="#6f7f3a"/>
+    <path d="M21 10c-1-3-1-6 1-9" stroke="#5a4a2e" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <ellipse cx="20" cy="31" rx="15" ry="19" fill="currentColor"/>
+    <ellipse cx="14" cy="24" rx="4" ry="6.5" fill="#fff" opacity=".28" transform="rotate(-18 14 24)"/>
+  </symbol>
+</svg>
+
+<header class="top" id="top">
+  <a class="logo" href="#hero"><img src="assets/img/basket.webp" alt="" width="34" height="25">olive basket</a>
+  <span class="top-r">
+    <a class="top-btn" href="#install">설치하기</a>
+    <span class="top-acc" data-xms-account></span>
+  </span>
+</header>
+
+<main>
+
+<!-- 1. 첫 화면: 누르면 한 줄씩 (앱과 같은 동작) -->
+<section class="hero" id="hero" aria-label="올리브바스켓 맛보기">
+  <div class="hero-in">
+    <p class="meta"><span>OLIVE BASKET</span><span>N°01</span></p>
+    <p class="slogan"><s>도파민</s> 말고, <mark>올리브</mark></p>
+    <h1 class="hero-title">오늘 나를<br><span class="swap-wrap draw" id="swapWrap"><span class="swap" id="swap">붙잡는</span><svg class="swap-ico" aria-hidden="true"><use href="#olive"/></svg></span><br>한 줄.</h1>
+    <p class="hero-sub">마음에 걸린 문장을 담아 두면,<br>열 때마다 한 줄씩 다시 꺼내 주는 웹이에요.</p>
+
+    <figure class="live" id="live">
+      <div class="live-head"><span><b id="liveNo">01</b> / <span id="liveAll">08</span></span><span class="live-star" id="liveStar">★★★</span></div>
+      <blockquote class="live-q" id="liveQ">우리에게 주어진 시간이 짧은 것이 아니라, 우리가 그 많은 시간을 허비하는 것이다.</blockquote>
+      <figcaption class="live-s" id="liveS">세네카, 『인생의 짧음에 관하여』</figcaption>
+      <div class="live-foot"><span>olive basket</span><span>탭해서 한 줄 더<svg viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></svg></span></div>
+    </figure>
+  </div>
+</section>
+
+<!-- 2. 문제: 넘기고 또 넘기는 피드 -->
+<section class="doom" id="doom" data-dark>
+  <div class="doom-in">
+    <div class="hud">
+      <div><span>넘긴 쇼츠</span><b id="swiped">0</b></div>
+      <div class="hud-r"><span>기억에 남은 것</span><b id="kept">0</b></div>
+    </div>
+    <div class="sfone" aria-hidden="true">
+      <div class="sf-scr">
+        <div class="reel" id="reel"></div>
+        <div class="sf-status"><b id="sfTime">11:12</b><span><em id="sfPct">78</em>%<i class="sf-bat"><i id="sfBat"></i></i></span></div>
+        <div class="sf-tabs"><span>팔로잉</span><b>추천</b></div>
+        <div class="toast" id="toast"><span class="toast-ico">⏳</span><p><b>스크린 타임</b>오늘 휴대폰을 5시간 12분 봤어요</p></div>
+      </div>
+    </div>
+    <div class="doom-end">
+      <svg class="drop"><use href="#olive"/></svg>
+      <blockquote>우리에게 주어진 시간이 짧은 것이 아니라,<br>우리가 그 많은 시간을 허비하는 것이다.</blockquote>
+      <cite>— 세네카</cite>
+      <p class="doom-cta">그만 넘기고, <em>한 줄 담기.</em></p>
     </div>
   </div>
+</section>
+
+<!-- 3. 큰 글자 + 바느질 (누르면 물들이기) -->
+<section class="stitch" id="stitch">
+  <div class="giant-box" id="giantBox">
+    <div class="giant"><span class="fit">OLIVE</span><span class="fit">BASKET</span></div>
+    <svg class="thread" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path id="th1" d="M-2 24 C 14 8, 24 44, 40 28 S 62 6, 76 30 S 94 50, 102 36"/>
+      <path id="th2" d="M-2 80 C 18 62, 32 96, 50 78 S 78 56, 102 74"/>
+    </svg>
+    <div class="holes" id="holes" aria-hidden="true"></div>
+  </div>
+  <div class="stitch-copy">
+    <p>바구니에 올리브를 담듯,<br>마음에 문장을 담아요.</p>
+    <button type="button" class="dash" id="recolor">눌러서 물들이기</button>
+  </div>
+</section>
+
+<!-- 3-1. 무엇을 하나: 그림 카드 -->
+<section class="feat">
+  <div class="wrap">
+    <p class="label"><span>올리브바스켓이 하는 일</span><b>WHAT IT DOES</b></p>
+    <h2 class="sec-title rv">쇼츠 대신,<br>문장 한 줄.</h2>
+    <div class="fgrid">
+      <article class="fcard rv">
+        <div class="fig fig-add">
+          <svg viewBox="0 0 220 150" aria-hidden="true">
+            <rect x="34" y="18" width="152" height="102" rx="12" fill="#fff" stroke="#10120E" stroke-width="2"/>
+            <rect x="52" y="38" width="104" height="8" rx="4" fill="#10120E"/>
+            <rect x="52" y="56" width="116" height="8" rx="4" fill="#10120E" opacity=".25"/>
+            <rect x="52" y="74" width="72" height="8" rx="4" fill="#10120E" opacity=".25"/>
+            <rect class="caret" x="128" y="72" width="2.5" height="12" fill="#3F4B28"/>
+            <rect x="122" y="96" width="50" height="16" rx="5" fill="#D5F04B" stroke="#10120E" stroke-width="1.5"/>
+            <text x="147" y="108" text-anchor="middle" font-size="10" font-weight="800" fill="#10120E">담기</text>
+            <g class="pen"><path d="M168 30l20-20 9 9-20 20-12 3z" fill="#3F4B28" stroke="#10120E" stroke-width="2" stroke-linejoin="round"/></g>
+          </svg>
+        </div>
+        <h3>한 줄 담기</h3>
+        <p>책에서, 영상에서, 누군가의 말에서.<br>마음에 걸린 문장을 바로 적어 둬요.</p>
+      </article>
+      <article class="fcard rv">
+        <div class="fig fig-star">
+          <svg viewBox="0 0 220 150" aria-hidden="true">
+            <path class="s s1" d="M48 98l7.6 15.4 17 2.5-12.3 12 2.9 16.9L48 136.8l-15.2 8 2.9-16.9-12.3-12 17-2.5z" transform="translate(0 -50)"/>
+            <path class="s s2" d="M110 48l11 22.4 24.7 3.6-17.9 17.4 4.2 24.6L110 104.4l-22 11.6 4.2-24.6L74.3 74l24.7-3.6z"/>
+            <path class="s s3" d="M172 98l7.6 15.4 17 2.5-12.3 12 2.9 16.9-15.2-8-15.2 8 2.9-16.9-12.3-12 17-2.5z" transform="translate(0 -50)"/>
+          </svg>
+        </div>
+        <h3>별 1~3개</h3>
+        <p>오래 붙잡고 싶은 문장엔 별 셋.<br>별이 많을수록 더 자주 만나요.</p>
+      </article>
+      <article class="fcard rv">
+        <div class="fig fig-shuffle">
+          <div class="deck">
+            <i class="d3"></i><i class="d2"></i>
+            <i class="d1"><span>천 리 길도<br>발밑에서 시작된다.</span></i>
+          </div>
+          <svg class="shuf" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3c4 0 6 10 10 10h5M18 14l3 3-3 3M3 17h3c1.6 0 2.8-1.6 4-3.5M14 9.5C15 8 16 7 17 7h4M18 4l3 3-3 3"/></svg>
+        </div>
+        <h3>열 때마다 랜덤으로</h3>
+        <p>담아 둔 문장이 한 줄씩 무작위로.<br>잊을 만하면 다시 찾아와요.</p>
+      </article>
+      <article class="fcard rv">
+        <div class="fig fig-sync">
+          <svg viewBox="0 0 220 150" aria-hidden="true">
+            <rect x="22" y="34" width="112" height="74" rx="6" fill="#fff" stroke="#10120E" stroke-width="2"/>
+            <path d="M12 116h132l-8 10H20z" fill="#10120E"/>
+            <rect x="38" y="56" width="70" height="6" rx="3" fill="#10120E"/>
+            <rect x="38" y="70" width="52" height="6" rx="3" fill="#10120E" opacity=".25"/>
+            <rect x="152" y="40" width="50" height="92" rx="9" fill="#fff" stroke="#10120E" stroke-width="2"/>
+            <rect x="161" y="72" width="32" height="5" rx="2.5" fill="#10120E"/>
+            <rect x="161" y="84" width="24" height="5" rx="2.5" fill="#10120E" opacity=".25"/>
+            <path class="arc" d="M82 28C100 6 150 6 172 32" fill="none" stroke="#3F4B28" stroke-width="2" stroke-dasharray="5 5"/>
+            <circle cx="128" cy="13" r="11" fill="#D5F04B" stroke="#10120E" stroke-width="1.5"/>
+            <path d="M123 13l3.5 3.5 6-7" fill="none" stroke="#10120E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>어디서나 내 바구니</h3>
+        <p>로그인 한 번이면 폰에서도 PC에서도<br>같은 문장이 그대로 있어요.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 어떻게 쓰나: 폰 고정, 스크롤로 넘김 -->
+<section class="how" id="how">
+  <div class="how-in">
+    <div class="how-text">
+      <div class="step on">
+        <span class="no">01 / 04</span>
+        <h2 data-t="담고">담고</h2>
+        <p>책에서, 영상에서, 누군가의 말에서.<br>마음에 걸린 문장을 적어 둬요.</p>
+      </div>
+      <div class="step">
+        <span class="no">02 / 04</span>
+        <h2 data-t="별 붙이고">별 붙이고</h2>
+        <p>오래 붙잡고 싶은 문장일수록 별 셋.<br>별이 많을수록 더 자주 만나요.</p>
+      </div>
+      <div class="step">
+        <span class="no">03 / 04</span>
+        <h2 data-t="골라 보고">골라 보고</h2>
+        <p>완전랜덤 · 최근 올린 글 · 별표 · 짧은 글 · 긴 글.<br>오늘의 기분대로 보여 주는 방식을 바꿔요.</p>
+      </div>
+      <div class="step">
+        <span class="no">04 / 04</span>
+        <h2 data-t="또 만나고">또 만나고</h2>
+        <p>열 때마다 한 줄씩, 다른 하늘빛 위에서.<br>잊을 만하면 다시 와 줘요.</p>
+      </div>
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="scr">
+        <img class="on" src="assets/img/app/add.webp" alt="" data-s="0 1">
+        <img src="assets/img/app/modes.webp" alt="" data-s="2">
+        <img src="assets/img/app/q-seneca.webp" alt="" data-s="3">
+        <img src="assets/img/app/q-forest.webp" alt="" data-s="3">
+        <img src="assets/img/app/q-goethe.webp" alt="" data-s="3">
+        <img src="assets/img/app/q-marcus.webp" alt="" data-s="3">
+        <img src="assets/img/app/q-pascal.webp" alt="" data-s="3">
+        <i class="spot" id="spot"></i>
+      </div>
+      <div class="zoom" id="zoom">
+        <span class="zoom-tag" id="zoomTag">구절 적기</span>
+        <div class="zoom-box" id="zoomBox"><img id="zoomImg" src="assets/img/app/add.webp" alt=""></div>
+      </div>
+    </div>
+    <div class="bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  </div>
+</section>
+
+<!-- 5. 보는 방식 다섯 -->
+<section class="modes">
+  <div class="wrap">
+    <p class="label"><span>보여 주는 방식 다섯 가지</span><b>VIEW MODES</b></p>
+    <h2 class="sec-title rv">오늘은 어떤 문장을<br>만나고 싶어요?</h2>
+    <ul class="mode-list">
+      <li><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3c4 0 6 10 10 10h5M18 14l3 3-3 3M3 17h3c1.6 0 2.8-1.6 4-3.5M14 9.5C15 8 16 7 17 7h4M18 4l3 3-3 3"/></svg><h3 data-t="완전랜덤">완전랜덤</h3><p>한 바퀴를 다 돌 때까지 같은 문장은 다시 나오지 않아요.</p></li>
+      <li><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><h3 data-t="최근 올린 글">최근 올린 글</h3><p>새로 담은 문장일수록 더 자주. 아직 손에 익지 않았으니까.</p></li>
+      <li><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.8z"/></svg><h3 data-t="별표">별표</h3><p>별 셋은 별 하나보다 세 배 자주 찾아와요.</p></li>
+      <li><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h10"/></svg><h3 data-t="짧은 글">짧은 글</h3><p>엘리베이터 기다리는 3초에도, 짧고 굵게.</p></li>
+      <li><svg class="mi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h10"/></svg><h3 data-t="긴 글">긴 글</h3><p>천천히 곱씹고 싶은 밤에는 긴 문장부터.</p></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6. 남의 밑줄 -->
+<section class="share">
+  <div class="wrap">
+    <p class="label"><span>함께 모으는 바구니</span><b>SHARE</b></p>
+    <h2 class="sec-title rv">남의 밑줄도,<br>내 바구니에.</h2>
+    <p class="sec-desc rv">다른 사람이 담아 둔 좋은 문장을 둘러보다가,<br>마음에 들면 그대로 내 바구니로 옮겨 담아요.</p>
+  </div>
+  <div class="cards" id="cards">
+    <article class="qcard"><header><b>@밤산책</b><span>★★★</span></header><blockquote>흐르는 강물에 두 번 발을 담글 수는 없다.</blockquote><cite>헤라클레이토스</cite><button type="button">+ 담기</button></article>
+    <article class="qcard"><header><b>@출근길한줄</b><span>★★</span></header><blockquote>카르페 디엠. 오늘을 붙잡아라, 내일은 되도록 믿지 말고.</blockquote><cite>호라티우스, 『송가』</cite><button type="button">+ 담기</button></article>
+    <article class="qcard"><header><b>@책갈피</b><span>★★★</span></header><blockquote>아는 것을 안다 하고, 모르는 것을 모른다 하는 것. 그것이 아는 것이다.</blockquote><cite>공자, 『논어』</cite><button type="button">+ 담기</button></article>
+    <article class="qcard"><header><b>@새벽다섯시</b><span>★</span></header><blockquote>너 자신을 알라.</blockquote><cite>델포이 신전의 경구</cite><button type="button">+ 담기</button></article>
+    <article class="qcard"><header><b>@문장수집가</b><span>★★</span></header><blockquote>숨이 붙어 있는 한, 희망은 있다.</blockquote><cite>키케로</cite><button type="button">+ 담기</button></article>
+  </div>
+  <div class="wrap">
+    <div class="my-basket" id="myBasket"><img src="assets/img/basket.webp" alt="" width="52" height="38"><span>내 바구니 <b id="myCount">8</b>알</span></div>
+  </div>
+</section>
+
+<!-- 7. 자라는 바구니 -->
+<section class="grow" id="grow">
+  <div class="grow-in">
+    <p class="day">DAY <b id="day">1</b></p>
+    <div class="basket-box">
+      <div class="pile" id="pile" aria-hidden="true"></div>
+      <img src="assets/img/basket.webp" alt="올리브가 담긴 바구니" width="372" height="269">
+    </div>
+    <div class="caps">
+      <p class="cap on">하루 한 줄이면,</p>
+      <p class="cap">한 달에 서른 개의 문장.</p>
+      <p class="cap">일 년이면 365개의 문장이<br>나를 만들어요.</p>
+    </div>
+    <p class="grow-last">어느새, 자라 있는 나를 발견하게 될 거예요.</p>
+  </div>
+</section>
+
+<!-- 8. 설치 -->
+<section class="install" id="install" data-dark>
+  <div class="wrap install-grid">
+    <div>
+      <p class="label"><span>웹으로 열고, 폰에 설치</span><b>INSTALL</b></p>
+      <h2 class="sec-title">브라우저로 열고,<br>홈 화면에 <span class="nw"><em>올리브</em> 한 알.</span></h2>
+      <p class="sec-desc">올리브바스켓은 앱스토어에서 받는 앱이 아니라 <strong>웹</strong>이에요.<br>폰 브라우저로 접속해서 <strong>홈 화면에 추가</strong>만 누르면, 아이콘 하나로 바로 열려요.</p>
+
+      <div class="flow" aria-hidden="true">
+        <div class="mini">
+          <div class="mini-scr">
+            <div class="mini-url"><svg viewBox="0 0 24 24"><rect x="6" y="10" width="12" height="9" rx="2"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg>olivebasket.plators.com</div>
+            <div class="mini-page"><img src="assets/img/basket.webp" alt=""><i></i><i></i><i class="s"></i></div>
+            <div class="mini-bar"><span></span><span class="hi"><svg viewBox="0 0 24 24"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5v10h14V11h-1"/></svg></span><span></span></div>
+          </div>
+          <p>① 브라우저로 접속</p>
+        </div>
+        <svg class="flow-arrow" viewBox="0 0 40 24"><path d="M2 12h34M28 4l8 8-8 8"/></svg>
+        <div class="mini">
+          <div class="mini-scr home">
+            <div class="apps"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b><img src="assets/img/basket.webp" alt=""></b></div>
+            <span class="home-name">올리브바스켓</span>
+          </div>
+          <p>② 홈 화면에 아이콘</p>
+        </div>
+      </div>
+
+      <div class="os" role="tablist">
+        <button type="button" role="tab" data-os="ios" class="on">iPhone</button>
+        <button type="button" role="tab" data-os="android">Android</button>
+      </div>
+
+      <ol class="guide" data-os="ios">
+        <li><b>1</b><p><strong>Safari</strong>로 olivebasket.plators.com 접속</p></li>
+        <li><b>2</b><p>아래쪽 <strong>공유</strong> 버튼 누르기</p>
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5v10h14V11h-1"/></svg></li>
+        <li><b>3</b><p><strong>홈 화면에 추가</strong> 누르기</p>
+          <svg class="ico" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 8v8M8 12h8"/></svg></li>
+      </ol>
+      <ol class="guide" data-os="android" hidden>
+        <li><b>1</b><p><strong>Chrome · Safari · Brave</strong>로 접속</p></li>
+        <li><b>2</b><p>브라우저 <strong>메뉴(⋮)</strong> 누르기</p>
+          <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></li>
+        <li><b>3</b><p><strong>홈 화면에 추가</strong> 또는 <strong>설치</strong></p>
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg></li>
+      </ol>
+
+      <a class="open" href="/member/signup">가입하고 시작하기<svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+    </div>
+
+    <aside class="qr">
+      <b class="qr-h">PC에서 보고 있다면,<br><em>폰으로 바로 열기</em></b>
+      <img src="assets/img/qr.svg" alt="olivebasket.plators.com QR 코드" width="160" height="160">
+      <p>폰 카메라로 비추면<br>폰 브라우저에서 열려요.</p>
+    </aside>
+  </div>
+</section>
+
 </main>
 
-<a class="ob-fab" id="addLink" href="/basket" aria-label="올리브바스켓에 담기"><span class="ob-fab-plus" aria-hidden="true">+</span>담기</a>
+<footer class="foot">
+  <p class="foot-mark"><span class="fit">olive basket</span></p>
+  <div class="foot-row">
+    <span>마음이 살찌는 시간</span>
+    <a href="https://olivebasket.plators.com/">olivebasket.plators.com</a>
+  </div>
+</footer>
 
-<script src="app.js?v=32"></script>
+<script src="assets/js/app.js?v=8"></script>
+<!-- 앱으로 설치할 수 있게 서비스워커 등록 (설치하면 구절 앱 /app 이 열린다) -->
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});</script>
 </body>
 </html>

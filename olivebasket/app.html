@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>올리브바스켓</title>
+<meta name="description" content="책에서 모은 아포리즘을 한 구절씩">
+<meta name="theme-color" content="#5a6740">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.2.5/index.css" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="style.css?v=29">
+<!-- 시작 화면(로고 · 이름): 설치한 앱으로 열면 휴대폰이 이미 로고 · 이름 화면을 보여 주므로 한 번 더 띄우지 않는다 (사용자 지시 2026-11-04).
+     브라우저로 열 때만, 그것도 처음 한 번만 (당겨서 새로고침 때는 생략) -->
+<script>try { if (sessionStorage.getItem('ob_splash') || matchMedia('(display-mode: standalone)').matches || navigator.standalone) document.documentElement.classList.add('nosplash'); } catch {}</script>
+</head>
+<body class="lock">
+<div class="splash" id="splash" aria-hidden="true">
+  <img src="icons/icon-512.png" alt="">
+  <div class="splash-name">올리브바스켓</div>
+</div>
+<div class="bg" id="bgA" aria-hidden="true"></div>
+<div class="bg" id="bgB" aria-hidden="true"></div>
+<div class="ptr" id="ptr" aria-hidden="true">↻</div>
+<header class="ob-top">
+  <a class="ob-logo" href="/app"><span class="leaf-mark" aria-hidden="true"></span>올리브바스켓</a>
+  <span class="ob-acc" data-xms-account></span>
+</header>
+<main class="stage" id="stage" aria-live="polite">
+  <div class="stars top-stars" id="stars" aria-label="중요도"></div>
+
+  <div class="quote-card">
+    <p class="quote" id="quote">&nbsp;</p>
+    <div class="meta" id="meta">
+      <div class="source" id="source"></div>
+    </div>
+  </div>
+</main>
+
+<a class="ob-fab" id="addLink" href="/basket" aria-label="올리브바스켓에 담기"><span class="ob-fab-plus" aria-hidden="true">+</span>담기</a>
+
+<script src="app.js?v=32"></script>
+</body>
+</html>
