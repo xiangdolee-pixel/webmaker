@@ -3,7 +3,7 @@
 //   Cms (서비스 바인딩 전용) — 고객 사이트 Worker 가 X-Xim-Site 헤더를 붙여 넘긴다. 공개 주소로는 닿지 않는다.
 //     /xms/                관리자 화면 (등급 1 회원 · xim 에서 대신 들어온 운영자) — 예전 /admin/ 은 /xms/ 로 넘긴다
 //     /xms/?staff=…        xim "xms" 버튼 1회용 입장권 → 운영자 세션
-//     /xms/css · /xms/js   화면용 정적 파일
+//     /xms/css · /xms/js · /xms/img   화면용 정적 파일 (img = 관리 화면 xms 아이콘)
 //     /xms-api/admin/*     관리자 API      /xms-api/*  방문자 API (로그인 · 가입 · 글 · 댓글 · 메뉴)
 //     /member/* · /board/* 방문자 화면
 //   기본 export (xms.….workers.dev) — 아무것도 내주지 않는다.
@@ -91,7 +91,7 @@ export class Cms extends WorkerEntrypoint {
       }
       if (p.startsWith('/xms/')) {
         const rest = p.slice(4);
-        if (!/^\/(css|js)\/[\w.-]+$/.test(rest)) return new Response('Not found', { status: 404 });
+        if (!/^\/(css|js|img)\/[\w.-]+$/.test(rest)) return new Response('Not found', { status: 404 });
         return await asset(env, rest, null, url.searchParams.has('v'));
       }
 
