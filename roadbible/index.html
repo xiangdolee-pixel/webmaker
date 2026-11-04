@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>길 성경통독</title>
+<meta name="application-name" content="길 성경통독">
+<meta name="apple-mobile-web-app-title" content="길 성경통독">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<!-- 상태바를 어둡게 — 밝은 종이색이면 상태바 흰 글자(시간·배터리)가 안 보이는 기기가 있어 검정으로 -->
+<meta name="theme-color" content="#000000">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!-- 본문 글꼴 후보(본명조·KoPub) — 보기설정에서 선택 시에만 실제 폰트 파일을 내려받음 -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200..900&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/css/batang.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/NanumMyeongjo/NanumMyeongjo.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri.css">
+<style>
+:root{
+  --paper:#FAF6ED;  /* 미색 종이 — 순백은 폰 백라이트가 그대로 눈에 들어와 부심 */
+  --ink:#26221C;
+  --ink-soft:#6D6459;
+  --red:#BA2D22;        /* 홍자: 절 번호, 예수님 말씀 */
+  --gilt:#8B8994;       /* 구분선 (금박→회색) */
+  --line:#ECEAE4;
+  --sheet:#FAF6ED;  /* 서랍도 본문과 같은 종이색 */
+  --fs:17px;   /* 글자 크기 */
+  --fw:400;    /* 글자 굵기 */
+  --lh:1.9;    /* 줄 간격 */
+  --ls:0px;    /* 글자 간격(자간) */
+  --vs:0.9em;  /* 절 간격(문단 사이) */
+  --py:0px;    /* 화면 상하 여백(본문 영역 안쪽 여백) */
+  --px:20px;   /* 화면 좌우 여백 */
+  --serif:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  --display:var(--serif);   /* 전부 Pretendard로 통일 */
+  --ui:var(--serif);
+  --ft:var(--serif);        /* 본문 글꼴 — 보기설정에서 선택 (기본 프리텐다드 / 본명조) */
+  --gilt-soft:#DEDDE2;  /* 옅은 회색 헤어라인 */
+  --parch1:#F4F4F6;     /* 옅은 회색 패널(상) */
+  --parch2:#E8E8EC;     /* 옅은 회색 패널(하) */
+  --gold:#5C5A63;       /* 그래파이트 악센트 (라벨·룰) */
+  --panel-ink:#2A2622;  /* 진한 먹빛 텍스트 */
+  --panel-soft:#84828B; /* 중간 회색 텍스트 */
+  --red2:#BA2D22;       /* 홍자 (밝은 배경용) */
+  --barh:calc(44px + env(safe-area-inset-bottom));  /* 하단 메뉴바 높이 (서랍이 그 위로 열리게) */
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+/* 탭·포커스·선택 시 파란 영역 표시 제거 (삼성 인터넷 등) */
+::selection{background:transparent}
+::-moz-selection{background:transparent}
+:focus{outline:none}
+html{background:var(--paper);height:100%;overflow:hidden}
+body{
+  font-family:var(--serif);
+  color:var(--ink);
+  background:var(--paper);
+  font-size:var(--fs);
+  -webkit-text-size-adjust:100%;
+  height:100%;overflow:hidden;overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  touch-action:pan-y; /* 핀치줌 차단 (시트 안 포함 전 영역) */
+}
+/* 상태바 뒤 검정 띠 — 흰색 시계·배터리가 밝은 종이색에 묻히지 않게, 상태바가 겹쳐 그려지는 기기에서 그 높이만큼만 검정으로 덮는다 */
+body::before{
+  content:"";position:fixed;top:0;left:0;right:0;z-index:70;
+  height:env(safe-area-inset-top);
+  background:#000;pointer-events:none;
+}
+button{font-family:var(--ui);color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--gilt);outline-offset:2px;border-radius:4px}
+
+/* ── 상단바 ─────────────────────────── */
+header{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:var(--paper);
+  border-top:1px solid var(--line);
+  box-shadow:0 -1px 0 var(--gilt); /* 금박 단면 */
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.bar{
+  height:44px;max-width:640px;margin:0 auto;
+  display:flex;align-items:center;justify-content:center;gap:5px;padding:0 8px;   /* 버튼이 늘어 간격 압축 */
+}
+/* ── 하단 메뉴 배경 = 책 타임라인: 지금 읽는 책에서 몇 % 지점인지 (예: 창세기 50장 중 5장) ──
+   따로 자리를 차지하지 않게 메뉴 바 전체 높이의 배경 면으로 차오른다(상단 장 진행 면과 같은 방식).
+   큐티 모드에선 비워 둔다. */
+.bar{position:relative}
+.bar>*{position:relative;z-index:1}   /* 버튼·표시가 진행 면 위에 오도록 */
+.bar-fill{
+  position:absolute;left:0;top:0;right:0;bottom:0;z-index:0;
+  background:var(--gilt-soft);pointer-events:none;
+  transform:scaleX(0);transform-origin:left center;
+  transition:transform .38s cubic-bezier(.32,.72,.34,1);
+  will-change:transform;
+}
+@media (prefers-reduced-motion:reduce){.bar-fill{transition:none}}
+/* ── 상단 러닝헤드: 책·장 상시 표시 (탭하면 책·장 선택) ── */
+.runhead{
+  position:fixed;top:0;left:0;right:0;z-index:28;
+  background:var(--paper);
+  padding-top:env(safe-area-inset-top);
+}
+/* 본문과 같은 좌우 여백 — 진행 면이 꽉 찼을 때 본문 폭과 정확히 맞아떨어지게.
+   가름끈 자리는 줄 전체가 아니라 제목 버튼에서만 비운다(아래 .runhead-btn). */
+.rh-in{max-width:640px;margin:0 auto;padding:5px var(--px) 0;position:relative}
+.rh-in>*{position:relative;z-index:1}   /* 시계·제목 줄이 진행 면 위에 오도록 */
+.runhead-btn{
+  display:inline-flex;align-items:baseline;gap:6px;max-width:calc(100% - 40px);min-width:0;   /* 우측 가름끈 자리 확보 */
+  overflow:hidden;padding:1px 0 2px;text-align:left;
+  position:relative;z-index:1;   /* 진행 면 위에 글자가 오도록 */
+}
+/* 이 장을 얼마나 읽었는지 — 러닝헤드 전체(시계 줄 포함) 뒤가 왼쪽부터 면으로 차오르고
+   마지막 쪽에서 꽉 찬다(하단 메뉴 배경과 같은 방식). 장이 바뀌면 그 장의 첫 쪽 비율로 다시 시작.
+   폭이 아니라 scaleX를 바꿔 부드럽게(리플로우 없이) 움직인다. */
+.rh-row{position:relative;padding:1px 0}
+.rh-fill{
+  position:absolute;left:0;top:0;right:0;bottom:0;z-index:0;
+  background:var(--gilt-soft);pointer-events:none;
+  transform:scaleX(0);transform-origin:left center;
+  transition:transform .38s cubic-bezier(.32,.72,.34,1);
+  will-change:transform;
+}
+@media (prefers-reduced-motion:reduce){.rh-fill{transition:none}}
+.runhead-btn #rhTitle{
+  font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);
+  white-space:nowrap;flex:none;   /* 제목은 줄이지 않고 전체 표시(부가정보가 대신 밀림) */
+  border-bottom:2px solid var(--gilt);padding-bottom:2px;
+}
+.runhead-btn small{
+  font-family:var(--ui);font-weight:400;font-size:11px;color:var(--ink-soft);flex:none;
+}
+.runhead-btn #rhPage{font-size:14px;font-weight:500} /* 제목과 같은 크기, 색은 회색 유지 */
+/* 인터넷 끊김 표시 — 러닝헤드 오른쪽(가름끈 자리 왼쪽)에 상시 배지, 연결되면 사라짐 */
+.net-badge{
+  position:absolute;right:44px;top:50%;transform:translateY(-50%);z-index:1;
+  font-family:var(--ui);font-size:10px;font-weight:600;letter-spacing:.04em;
+  color:var(--panel-soft);background:var(--paper);
+  border:1px solid var(--gilt-soft);border-radius:9px;padding:1px 7px;white-space:nowrap;
+}
+.icon-btn{
+  width:38px;height:40px;border-radius:10px;   /* 버튼이 늘어 폭 압축(터치 높이는 유지) */
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;color:var(--ink-soft);
+}
+.icon-btn:active{background:var(--line)}
+.hl-ico{ /* 형광펜 버튼: 회색이 칠해진 '가' */
+  font-size:15px;font-weight:700;color:var(--ink);
+  background:rgba(158,158,168,.55);box-shadow:inset 0 -3px 0 rgba(74,72,80,1);
+  padding:1px 4px;border-radius:4px;
+}
+.bm-ico{ /* 가름끈 버튼: 미니 책갈피 모양 */
+  display:inline-block;width:13px;height:18px;
+  background:#6E6C76;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);
+}
+
+/* ── 가름끈 (시그니처) ─────────────────── */
+.ribbon{
+  position:fixed;z-index:29;
+  top:env(safe-area-inset-top);   /* 화면 위 가장자리에서 드리워진 가름끈 */
+  /* 보기 설정("가") 버튼 바로 아래 (본문 폭 640px 기준 우측 정렬) */
+  right:max(19px,calc(50% - 301px));
+  width:21px;height:26px;
+  background:#6E6C76; /* 책갈피 색: 회색 */
+  clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 6px),0 100%);
+  transition:height .45s cubic-bezier(.22,1.2,.36,1);
+  padding:0;
+}
+.ribbon::before{ /* 평소엔 속이 빈 윤곽선만 보이게 */
+  content:"";position:absolute;left:2px;right:2px;top:0;bottom:2px;
+  background:var(--paper);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 5px),0 100%);
+  transition:opacity .2s;
+}
+.ribbon.marked{height:36px}
+.ribbon.marked::before{opacity:0}
+@media (prefers-reduced-motion:reduce){.ribbon::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.ribbon{transition:none}}
+
+/* ── 본문 ─────────────────────────── */
+main{
+  max-width:640px;margin:0 auto;
+  font-family:var(--ft);   /* 본문 글꼴 (보기설정) — 소제목·표제는 각자 --ui를 유지 */
+  font-weight:var(--fw);
+  height:100vh;height:100dvh;
+  /* 상단 여백: 러닝헤드(책·장 한 줄)만큼만 확보, 하단 여백은 메뉴바(44px) 바로 위까지 — 본문이 한 화면에 최대한 담기게 */
+  padding:calc(36px + env(safe-area-inset-top) + var(--py)) var(--px) calc(44px + env(safe-area-inset-bottom) + var(--py));
+  overflow:hidden;
+  touch-action:pan-y;
+}
+#page{
+  height:100%;
+  column-fill:auto;
+  transition:transform .28s ease,opacity .18s ease;
+  will-change:transform;
+}
+@media (prefers-reduced-motion:reduce){#page{transition:none}}
+.verse{
+  margin-bottom:var(--vs);line-height:var(--lh);letter-spacing:var(--ls);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  /* 길게 누르기 복사 시 OS 기본 선택·콜아웃이 제스처를 가로채지 않도록 */
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+}
+.verse.hl>span{
+  /* 형광펜: 회색 (흑백 전자책 대비). 띠를 글자 높이(약 1em)로만 그려 위아래로 두껍게 퍼지지 않게 —
+     줄마다(clone) 가운데보다 살짝 아래(한글 글자 위치)에 0.95em 높이 띠를 깐다 */
+  background:linear-gradient(rgba(158,158,168,.45),rgba(158,158,168,.45)) 0 55%/100% .95em no-repeat;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;
+  padding:0 2px;margin:0 -2px;border-radius:3px;
+}
+.verse sup{
+  font-family:var(--ui);font-size:11px;font-weight:600;
+  color:#9B98A0;margin-right:6px;line-height:1;   /* 옅게 — 본문 몰입을 위해 시야에서 물러나게 */
+}
+.rl{color:var(--red)} /* 홍자: 예수님 말씀 */
+/* 장 번호 — 종이 성경처럼 1절 자리에 크게 흘려 넣고(드롭캡), 1절 번호는 생략 */
+.chnum-in{
+  float:left;font-family:var(--display);font-weight:800;font-size:2.1em;line-height:1;
+  color:var(--gold);margin:3px 9px 0 0;
+}
+/* '잠' 버튼으로 연 오늘의 잠언 — 장 숫자 위 타이틀 */
+.pv-title{
+  font-family:var(--display);font-weight:800;font-size:1.15em;color:var(--gold);
+  letter-spacing:.02em;margin:2px 0 2px;break-inside:avoid;
+}
+/* ── 실행할 때마다 다시 만나는 형광펜 한 구절 ── */
+.vod-scrim{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;background:rgba(30,27,22,.45);
+  display:flex;align-items:center;justify-content:center;padding:28px;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.vod-scrim.open{opacity:1;pointer-events:auto}
+.vod-box{width:100%;max-width:420px;background:var(--paper);border:1px solid var(--gilt-soft);
+  border-radius:18px;box-shadow:0 12px 40px rgba(30,25,15,.28);padding:24px 22px 16px;
+  font-family:'Pretendard Variable',Pretendard,var(--ui)}   /* 카드 안 모든 글자 Pretendard */
+.vod-label{font-family:var(--ui);font-size:12px;letter-spacing:.14em;color:var(--gold);
+  text-align:center;margin-bottom:14px}
+.vod-text{font-family:inherit;color:var(--ink);
+  /* 보기 설정과 무관하게 카드 전용 조판 — 한 구절을 편히 읽도록 넉넉한 크기·줄 간격 */
+  font-size:20px;font-weight:500;line-height:1.95;letter-spacing:-.01em;
+  max-height:46vh;overflow-y:auto;word-break:keep-all}
+.vod-ref::before{content:"";display:block;width:34px;height:1px;background:var(--gilt);
+  margin:0 0 10px auto}   /* 구절과 출처 사이 짧은 금박 룰 */
+.vod-ref{font-family:var(--ui);font-size:13px;color:var(--ink-soft);text-align:right;margin-top:12px}
+.vod-btns{display:flex;gap:10px;margin-top:16px}
+.vod-btns button{flex:1;height:46px;border-radius:12px;border:1px solid var(--gilt-soft);
+  background:var(--paper);font-family:var(--ui);font-size:15px;font-weight:600;color:var(--ink)}
+.vod-btns button:active{background:var(--line)}
+#vodClose{background:var(--gold);border-color:var(--gold);color:#fff;font-weight:700}   /* 주 동작: 그래파이트 채움(무채색 기조) */
+#vodClose:active{background:#4A4850}
+@media (prefers-reduced-motion:reduce){.vod-scrim{transition:none}}
+/* 소제목(s)·시편 표제(d) — 본문과 폰트를 구분. 열(column) 넘김에서 다음 절과 떨어지지 않게 */
+.bhead{
+  font-family:var(--ui);break-inside:avoid;break-after:avoid;
+  -webkit-user-select:none;user-select:none;cursor:default;
+}
+.bsec{ /* 소제목: 굵게·가운데, 본문보다 작게 — 본문이 주인공 */
+  font-weight:800;font-size:.85em;color:var(--ink);
+  text-align:center;line-height:1.4;margin:1.1em 0 .5em;
+}
+.bsec:first-child{margin-top:.2em}
+.btitle{ /* 시편 표제: 이탤릭·작게·흐리게 */
+  font-style:italic;font-weight:500;font-size:.86em;color:var(--ink-soft);
+  line-height:1.5;margin:.15em 0 .75em;
+}
+.no-text{
+  margin:22vh 0;text-align:center;color:var(--ink-soft);line-height:2;
+}
+.no-text .num{font-family:var(--display);font-weight:900;font-size:44px;color:var(--line)}
+.readrow{display:flex;justify-content:center;align-items:stretch;gap:10px;width:76%;margin:26px auto 0}
+.readbtn{
+  display:block;flex:1 1 0;min-width:0;margin:0;text-align:center;
+  padding:16px 12px;border:1px solid var(--line);border-radius:16px;
+  font-family:var(--ui);font-size:17px;font-weight:700;color:var(--ink);
+  background:var(--paper);box-shadow:0 2px 8px rgba(30,25,15,.08);
+}
+.readbtn:active{transform:scale(.97)}
+/* 통독 버튼 — 이 장이 든 통독표 날짜의 장별 이동 창을 본문 위에 띄운다 */
+.planbtn{
+  flex:0 0 auto;padding:16px 18px;border:1px solid var(--line);border-radius:16px;
+  font-family:var(--ui);font-size:17px;font-weight:700;color:var(--ink);
+  background:var(--paper);box-shadow:0 2px 8px rgba(30,25,15,.08);
+}
+.planbtn:active{transform:scale(.97)}
+.pp-grid button.cur{box-shadow:inset 0 0 0 2px var(--panel-ink)}   /* 지금 읽던 장 표시 */
+.colophon{
+  margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
+  font-family:var(--ui);font-size:11px;color:var(--ink-soft);letter-spacing:.06em;
+}
+
+/* ── 하단 바 안: 진행/현재위치 표시 + 이동 화살표 ── */
+.nav-pills{display:flex;flex-direction:column;gap:3px;flex:none;min-width:0;align-items:center;overflow:hidden}
+.nav-pill{
+  font-size:11px;font-weight:600;color:var(--ink-soft);white-space:nowrap;line-height:1.3;
+  background:var(--paper);border:1px solid var(--line);border-radius:10px;
+  padding:1px 9px;font-variant-numeric:tabular-nums;text-align:center;
+  min-width:0;overflow:hidden;
+}
+.nav-arrow{display:none} /* 페이지 넘김 화살표 제거 (가장자리 탭·스와이프로 넘김) */
+.bar.rev{flex-direction:row-reverse} /* 바 스와이프로 메뉴 순서 반전 */
+
+/* ── 바텀시트 (책·장 선택) ─────────────── */
+.scrim{
+  position:fixed;top:0;left:0;right:0;bottom:var(--barh);z-index:40;background:rgba(20,14,6,.42);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:var(--barh);z-index:41;   /* 하단 메뉴 위쪽으로 열림 */
+  max-width:640px;margin:0 auto;
+  background:linear-gradient(180deg,var(--parch1),var(--parch2));border-radius:20px 20px 0 0;border-top:1px solid var(--gilt-soft);
+  max-height:72vh;display:flex;flex-direction:column;
+  transform:translateY(calc(100% + var(--barh) + 24px));transition:transform .3s cubic-bezier(.32,.72,.34,1);
+}
+.sheet.open{transform:translateY(0)}
+/* 닫히는 중(=.open 아님)엔 탭을 통과시켜, 아래로 내려가는 시트가 하단 메뉴를 가로채지 않게 */
+.sheet:not(.open),.set-sheet:not(.open){pointer-events:none}
+#bmSheet,#hlSheet{max-height:82vh;max-height:82dvh}   /* 가름끈·형광펜: 화면 대부분, 내부 스크롤 */
+/* 성경 서랍은 높이를 아예 고정 — 책 목록·장 격자·검색 결과가 몇 건이든 서랍이 위아래로
+   널뛰지 않게. 내용은 안쪽(.sheet-body)에서만 스크롤한다. */
+#sheet{height:72vh;height:72dvh;max-height:72vh;max-height:72dvh}
+@media (prefers-reduced-motion:reduce){.sheet,.scrim{transition:none}}
+/* 서랍 상단 타이틀 바 (통일·컴팩트) — 본문 목록보다 진한 배경·그림자로 깊이감 */
+.sheet-head{padding:11px 18px;border-bottom:1px solid var(--gilt);border-radius:20px 20px 0 0;
+  background:linear-gradient(180deg,#E4E4EA,#DADAE1);
+  box-shadow:0 6px 14px rgba(30,25,15,.09);
+  position:relative;z-index:1;
+}
+.sheet,.set-sheet{color:var(--panel-ink)}   /* 어두운 패널 기본 글자색 */
+.seg{
+  display:flex;background:#E6E6EA;border:1px solid var(--gilt-soft);
+  border-radius:10px;padding:3px;gap:3px;
+}
+.seg button{
+  flex:1;padding:9px 0;border-radius:8px;font-size:15px;font-weight:600;color:var(--panel-soft);
+}
+.seg button[aria-selected="true"]{background:#fff;color:var(--panel-ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.sheet-body{flex:1;min-height:0;overflow-y:auto;padding:14px 20px 24px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+/* 구약/신약 탭을 서랍 하단에 고정 */
+.sheet-foot{flex:none;padding:12px 20px 14px;touch-action:none;
+  background:linear-gradient(180deg,#E4E4EA,#DADAE1);   /* 목록보다 진한 바닥면 → 깊이감 */
+  border-top:1px solid var(--gilt);
+  box-shadow:0 -7px 16px rgba(30,25,15,.10);            /* 목록 위로 살짝 떠 보이게 */
+}
+.book-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.book-grid button{
+  padding:13px 6px;border:1px solid var(--gilt-soft);border-radius:10px;
+  font-family:var(--display);font-size:14px;font-weight:700;text-align:center;
+  display:flex;align-items:center;justify-content:center;min-width:0;
+  background:#ffffff;color:var(--panel-ink);line-height:1.3;word-break:keep-all;
+}
+.sheet-body .back{
+  font-size:13px;color:var(--gold);padding:4px 0 14px;display:flex;align-items:center;gap:6px;
+}
+.chap-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.chap-grid button{
+  aspect-ratio:1;border:1px solid var(--gilt-soft);border-radius:10px;color:var(--panel-ink);
+  font-family:var(--display);font-weight:700;font-size:18px;background:#ffffff;position:relative;
+}
+.chap-grid button.has{border-color:#6E6C76;color:var(--panel-ink);font-weight:700}
+.chap-grid button.now{background:var(--ink);border-color:var(--ink);color:#fff}
+.legend{margin:2px 0 14px;font-size:12px;color:var(--panel-soft);display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.legend .lg-box{
+  padding:4px 9px;border-radius:7px;font-weight:600;font-size:12px;color:#3a2f22;
+}
+
+/* ── 성경 본문 검색 (성경 서랍 맨 위) ──────────
+   목록을 스크롤해도 검색창은 위에 붙어 있게 — 통독표 구간 탭과 같은 요령으로
+   좌우 음수 여백을 줘 sheet-body 안쪽 여백 밖까지 넓힌다. */
+.bs-searchwrap{
+  position:sticky;top:0;z-index:2;
+  margin:-14px -20px 12px;padding:12px 20px 10px;
+  background:var(--parch1);border-bottom:1px solid var(--gilt-soft);
+}
+.bs-searchwrap .hl-search{margin:0}
+.bs-item{
+  width:100%;display:block;text-align:left;
+  padding:11px 14px 12px;border:1px solid var(--gilt-soft);border-radius:10px;
+  margin-bottom:8px;background:#ffffff;
+  /* 본문과 같은 보기 설정(글꼴·글자 크기·굵기·줄·자간)을 따른다 */
+  font-family:var(--ft);font-size:var(--fs);font-weight:var(--fw);line-height:var(--lh);letter-spacing:var(--ls);color:var(--panel-ink);
+  content-visibility:auto;contain-intrinsic-size:auto 92px;
+}
+.bs-item:active{background:#ececf0}
+.bs-item .ref{
+  display:block;font-family:var(--ui);font-size:12.5px;font-weight:700;
+  color:var(--gold);letter-spacing:.02em;line-height:1.4;margin-bottom:3px;
+}
+.bs-item .txt{display:block}
+.bs-item mark{   /* 찾은 낱말 강조 */
+  background:rgba(158,158,168,.5);color:#26221C;font-weight:800;border-radius:3px;padding:0 1px;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;
+}
+
+/* ── 180일 성경통독표 ───────────────────── */
+/* 구간 탭이 10개(18일씩) — 한 줄에 다 넣으면 글자가 잘리므로 5칸씩 두 줄 격자로 */
+.plan-range .seg{display:grid;grid-template-columns:repeat(5,1fr)}
+.plan-range .seg button{font-size:12px;padding:7px 1px;font-variant-numeric:tabular-nums}
+/* 선택 표시(흰 둥근 상자)는 버튼 배경 대신 떠 있는 .seg-ind 하나가 맡아 — 탭을 옮기면 그 자리로 미끄러져 간다 */
+.plan-range .seg{position:relative}
+.plan-range .seg button{position:relative;z-index:1;transition:color .2s}   /* 글자는 표시 위에 */
+/* 색칠된(읽은 횟수) 탭은 인라인 배경이 흰 표시를 가리므로, 선택된 탭에 흰 안쪽 테두리를 함께 둔다 */
+.plan-range .seg button[aria-selected="true"]{background:none;box-shadow:inset 0 0 0 2px #fff}
+.seg-ind{
+  position:absolute;left:0;top:0;border-radius:8px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12);
+  pointer-events:none;transition:transform .28s cubic-bezier(.32,.72,.34,1);
+}
+@media (prefers-reduced-motion:reduce){.seg-ind,.plan-range .seg button{transition:none}}
+/* 구간 탭(1~18·19~36·…·163~180) — 목록을 스크롤해도 위에 붙어 있게.
+   좌우 음수 여백으로 sheet-body 안쪽 여백 밖까지 넓혀 서랍 전체 폭을 덮는다. */
+.plan-range{
+  position:sticky;top:0;z-index:2;
+  margin:-14px -20px 12px;padding:12px 20px 10px;
+  background:var(--parch1);border-bottom:1px solid var(--gilt-soft);
+}
+/* 날짜 항목은 한 행에 두 칸 — 좁아진 만큼 여백·글자를 조금 줄인다 */
+.plan-list{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.plan-item{
+  width:100%;display:flex;align-items:center;gap:7px;text-align:left;
+  padding:10px 9px;border:1px solid var(--gilt-soft);border-radius:10px;
+  background:#ffffff;color:var(--panel-ink);
+  /* 180개짜리 목록 — 화면 밖 항목은 레이아웃·페인트 생략(형광펜 목록과 같은 요령) */
+  content-visibility:auto;contain-intrinsic-size:auto 46px;
+}
+.plan-item .d{
+  flex:none;min-width:26px;font-family:var(--display);font-size:14px;font-weight:800;
+  color:var(--gold);font-variant-numeric:tabular-nums;
+}
+.plan-item.on .d{color:#3a2f22}
+/* 날짜를 누르면 장별 이동 창이 뜬다 — 누를 때 글자 선택·시스템 메뉴가 끼어들지 않게 */
+.plan-item{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* 장별 이동 창 — 그 날 읽을 장을 하나씩 버튼으로, 각 장의 읽은 횟수 색으로 칠한다 */
+.pp-box{max-height:80vh;display:flex;flex-direction:column;padding:18px 16px 14px}
+.pp-title{font-family:var(--display);font-size:16px;font-weight:800;text-align:center;color:var(--panel-ink);margin-bottom:4px}
+.pp-sub{font-family:var(--ui);font-size:12px;line-height:1.5;text-align:center;color:var(--panel-soft);margin-bottom:12px;word-break:keep-all}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:7px;overflow-y:auto;padding:2px}
+.pp-grid button{
+  height:42px;border-radius:10px;border:1px solid var(--gilt-soft);background:#fff;color:var(--panel-ink);
+  font-family:var(--ui);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.pp-grid button:active{filter:brightness(.94)}
+.pp-close{margin-top:12px;height:42px;border-radius:12px;border:1px solid var(--gilt-soft);background:#fff;
+  font-family:var(--ui);font-size:14px;font-weight:600;color:var(--panel-soft)}
+.plan-item .r{flex:1;min-width:0;font-family:var(--ui);font-size:12.5px;font-weight:600;line-height:1.4;word-break:keep-all}
+
+/* ── 전체 화면 보기 (러닝헤드를 누르면 열리는 성경통독표) ──
+   서랍이 아니라 화면 전체를 덮는다 — 하단 메뉴바까지 가리고 위로 올라온다. */
+.full-view{
+  position:fixed;inset:0;z-index:45;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,var(--parch1),var(--parch2));
+  color:var(--panel-ink);
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,.34,1);
+}
+.full-view.open{transform:translateY(0)}
+.full-view:not(.open){pointer-events:none}
+@media (prefers-reduced-motion:reduce){.full-view{transition:none}}
+/* 통독표 본문(목록 아래 빈 공간 포함)을 좌우로 밀면 구간 탭이 바뀐다 —
+   세로 스크롤은 브라우저에 맡기고 가로 이동은 pointer 이벤트로 받도록 pan-y */
+#planFullBody{touch-action:pan-y;overflow-x:hidden}
+/* 구간을 바꿀 때 목록이 옆으로 미끄러지는 무대 — 나가는 목록(.out)은 위에 겹쳐 두고 함께 민다 */
+.plan-stage{position:relative}
+.plan-stage.anim{overflow:hidden}
+.plan-stage.anim .plan-page{transition:transform .28s cubic-bezier(.32,.72,.34,1)}
+.plan-page.out{position:absolute;left:0;right:0;pointer-events:none}
+.full-head{
+  flex:none;display:flex;align-items:center;gap:6px;padding:9px 12px;
+  border-bottom:1px solid var(--gilt);
+  background:linear-gradient(180deg,#E4E4EA,#DADAE1);
+  box-shadow:0 6px 14px rgba(30,25,15,.09);
+  position:relative;z-index:1;
+}
+.full-head .sheet-title{flex:1;min-width:0}
+.full-head .sp{flex:none;width:38px}          /* 제목을 정중앙에 두기 위한 좌측 빈 자리 */
+.full-close{flex:none;width:38px;height:38px;border-radius:10px;font-size:18px;color:var(--panel-soft)}
+.full-close:active{background:rgba(0,0,0,.06)}
+
+/* ── 형광펜 모아보기 ─────────────────── */
+/* 모든 서랍 공통 타이틀 (통일·컴팩트) */
+.sheet-title{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.02em;text-align:center;color:var(--panel-ink);line-height:1.2}
+.hl-chap{font-family:var(--display);font-size:16px;font-weight:700;color:var(--gold);margin:16px 0 8px;letter-spacing:.04em}
+.hl-chap:first-child{margin-top:2px}
+.hl-item{
+  width:100%;display:block;text-align:left;position:relative;
+  padding:12px 46px 12px 14px;   /* 오른쪽은 별표(★) 자리 */
+  border:1px solid var(--gilt-soft);border-radius:10px;
+  margin-bottom:8px;background:#ffffff;
+  /* 본문과 같은 보기 설정(글꼴·글자 크기·굵기·줄·자간)을 따른다 */
+  font-family:var(--ft);font-size:var(--fs);font-weight:var(--fw);line-height:var(--lh);letter-spacing:var(--ls);color:var(--panel-ink);
+}
+/* 별표(★) 토글 — 항목 오른쪽 위. 켜지면 진한 색(흑백 전자책에서도 채움/윤곽으로 구분) */
+.hl-star{position:absolute;right:4px;top:4px;padding:8px 10px;font-size:20px;line-height:1;
+  font-family:var(--ui);font-weight:400;color:#C7C5CE}
+.hl-star.on{color:var(--gold)}
+/* 형광펜 검색창 */
+.hl-search{display:block;width:100%;height:44px;margin:0 0 12px;padding:0 14px;
+  border:1px solid var(--gilt-soft);border-radius:10px;background:#fff;color:var(--panel-ink);
+  font-family:var(--ui);font-size:15px}
+.hl-search::placeholder{color:var(--panel-soft)}
+.hl-starrow{margin-bottom:12px}
+/* 화면 밖 항목은 레이아웃·페인트 생략 — 형광펜·가름끈이 수천 개여도 스크롤이 멈추지 않게 */
+.hl-item,.bm-card{content-visibility:auto;contain-intrinsic-size:auto 92px}
+.bm-card{contain-intrinsic-size:auto 46px}
+.hl-item sup{font-size:.7em;font-weight:600;color:#6E6C76;margin-right:6px}   /* 본문 크기에 비례 */
+.hl-item .snip{
+  background:linear-gradient(rgba(158,158,168,.45),rgba(158,158,168,.45)) 0 55%/100% .95em no-repeat;color:#26221C;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;
+  padding:0 2px;border-radius:3px;
+}
+.hl-hint{font-family:var(--ui);font-size:12px;color:var(--panel-soft);margin:3px 0 12px}
+.hl-empty{text-align:center;color:var(--panel-soft);padding:44px 0;line-height:2;font-size:16px}
+.hl-books{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.hl-book{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;
+  padding:14px 14px;border:1px solid var(--gilt-soft);border-radius:10px;background:#ffffff;
+  font-family:var(--display);font-size:16px;font-weight:700;color:var(--panel-ink);text-align:left;
+}
+.hl-book>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hl-book:active{background:#ececf0}
+.hl-book .hl-cnt,.hl-qt .hl-cnt{
+  flex:none;min-width:26px;padding:2px 9px;border-radius:999px;
+  background:rgba(158,158,168,.35);color:var(--panel-ink);
+  font-family:var(--ui);font-size:13px;font-weight:700;text-align:center;
+}
+/* 형광펜 서랍 맨 아래 [QT] 구분 — 큐티 본문에 칠한 형광펜만 따로 모아 봄 */
+.hl-div{display:flex;align-items:center;gap:8px;margin:16px 0 8px;color:var(--panel-soft);font-family:var(--ui);font-size:11px;letter-spacing:.1em}
+.hl-div::before,.hl-div::after{content:"";flex:1;height:1px;background:var(--gilt-soft)}
+.hl-qt{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:14px;border:1px solid var(--gilt-soft);border-radius:10px;background:#ffffff;
+  font-family:var(--display);font-size:16px;font-weight:700;color:var(--panel-ink);text-align:left;
+}
+.hl-qt:active{background:#ececf0}
+.hl-date{font-family:var(--display);font-size:15px;font-weight:700;color:var(--gold);margin:16px 0 8px;letter-spacing:.02em}
+.hl-date:first-child{margin-top:2px}
+.hl-date small{display:block;font-family:var(--ui);font-size:12px;font-weight:400;color:var(--panel-soft);letter-spacing:0;margin-top:2px}
+.bm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.bm-card{position:relative}
+.bm-go{
+  width:100%;border:1px solid var(--gilt-soft);border-radius:10px;background:#ffffff;
+  padding:12px 12px;display:flex;flex-direction:row;align-items:center;gap:7px;
+}
+.bm-go:active{background:#ececf0}
+.bm-go .mini{width:12px;height:16px;flex:none;background:#6E6C76;clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%)}
+.bm-where{flex:1;min-width:0;font-weight:700;font-size:14px;color:var(--panel-ink);line-height:1.3;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bm-where small{font-weight:400;font-size:11px;color:var(--panel-soft);margin-left:5px}
+
+/* ── 오늘의 큐티 (본문 영역에 렌더) ─────── */
+.qt-head{margin-bottom:1.1em;break-inside:avoid}
+.qt-date{font-family:var(--ui);font-size:12px;color:var(--ink-soft);margin-bottom:4px}
+.qt-title{font-family:var(--display);font-weight:800;font-size:1.3em;color:var(--ink);line-height:1.35}
+.qt-info{font-family:var(--ui);font-size:13px;color:var(--ink-soft);
+  padding:9px 0;margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* 비밀 통로: '길성경통독' — 버튼이 아니라 흐릿한 안내문처럼 보이게(클릭 유도 0) */
+.secret-btn{display:block;width:100%;margin:16px 0 2px;padding:6px;
+  background:none;border:none;color:var(--panel-soft);opacity:.3;
+  font-family:var(--ui);font-size:12px;font-weight:400;text-align:center;
+  letter-spacing:.04em;cursor:default;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+
+/* ── 보기 설정 시트 ─────────────────── */
+.set-sheet{
+  position:fixed;left:0;right:0;bottom:var(--barh);z-index:41;   /* 하단 메뉴 위쪽으로 열림 */
+  max-width:640px;margin:0 auto;
+  background:linear-gradient(180deg,var(--parch1),var(--parch2));border-radius:20px 20px 0 0;border-top:1px solid var(--gilt-soft);
+  transform:translateY(calc(100% + var(--barh) + 24px));transition:transform .3s cubic-bezier(.32,.72,.34,1);
+  padding:0;
+  box-shadow:0 -8px 30px rgba(30,25,15,.14);
+  max-height:50vh;max-height:50dvh;display:flex;flex-direction:column;
+}
+.set-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 22px 20px}
+.set-sheet.open{transform:translateY(0)}
+@media (prefers-reduced-motion:reduce){.set-sheet{transition:none}}
+/* 읽기 데이터 초기화: 설정 목록 맨 아래 전체폭 버튼 */
+.reset-row{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 2px}   /* 좁은 화면에선 줄바꿈 */
+.reset-btn{display:block;width:100%;height:46px;border-radius:12px;
+  border:1px solid rgba(186,45,34,.5);background:rgba(186,45,34,.06);
+  color:var(--red2);font-family:var(--ui);font-size:14px;font-weight:600}
+.reset-row .reset-btn{flex:1;min-width:130px}
+.reset-btn:active{background:rgba(186,45,34,.12)}
+/* 섹션: 가운데 금박 명조 라벨 + 양쪽으로 사라지는 헤어라인 */
+.set-sec{display:flex;align-items:center;gap:14px;margin:22px 0 6px}
+.set-sec::before,.set-sec::after{content:"";flex:1;height:1px}
+.set-sec::before{background:linear-gradient(90deg,transparent,var(--gilt-soft))}
+.set-sec::after{background:linear-gradient(90deg,var(--gilt-soft),transparent)}
+.set-sec span{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.22em;color:var(--gold);white-space:nowrap}
+.set-row{display:flex;align-items:center;gap:12px;padding:8px 2px}
+.set-row .lbl{flex:1;font-family:var(--ui);font-size:16px;font-weight:500;color:var(--panel-ink)}
+/* 스테퍼: 어두운 알약 + 금박 테두리, 값은 명조 숫자 */
+.stepper{display:inline-flex;align-items:center;background:#ffffff;
+  border:1px solid var(--gilt-soft);border-radius:999px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.stepper button{width:44px;height:44px;font-size:22px;font-weight:600;color:var(--panel-ink);
+  display:flex;align-items:center;justify-content:center}
+.stepper button:first-child{border-right:1px solid var(--gilt-soft)}
+.stepper button:last-child{border-left:1px solid var(--gilt-soft)}
+.stepper button:disabled{opacity:.28}
+.stepper button:active{background:#ececf0}
+.stepper .val{min-width:62px;text-align:center;font-family:var(--display);font-size:16px;
+  font-weight:700;color:var(--panel-ink);font-variant-numeric:tabular-nums}
+/* 선택형 설정(글꼴): 셀렉트박스 — 스테퍼와 같은 알약 조판, 누르면 OS 기본 선택창 */
+.set-select{
+  height:44px;padding:0 38px 0 18px;min-width:150px;
+  font-family:var(--ui);font-size:16px;font-weight:700;color:var(--panel-ink);
+  background:#ffffff;border:1px solid var(--gilt-soft);border-radius:999px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05);
+  -webkit-appearance:none;appearance:none;cursor:pointer;
+  /* 오른쪽 ▾ 화살표 */
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235C5A63' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 16px center;
+}
+.set-select:active{background-color:#ececf0}
+/* 계정/위험 액션 */
+.acct-row{display:flex;align-items:center;gap:12px;padding:10px 2px}
+.acct-row .lbl{flex:1;font-family:var(--ui);font-size:16px;font-weight:500;color:var(--panel-ink)}
+.acct-row button{height:46px;padding:0 20px;border:1px solid var(--gilt-soft);border-radius:999px;
+  background:#ffffff;font-family:var(--ui);font-size:15px;font-weight:600;color:var(--panel-ink)}
+.acct-row button:active{background:#ececf0}
+.acct-row.danger .lbl{color:var(--red2)}
+.acct-row.danger button{border-color:rgba(224,115,106,.5);color:var(--red2);background:rgba(224,115,106,.08)}
+.acct-note{font-family:var(--ui);font-size:13px;color:var(--panel-soft);line-height:1.5;padding:2px 2px 0}
+.privacy-link{color:var(--red2);text-decoration:underline;font-weight:600}
+
+/* ── 토스트 ─────────────────────────── */
+.toast{
+  position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));z-index:50;
+  transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:var(--paper);
+  font-family:var(--ui);font-size:13px;
+  padding:10px 18px;border-radius:20px;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+  white-space:nowrap;
+}
+.toast.show{opacity:.96;transform:translateX(-50%) translateY(0)}
+
+/* ── 확인창 (네이티브 confirm 대체: 도메인 표시 없음) ── */
+.cfm-scrim{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+  background:rgba(20,14,6,.42);opacity:0;pointer-events:none;transition:opacity .2s;padding:24px}
+.cfm-scrim.open{opacity:1;pointer-events:auto}
+.cfm-box{max-width:340px;width:100%;background:linear-gradient(180deg,var(--parch1),var(--parch2));
+  border-radius:18px;border:1px solid var(--gilt-soft);box-shadow:0 12px 40px rgba(30,25,15,.28);
+  padding:24px 20px 16px;transform:scale(.94);transition:transform .2s;color:var(--panel-ink)}
+.cfm-scrim.open .cfm-box{transform:scale(1)}
+@media (prefers-reduced-motion:reduce){.cfm-scrim,.cfm-box{transition:none}}
+.cfm-msg{font-family:var(--ui);font-size:15px;line-height:1.65;text-align:center;
+  white-space:pre-line;color:var(--panel-ink);margin-bottom:18px}
+.cfm-btns{display:flex;gap:10px}
+.cfm-btns button{flex:1;height:46px;border-radius:12px;font-family:var(--ui);font-size:15px;font-weight:600}
+.cfm-cancel{border:1px solid var(--gilt-soft);background:#fff;color:var(--panel-ink)}
+.cfm-cancel:active{background:#ececf0}
+.cfm-ok{border:1px solid rgba(186,45,34,.5);background:rgba(186,45,34,.08);color:var(--red2)}
+.cfm-ok:active{background:rgba(186,45,34,.16)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="bar-fill" id="bookFill" aria-hidden="true"></div>
+    <button class="icon-btn" id="titleBtn" aria-haspopup="dialog" aria-label="성경과 장 선택">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        <path d="M12 6v6"/><path d="M9.5 8.5h5"/>
+      </svg>
+    </button>
+    <div class="nav-pills">
+      <span class="nav-pill" id="progressSub" aria-label="구약·신약에서의 위치"></span>
+      <span class="nav-pill" id="progressText" aria-label="전체 성경에서의 위치"></span>
+    </div>
+    <button class="icon-btn" id="bmBtn" aria-label="가름끈 모아보기"><span class="bm-ico"></span></button>
+    <button class="icon-btn" id="hlBtn" aria-label="형광펜 모아보기"><span class="hl-ico">가</span></button>
+    <button class="icon-btn" id="fsBtn" aria-label="보기 설정" style="font-weight:700">가</button>
+    <button class="icon-btn nav-arrow" id="prevBtn" aria-label="이전 장">‹</button>
+    <button class="icon-btn nav-arrow" id="nextBtn" aria-label="다음 장">›</button>
+    <button class="icon-btn" id="pvBtn" aria-label="오늘의 잠언" style="font-weight:800">잠</button>
+    <button class="icon-btn" id="qtBtn" aria-label="오늘의 큐티" style="font-weight:800;display:none">Q</button>
+  </div>
+</header>
+
+<div class="runhead">
+  <div class="rh-in">
+    <div class="rh-fill" id="rhFill" aria-hidden="true"></div>
+    <div class="rh-row">
+      <button class="runhead-btn" id="rhBtn" aria-haspopup="dialog" aria-label="성경통독표 보기">
+        <span id="rhTitle">요한복음 3장</span><small id="rhPage"></small>
+      </button>
+      <span class="net-badge" id="netBadge" hidden>오프라인</span>
+    </div>
+  </div>
+</div>
+
+<button class="ribbon" id="ribbonBtn" aria-label="이 장을 가름끈으로 표시" aria-pressed="false" title="가름끈"></button>
+
+<main aria-live="polite"><div id="page"></div></main>
+
+<div class="scrim" id="scrim"></div>
+
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="성경 책과 장 선택">
+  <div class="sheet-head"><div class="sheet-title">성경</div></div>
+  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-foot">
+    <div class="seg" role="tablist">
+      <button role="tab" id="tabOt" aria-selected="true">구약</button>
+      <button role="tab" id="tabNt" aria-selected="false">신약</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="bmSheet" role="dialog" aria-modal="true" aria-label="가름끈 모아보기">
+  <div class="sheet-head"><div class="sheet-title">가름끈</div></div>
+  <div class="sheet-body" id="bmBody"></div>
+</section>
+
+<section class="sheet" id="hlSheet" role="dialog" aria-modal="true" aria-label="형광펜 모아보기">
+  <div class="sheet-head"><div class="sheet-title">형광펜</div></div>
+  <div class="sheet-body" id="hlBody"></div>
+  <div class="sheet-foot">
+    <div class="seg" role="tablist">
+      <button role="tab" id="hlTabOt" aria-selected="true">구약</button>
+      <button role="tab" id="hlTabNt" aria-selected="false">신약</button>
+    </div>
+  </div>
+</section>
+
+<section class="set-sheet" id="setSheet" role="dialog" aria-modal="true" aria-label="보기 설정">
+  <div class="sheet-head"><div class="sheet-title">보기 설정</div></div>
+
+  <div class="set-body">
+  <div class="set-sec"><span>글자</span></div>
+  <div class="set-row" data-key="ft">
+    <span class="lbl">글꼴</span>
+    <select class="set-select" aria-label="본문 글꼴 선택">
+      <option value="0">프리텐다드</option>
+      <option value="1">본명조</option>
+      <option value="2">KoPubWorld 바탕</option>
+      <option value="3">나눔명조</option>
+      <option value="4">마루부리</option>
+    </select>
+  </div>
+  <div class="set-row" data-key="fs">
+    <span class="lbl">글자 크기</span>
+    <div class="stepper"><button data-dir="-1" aria-label="글자 작게">−</button><span class="val"></span><button data-dir="1" aria-label="글자 크게">＋</button></div>
+  </div>
+  <div class="set-row" data-key="fw">
+    <span class="lbl">글자 굵기</span>
+    <div class="stepper"><button data-dir="-1" aria-label="글자 얇게">−</button><span class="val"></span><button data-dir="1" aria-label="글자 굵게">＋</button></div>
+  </div>
+  <div class="set-row" data-key="lh">
+    <span class="lbl">줄 간격</span>
+    <div class="stepper"><button data-dir="-1" aria-label="줄 간격 좁게">−</button><span class="val"></span><button data-dir="1" aria-label="줄 간격 넓게">＋</button></div>
+  </div>
+  <div class="set-row" data-key="ls">
+    <span class="lbl">글자 간격</span>
+    <div class="stepper"><button data-dir="-1" aria-label="글자 간격 좁게">−</button><span class="val"></span><button data-dir="1" aria-label="글자 간격 넓게">＋</button></div>
+  </div>
+
+  <div class="set-sec"><span>여백</span></div>
+  <div class="set-row" data-key="vs">
+    <span class="lbl">절 간격</span>
+    <div class="stepper"><button data-dir="-1" aria-label="절 간격 좁게">−</button><span class="val"></span><button data-dir="1" aria-label="절 간격 넓게">＋</button></div>
+  </div>
+  <div class="set-row" data-key="py">
+    <span class="lbl">화면 상하 여백</span>
+    <div class="stepper"><button data-dir="-1" aria-label="화면 상하 여백 좁게">−</button><span class="val"></span><button data-dir="1" aria-label="화면 상하 여백 넓게">＋</button></div>
+  </div>
+  <div class="set-row" data-key="px">
+    <span class="lbl">화면 좌우 여백</span>
+    <div class="stepper"><button data-dir="-1" aria-label="화면 좌우 여백 좁게">−</button><span class="val"></span><button data-dir="1" aria-label="화면 좌우 여백 넓게">＋</button></div>
+  </div>
+
+  <div class="set-sec"><span>계정</span></div>
+  <div class="acct-row">
+    <span class="lbl">동기화</span>
+    <button id="authBtn">로그인</button>
+  </div>
+  <div id="authStatus" class="acct-note"></div>
+  <div class="acct-row" id="migRow" hidden>
+    <span class="lbl">예전 구글 기록</span>
+    <button id="migBtn">가져오기</button>
+  </div>
+  <div class="acct-note" id="migNote" hidden>예전에 구글로 로그인해 쌓은 형광펜·가름끈·읽음 기록을 이 계정으로 한 번 옮겨 옵니다.</div>
+  <div class="acct-note">로그인하면 <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.</div>
+  <span data-xms-account hidden></span>
+  <div class="reset-row">
+    <button id="resetMarksBtn" class="reset-btn">가름끈 초기화</button>
+    <button id="resetHlsBtn" class="reset-btn">형광펜 초기화</button>
+    <button id="resetReadsBtn" class="reset-btn">읽은횟수 초기화</button>
+  </div>
+  <button id="secretQtBtn" class="secret-btn" tabindex="-1" aria-hidden="true">길성경통독</button>
+  </div>
+</section>
+
+<!-- 러닝헤드(책·장 제목)를 누르면 열리는 성경통독표 전체 화면 -->
+<section class="full-view" id="planFull" role="dialog" aria-modal="true" aria-label="성경통독표">
+  <div class="full-head">
+    <span class="sp"></span>
+    <div class="sheet-title">성경통독표</div>
+    <button class="full-close" id="planFullClose" aria-label="닫기">✕</button>
+  </div>
+  <div class="sheet-body" id="planFullBody"></div>
+</section>
+
+<!-- 통독표에서 날짜를 누르면 뜨는 장별 이동 창 -->
+<div class="cfm-scrim" id="ppScrim">
+  <div class="cfm-box pp-box" role="dialog" aria-modal="true" aria-labelledby="ppTitle">
+    <div class="pp-title" id="ppTitle"></div>
+    <div class="pp-sub" id="ppSub"></div>
+    <div class="pp-grid" id="ppGrid"></div>
+    <button class="pp-close" id="ppClose">닫기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="vod-scrim" id="vodScrim">
+  <div class="vod-box" role="dialog" aria-modal="true" aria-label="형광펜 한 구절">
+    <div class="vod-label">다시 만나는 형광펜</div>
+    <div class="vod-text" id="vodText"></div>
+    <div class="vod-ref" id="vodRef"></div>
+    <div class="vod-btns"><button id="vodNext">다른 구절</button><button id="vodClose">읽기 시작</button></div>
+  </div>
+</div>
+
+<div class="cfm-scrim" id="cfmScrim">
+  <div class="cfm-box" role="alertdialog" aria-modal="true" aria-labelledby="cfmMsg">
+    <div class="cfm-msg" id="cfmMsg"></div>
+    <div class="cfm-btns">
+      <button class="cfm-cancel" id="cfmCancel">취소</button>
+      <button class="cfm-ok" id="cfmOk">확인</button>
+    </div>
+  </div>
+</div>
+
+<script src="bible-data.js"></script>
+<script>
+/* ── 성경 목록 (66권, 장 수) ─────────────────────── */
+const OT=[["창세기",50],["출애굽기",40],["레위기",27],["민수기",36],["신명기",34],["여호수아",24],["사사기",21],["룻기",4],["사무엘상",31],["사무엘하",24],["열왕기상",22],["열왕기하",25],["역대상",29],["역대하",36],["에스라",10],["느헤미야",13],["에스더",10],["욥기",42],["시편",150],["잠언",31],["전도서",12],["아가",8],["이사야",66],["예레미야",52],["예레미야애가",5],["에스겔",48],["다니엘",12],["호세아",14],["요엘",3],["아모스",9],["오바댜",1],["요나",4],["미가",7],["나훔",3],["하박국",3],["스바냐",3],["학개",2],["스가랴",14],["말라기",4]];
+const NT=[["마태복음",28],["마가복음",16],["누가복음",24],["요한복음",21],["사도행전",28],["로마서",16],["고린도전서",16],["고린도후서",13],["갈라디아서",6],["에베소서",6],["빌립보서",4],["골로새서",4],["데살로니가전서",5],["데살로니가후서",3],["디모데전서",6],["디모데후서",4],["디도서",3],["빌레몬서",1],["히브리서",13],["야고보서",5],["베드로전서",5],["베드로후서",3],["요한일서",5],["요한이서",1],["요한삼서",1],["유다서",1],["요한계시록",22]];
+const BOOKS={ot:OT,nt:NT};
+const ALL=[...OT,...NT];
+
+/* ── 180일 성경통독 읽기표 ────────────────────────
+   배열 인덱스 i → (i+1)일차. 표기는 종이 읽기표 그대로(약어·절 단위). */
+const PLAN180=[
+"창 1~5장","창 6~11장","창 12~17장","창 18~23장","창 24~30장",
+"창 31~36장","창 37~45장","창 46~50장","출 1~6장","출 7~12장",
+"출 13~18장","출 19~24장","출 25~31장","출 32~40장","레 1~7장",
+"레 8~13장","레 14~21장","레 22~27장","민 1~6장","민 7~12장",
+"민 13~20장","민 21~27장","민 28~33장","민 34~36장, 신 1~3장","신 4~14장",
+"신 15~22장","신 23~30장","신 31~34장, 시 90편","수 1~6장","수 7~12장",
+"수 13~18장","수 19~24장","삿 1~5장","삿 6~12장","삿 13~21장",
+"룻 1~4장","삼상 1~8장","삼상 9~16장, 시 23편","대상 9:35~10장, 삼상 17~21장",
+"시 59, 56, 34편, 삼상 22장, 시 52편, 삼상 23장, 시 63편, 삼상 24장, 시 57, 142, 54편, 삼상 25장",
+"삼상 26~31장, 삼하 1장","시 18편, 삼하 2~7장","대상 11~14장",
+"대상 15장, 시 8, 19, 29, 65, 68, 103, 108, 138편, 대상 16장",
+"시 96, 105, 106, 39, 62, 50, 73~78편",
+"시 79~83, 88편, 대상 17장, 삼하 8~12:15a",
+"시 32, 51편, 삼하 12:16b~15장, 시 3편, 삼하 16:1~14, 시 7편",
+"삼하 16:15~20장","삼하 21~23장, 대상 18~20장, 시 60편",
+"삼하 24장, 대상 21장, 시 4~6, 9~13편",
+"시 14, 16~17, 22, 25~28, 31편","시 35~36, 38, 40~41, 53, 55편",
+"시 58, 61, 64, 69, 70~71, 86편","시 102, 109, 139~141, 143편",
+"시 37편, 대상 22장, 시 30편, 대상 23~26장","시 15, 24, 42~49, 84~85, 87편",
+"대상 27~29장, 시 2, 20~21편","시 72, 93~95, 97~99, 101, 110, 144, 145편",
+"왕상 1~6장","왕상 7~11장",
+"잠 1~8장","잠 9~16장","잠 17~22:16","아 1~8장","전 1~6장",
+"전 7~12장","대하 1~5장","대하 6~9장","왕상 12~16장","대하 10~16장",
+"왕상 17~22장","대하 17~20장","왕하 1~6:23","왕하 6:24~12장",
+"대하 21~22:9, 왕하 13~14장, 대하 22:10~25장",
+"욘 1~4장, 암 1~9장","왕하 15~16:9, 대하 26장, 호 1~3장","호 4~14장",
+"사 6, 1~5장","사 7~10:4, 17, 14:24~32",
+"왕하 16:10~20, 미 1~7장, 대하 27~28장, 왕하 17:1~4",
+"사 28~29장, 왕하 17:5~41, 사 10:5~12장",
+"왕하 18:1~12, 잠 25~29장, 사 15~16, 18~20, 22:15~25",
+"사 30~32장, 왕하 20:1~19, 사 38~39장, 왕하 18:13~19장",
+"사 36~37장, 왕하 20:20~21, 사 22:1~14, 23~27장, 대하 29장",
+"대하 30~32장, 왕하 21장, 습 1~3장",
+"왕하 22~23:25, 대하 33~35:19, 시 33, 66~67, 100편, 왕하 23:26~27, 나 1~3장",
+"렘 1~6장",
+"왕하 23:28~34, 렘 22:10~17, 대하 35:20~36:4, 합 1~3장, 왕하 23:35~37",
+"렘 26:1~6, 7~8:3, 26:7~24, 11~12장",
+"렘 47, 46:1~12, 13:1~14, 18:1~17, 45, 36, 25:1~14, 14장",
+"렘 15~17, 8:4~10:16",
+"왕하 24:1~4, 렘 35, 23:9~40, 18:18~20, 왕하 24:5~9, 렘 22:18~30, 13:15~27",
+"왕하 24:10~17, 대하 36:5~10, 렘 24장, 단 1~4장",
+"왕하 24:18~19, 대하 36:11~12, 렘 52:1~2, 27~29, 25:15~38, 48장",
+"렘 49~51장",
+"겔 1:1~3:21, 왕하 24:20~25:3, 렘 52:3~6, 10:17~25, 21:1~22:9, 34, 46:13~28, 37장",
+"겔 30~33, 23:1~8, 38장","대하 36:13~16, 겔 8~11, 13~16장",
+"겔 17~18, 20~21:17, 22:1~22, 23장","겔 21:18~32, 24, 3:22~7장",
+"겔 29:1~16, 30:20~31, 왕하 25:4~21, 렘 52:7~11, 39:1~7, 대하 36:17~21, 겔 12장, 렘 52:12~27, 39:8~10, 시 89편",
+"애 1~5장, 왕하 25:22~26, 렘 39:11~43장",
+"렘 44장, 33:21~33, 19, 22:23~31, 25~28, 32장",
+"옵 1장, 시 137편, 렘 52:28~30, 겔 33:1~20, 34~35장",
+"겔 35~39장","겔 40~47:12",
+"겔 47:13~48장, 29:17~21, 30:1~19, 왕하 25:27~30, 렘 52:31~34, 사 13~14:23, 21, 33~35장, 단 5장",
+"사 40~45장","사 46~55장",
+"잠 22:17~24, 30~31장, 욥 1~2장","욥 3~11장","욥 12~18장","욥 19~24장",
+"욥 25~34장","욥 35~42장",
+"대하 36:22~23, 스 1~4:5, 4:24~5:1, 학 1~2장",
+"슥 1~6장","슥 7~8장, 스 5:2~6, 단 6장","대상 1~5장",
+"대상 6~9:34","에 1~10장","스 4:6~23, 7~10장","느 1~7장",
+"느 8~10장, 욜 1~3장","시 1, 91, 119편","느 11~12:30, 시 120~127편",
+"시 128~134편, 느 12:31~47, 시 104, 107, 111~113편",
+"시 114~118, 135~136, 146~150편",
+"느 13:1~22, 시 92편, 느 13:23~31, 말 1~4장",
+"사 56~66장","슥 9~14장","단 7~12장",
+"막 1~5장","막 6~9장","막 10~13장","막 14~16장",
+"마 1~6장","마 7~11장","마 12~15장","마 16~20장","마 21~24장","마 25~28장",
+"요 1~4장","요 5~8장","요 9~12장","요 13~17장","요 18~21장",
+"눅 1~6장","눅 7~11장","눅 12~19장","눅 20~24장",
+"행 1~6장","행 7~12장","약 1~5장, 행 13~14장","행 15:1~25, 갈 1~6장",
+"행 15:36~18:22, 살전 1~5장, 살후 1~3장","행 18:23~19:22, 고전 1~6장",
+"고전 7~11장","고전 12~16장","행 19:23~20:1, 고후 1~6장","고후 7~13장",
+"행 20:2~3a, 롬 1~8장","롬 9~16장","행 20:3b~24장","행 25~28장",
+"빌 1~4장, 몬 1장","골 1~4장","엡 1~6장","딤전 1~6장","딛 1~3장, 딤후 1~4장",
+"벧전 1~5장","유 1장, 벧후 1~3장","히 1~7장","히 8~13장",
+"요일 1~5장, 요이 1장, 요삼 1장",
+"계 1~6장","계 7~11장","계 12~16장","계 17~22장"
+];
+const chapCount=name=>{const b=ALL.find(b=>b[0]===name);return b?b[1]:0};
+const TOTAL_CHAPS=ALL.reduce((s,b)=>s+b[1],0); // 1189장
+const OT_CHAPS=OT.reduce((s,b)=>s+b[1],0);      // 구약 929장
+const NT_CHAPS=NT.reduce((s,b)=>s+b[1],0);      // 신약 260장
+const chapsBefore=name=>{let s=0;for(const b of ALL){if(b[0]===name)break;s+=b[1]}return s};
+
+/* 성경 약어 (복사 시 [계5:14] 형태로 사용) */
+const ABBR={"창세기":"창","출애굽기":"출","레위기":"레","민수기":"민","신명기":"신","여호수아":"수","사사기":"삿","룻기":"룻","사무엘상":"삼상","사무엘하":"삼하","열왕기상":"왕상","열왕기하":"왕하","역대상":"대상","역대하":"대하","에스라":"스","느헤미야":"느","에스더":"에","욥기":"욥","시편":"시","잠언":"잠","전도서":"전","아가":"아","이사야":"사","예레미야":"렘","예레미야애가":"애","에스겔":"겔","다니엘":"단","호세아":"호","요엘":"욜","아모스":"암","오바댜":"옵","요나":"욘","미가":"미","나훔":"나","하박국":"합","스바냐":"습","학개":"학","스가랴":"슥","말라기":"말","마태복음":"마","마가복음":"막","누가복음":"눅","요한복음":"요","사도행전":"행","로마서":"롬","고린도전서":"고전","고린도후서":"고후","갈라디아서":"갈","에베소서":"엡","빌립보서":"빌","골로새서":"골","데살로니가전서":"살전","데살로니가후서":"살후","디모데전서":"딤전","디모데후서":"딤후","디도서":"딛","빌레몬서":"몬","히브리서":"히","야고보서":"약","베드로전서":"벧전","베드로후서":"벧후","요한일서":"요일","요한이서":"요이","요한삼서":"요삼","유다서":"유","요한계시록":"계"};
+
+/* ── 샘플 본문 (개역한글, 퍼블릭 도메인) ──────────────
+   ⟪…⟫ 는 예수님 말씀(홍자) 구간 표시 */
+const TEXT={
+"창세기/1":["태초에 하나님이 천지를 창조하시니라","땅이 혼돈하고 공허하며 흑암이 깊음 위에 있고 하나님의 신은 수면에 운행하시니라","하나님이 가라사대 빛이 있으라 하시매 빛이 있었고","그 빛이 하나님의 보시기에 좋았더라 하나님이 빛과 어두움을 나누사","빛을 낮이라 칭하시고 어두움을 밤이라 칭하시니라 저녁이 되며 아침이 되니 이는 첫째 날이니라","하나님이 가라사대 물 가운데 궁창이 있어 물과 물로 나뉘게 하리라 하시고","하나님이 궁창을 만드사 궁창 아래의 물과 궁창 위의 물로 나뉘게 하시매 그대로 되니라","하나님이 궁창을 하늘이라 칭하시니라 저녁이 되며 아침이 되니 이는 둘째 날이니라","하나님이 가라사대 천하의 물이 한 곳으로 모이고 뭍이 드러나라 하시매 그대로 되니라","하나님이 뭍을 땅이라 칭하시고 모인 물을 바다라 칭하시니라 하나님의 보시기에 좋았더라","하나님이 가라사대 땅은 풀과 씨 맺는 채소와 각기 종류대로 씨 가진 열매 맺는 과목을 내라 하시매 그대로 되어","땅이 풀과 각기 종류대로 씨 맺는 채소와 각기 종류대로 씨 가진 열매 맺는 나무를 내니 하나님의 보시기에 좋았더라","저녁이 되며 아침이 되니 이는 셋째 날이니라","하나님이 가라사대 하늘의 궁창에 광명이 있어 주야를 나뉘게 하라 또 그 광명으로 하여 징조와 사시와 일자와 연한이 이루라","또 그 광명이 하늘의 궁창에 있어 땅에 비취라 하시고 그대로 되니라","하나님이 두 큰 광명을 만드사 큰 광명으로 낮을 주관하게 하시고 작은 광명으로 밤을 주관하게 하시며 또 별들을 만드시고","하나님이 그것들을 하늘의 궁창에 두어 땅에 비취게 하시며","주야를 주관하게 하시며 빛과 어두움을 나뉘게 하시니라 하나님의 보시기에 좋았더라","저녁이 되며 아침이 되니 이는 넷째 날이니라","하나님이 가라사대 물들은 생물로 번성케 하라 땅 위 하늘의 궁창에는 새가 날으라 하시고","하나님이 큰 물고기와 물에서 번성하여 움직이는 모든 생물을 그 종류대로, 날개 있는 모든 새를 그 종류대로 창조하시니 하나님의 보시기에 좋았더라","하나님이 그들에게 복을 주어 가라사대 생육하고 번성하여 여러 바다 물에 충만하라 새들도 땅에 번성하라 하시니라","저녁이 되며 아침이 되니 이는 다섯째 날이니라","하나님이 가라사대 땅은 생물을 그 종류대로 내되 육축과 기는 것과 땅의 짐승을 종류대로 내라 하시고 그대로 되니라","하나님이 땅의 짐승을 그 종류대로, 육축을 그 종류대로, 땅에 기는 모든 것을 그 종류대로 만드시니 하나님의 보시기에 좋았더라","하나님이 가라사대 우리의 형상을 따라 우리의 모양대로 우리가 사람을 만들고 그로 바다의 고기와 공중의 새와 육축과 온 땅과 땅에 기는 모든 것을 다스리게 하자 하시고","하나님이 자기 형상 곧 하나님의 형상대로 사람을 창조하시되 남자와 여자를 창조하시고","하나님이 그들에게 복을 주시며 그들에게 이르시되 생육하고 번성하여 땅에 충만하라, 땅을 정복하라, 바다의 고기와 공중의 새와 땅에 움직이는 모든 생물을 다스리라 하시니라","하나님이 가라사대 내가 온 지면의 씨 맺는 모든 채소와 씨 가진 열매 맺는 모든 나무를 너희에게 주노니 너희 식물이 되리라","또 땅의 모든 짐승과 공중의 모든 새와 생명이 있어 땅에 기는 모든 것에게는 내가 모든 푸른 풀을 식물로 주노라 하시니 그대로 되니라","하나님이 그 지으신 모든 것을 보시니 보시기에 심히 좋았더라 저녁이 되며 아침이 되니 이는 여섯째 날이니라"],
+"시편/23":["여호와는 나의 목자시니 내가 부족함이 없으리로다","그가 나를 푸른 초장에 누이시며 쉴만한 물 가으로 인도하시는도다","내 영혼을 소생시키시고 자기 이름을 위하여 의의 길로 인도하시는도다","내가 사망의 음침한 골짜기로 다닐지라도 해를 두려워하지 않을 것은 주께서 나와 함께 하심이라 주의 지팡이와 막대기가 나를 안위하시나이다","주께서 내 원수의 목전에서 내게 상을 베푸시고 기름으로 내 머리에 바르셨으니 내 잔이 넘치나이다","나의 평생에 선하심과 인자하심이 정녕 나를 따르리니 내가 여호와의 집에 영원히 거하리로다"],
+"요한복음/1":["태초에 말씀이 계시니라 이 말씀이 하나님과 함께 계셨으니 이 말씀은 곧 하나님이시니라","그가 태초에 하나님과 함께 계셨고","만물이 그로 말미암아 지은 바 되었으니 지은 것이 하나도 그가 없이는 된 것이 없느니라","그 안에 생명이 있었으니 이 생명은 사람들의 빛이라","빛이 어둠에 비치되 어둠이 깨닫지 못하더라","하나님께로부터 보내심을 받은 사람이 있으니 그의 이름은 요한이라","그가 증언하러 왔으니 곧 빛에 대하여 증언하고 모든 사람이 자기로 말미암아 믿게 하려 함이라","그는 이 빛이 아니요 이 빛에 대하여 증언하러 온 자라","참 빛 곧 세상에 와서 각 사람에게 비추는 빛이 있었나니","그가 세상에 계셨으며 세상은 그로 말미암아 지은 바 되었으되 세상이 그를 알지 못하였고","자기 땅에 오매 자기 백성이 영접하지 아니하였으나","영접하는 자 곧 그 이름을 믿는 자들에게는 하나님의 자녀가 되는 권세를 주셨으니","이는 혈통으로나 육정으로나 사람의 뜻으로 나지 아니하고 오직 하나님께로부터 난 자들이니라","말씀이 육신이 되어 우리 가운데 거하시매 우리가 그의 영광을 보니 아버지의 독생자의 영광이요 은혜와 진리가 충만하더라","요한이 그에 대하여 증언하여 외쳐 이르되 내가 전에 말하기를 내 뒤에 오시는 이가 나보다 앞선 것은 나보다 먼저 계심이라 한 것이 이 사람을 가리킴이라 하니라","우리가 다 그의 충만한 데서 받으니 은혜 위에 은혜러라","율법은 모세로 말미암아 주어진 것이요 은혜와 진리는 예수 그리스도로 말미암아 온 것이라","본래 하나님을 본 사람이 없으되 아버지 품 속에 있는 독생하신 하나님이 나타내셨느니라","유대인들이 예루살렘에서 제사장들과 레위인들을 요한에게 보내어 네가 누구냐 물을 때에 요한의 증언이 이러하니라","요한이 드러내어 말하고 숨기지 아니하니 드러내어 하는 말이 나는 그리스도가 아니라 한대","또 묻되 그러면 누구냐 네가 엘리야냐 이르되 나는 아니라 또 묻되 네가 그 선지자냐 대답하되 아니라","또 말하되 누구냐 우리를 보낸 이들에게 대답하게 하라 너는 네게 대하여 무엇이라 하느냐","이르되 나는 선지자 이사야의 말과 같이 주의 길을 곧게 하라고 광야에서 외치는 자의 소리로라 하니라","그들은 바리새인들이 보낸 자라","또 물어 이르되 네가 만일 그리스도도 아니요 엘리야도 아니요 그 선지자도 아닐진대 어찌하여 세례를 베푸느냐","요한이 대답하되 나는 물로 세례를 베풀거니와 너희 가운데 너희가 알지 못하는 한 사람이 섰으니","곧 내 뒤에 오시는 그이라 나는 그의 신발끈을 풀기도 감당하지 못하겠노라 하더라","이 일은 요한이 세례 베풀던 곳 요단 강 건너편 베다니에서 일어난 일이니라","이튿날 요한이 예수께서 자기에게 나아오심을 보고 이르되 보라 세상 죄를 지고 가는 하나님의 어린 양이로다","내가 전에 말하기를 내 뒤에 오는 사람이 있는데 나보다 앞선 것은 그가 나보다 먼저 계심이라 한 것이 이 사람을 가리킴이라","나도 그를 알지 못하였으나 내가 와서 물로 세례를 베푸는 것은 그를 이스라엘에 나타내려 함이라 하니라","요한이 또 증언하여 이르되 내가 보매 성령이 비둘기 같이 하늘로부터 내려와서 그의 위에 머물렀더라","나도 그를 알지 못하였으나 나를 보내어 물로 세례를 베풀라 하신 그이가 나에게 말씀하시되 성령이 내려서 누구 위에든지 머무는 것을 보거든 그가 곧 성령으로 세례를 베푸는 이인 줄 알라 하셨기에","내가 보고 그가 하나님의 아들이심을 증언하였노라 하니라","또 이튿날 요한이 자기 제자 중 두 사람과 함께 섰다가","예수께서 거니심을 보고 말하되 보라 하나님의 어린 양이로다","두 제자가 그의 말을 듣고 예수를 따르거늘","예수께서 돌이켜 그 따르는 것을 보시고 물어 이르시되 ⟪무엇을 구하느냐⟫ 이르되 랍비여 어디 계시오니이까 하니 (랍비는 번역하면 선생이라)","예수께서 이르시되 ⟪와서 보라⟫ 그러므로 그들이 가서 계신 데를 보고 그 날 함께 거하니 때가 열 시쯤 되었더라","요한의 말을 듣고 예수를 따르는 두 사람 중의 하나는 시몬 베드로의 형제 안드레라","그가 먼저 자기의 형제 시몬을 찾아 말하되 우리가 메시야를 만났다 하고 (메시야는 번역하면 그리스도라)","데리고 예수께로 오니 예수께서 보시고 이르시되 ⟪네가 요한의 아들 시몬이니 장차 게바라 하리라⟫ 하시니라 (게바는 번역하면 베드로라)","이튿날 예수께서 갈릴리로 나가려 하시다가 빌립을 만나 이르시되 ⟪나를 따르라⟫ 하시니","빌립은 안드레와 베드로와 한 동네 벳새다 사람이라","빌립이 나다나엘을 찾아 이르되 모세가 율법에 기록하였고 여러 선지자가 기록한 그이를 우리가 만났으니 요셉의 아들 나사렛 예수니라","나다나엘이 이르되 나사렛에서 무슨 선한 것이 날 수 있느냐 빌립이 이르되 와서 보라 하니라","예수께서 나다나엘이 자기에게 오는 것을 보시고 그를 가리켜 이르시되 ⟪보라 이는 참으로 이스라엘 사람이라 그 속에 간사한 것이 없도다⟫","나다나엘이 이르되 어떻게 나를 아시나이까 예수께서 대답하여 이르시되 ⟪빌립이 너를 부르기 전에 네가 무화과나무 아래에 있을 때에 보았노라⟫","나다나엘이 대답하되 랍비여 당신은 하나님의 아들이시요 당신은 이스라엘의 임금이로소이다","예수께서 대답하여 이르시되 ⟪내가 너를 무화과나무 아래에서 보았다 하므로 믿느냐 이보다 더 큰 일을 보리라⟫","또 이르시되 ⟪진실로 진실로 너희에게 이르노니 하늘이 열리고 하나님의 사자들이 인자 위에 오르락 내리락 하는 것을 보리라⟫ 하시니라"],
+"요한복음/3":["바리새인 중에 니고데모라 하는 사람이 있으니 유대인의 관원이라","그가 밤에 예수께 와서 가로되 랍비여 우리가 당신은 하나님께로서 오신 선생인 줄 아나이다 하나님이 함께 하시지 아니하시면 당신의 행하시는 이 표적을 아무라도 할 수 없음이니이다","예수께서 대답하여 가라사대 ⟪진실로 진실로 네게 이르노니 사람이 거듭나지 아니하면 하나님 나라를 볼 수 없느니라⟫","니고데모가 가로되 사람이 늙으면 어떻게 날 수 있삽나이까 두번째 모태에 들어갔다가 날 수 있삽나이까","예수께서 대답하시되 ⟪진실로 진실로 네게 이르노니 사람이 물과 성령으로 나지 아니하면 하나님 나라에 들어갈 수 없느니라⟫","⟪육으로 난 것은 육이요 성령으로 난 것은 영이니⟫","⟪내가 네게 거듭나야 하겠다 하는 말을 기이히 여기지 말라⟫","⟪바람이 임의로 불매 네가 그 소리를 들어도 어디서 오며 어디로 가는지 알지 못하나니 성령으로 난 사람은 다 이러하니라⟫","니고데모가 대답하여 가로되 어찌 이러한 일이 있을 수 있나이까","예수께서 대답하여 가라사대 ⟪너는 이스라엘의 선생으로서 이러한 일을 알지 못하느냐⟫","⟪진실로 진실로 네게 이르노니 우리 아는 것을 말하고 본 것을 증거하노라 그러나 너희가 우리 증거를 받지 아니하는도다⟫","⟪내가 땅의 일을 말하여도 너희가 믿지 아니하거든 하물며 하늘 일을 말하면 어떻게 믿겠느냐⟫","⟪하늘에서 내려온 자 곧 인자 외에는 하늘에 올라간 자가 없느니라⟫","⟪모세가 광야에서 뱀을 든 것 같이 인자도 들려야 하리니⟫","⟪이는 저를 믿는 자마다 영생을 얻게 하려 하심이니라⟫","⟪하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니 이는 저를 믿는 자마다 멸망치 않고 영생을 얻게 하려 하심이니라⟫","⟪하나님이 그 아들을 세상에 보내신 것은 세상을 심판하려 하심이 아니요 저로 말미암아 세상이 구원을 받게 하려 하심이라⟫","⟪저를 믿는 자는 심판을 받지 아니하는 것이요 믿지 아니하는 자는 하나님의 독생자의 이름을 믿지 아니하므로 벌써 심판을 받은 것이니라⟫","⟪그 정죄는 이것이니 곧 빛이 세상에 왔으되 사람들이 자기 행위가 악하므로 빛보다 어두움을 더 사랑한 것이니라⟫","⟪악을 행하는 자마다 빛을 미워하여 빛으로 오지 아니하나니 이는 그 행위가 드러날까 함이요⟫","⟪진리를 좇는 자는 빛으로 오나니 이는 그 행위가 하나님 안에서 행한 것임을 나타내려 함이라⟫","이 후에 예수께서 제자들과 유대 땅으로 가서 거기 함께 유하시며 세례를 주시더라","요한도 살렘 가까운 애논에서 세례를 주니 거기 물들이 많음이라 사람들이 와서 세례를 받더라","요한이 아직 옥에 갇히지 아니하였더라","이에 요한의 제자 중에서 한 유대인으로 더불어 결례에 대하여 변론이 되었더니","저희가 요한에게 와서 가로되 랍비여 선생님과 함께 요단강 저편에 있던 자 곧 선생님이 증거하시던 자가 세례를 주매 사람이 다 그에게로 가더이다","요한이 대답하여 가로되 만일 하늘에서 주신 바 아니면 사람이 아무 것도 받을 수 없느니라","나의 말한 바 나는 그리스도가 아니요 그의 앞에 보내심을 받은 자라고 한 것을 증거할 자는 너희니라","신부를 취하는 자는 신랑이나 서서 신랑의 음성을 듣는 친구가 크게 기뻐하나니 나는 이러한 기쁨이 충만하였노라","그는 흥하여야 하겠고 나는 쇠하여야 하리라 하니라","위로부터 오시는 이는 만물 위에 계시고 땅에서 난 이는 땅에 속하여 땅에 속한 것을 말하느니라 하늘로서 오시는 이는 만물 위에 계시나니","그가 그 보고 들은 것을 증거하되 그의 증거를 받는 이가 없도다","그의 증거를 받는 이는 하나님을 참되시다 하여 인쳤느니라","하나님의 보내신 이는 하나님의 말씀을 하나니 이는 하나님이 성령을 한량 없이 주심이니라","아버지께서 아들을 사랑하사 만물을 다 그 손에 주셨으니","아들을 믿는 자는 영생이 있고 아들을 순종치 아니하는 자는 영생을 보지 못하고 도리어 하나님의 진노가 그 위에 있느니라"]
+};
+
+/* 장별 역본 표기 (기본은 개역한글) */
+const VERSION={"요한복음/1":"개역개정"};
+/* bible-data.js(DB에서 생성)로 수집된 본문·역본을 병합 */
+if(window.BIBLE_TEXT)Object.assign(TEXT,window.BIBLE_TEXT);
+if(window.BIBLE_VERSION)Object.assign(VERSION,window.BIBLE_VERSION);
+const verOf=key=>VERSION[key]||"개역한글";
+/* 소제목(s)·시편 표제(d): { "시편/4": [{v:1,t:"…",k:"d"}, ...] } */
+const HEADINGS=window.BIBLE_HEADINGS||{};
+
+/* ── 상태 ─────────────────────────── */
+const store={get:k=>{try{return localStorage.getItem("rb."+k)}catch(e){return null}},
+             set:(k,v)=>{try{localStorage.setItem("rb."+k,v)}catch(e){}}};
+/* 삭제 이력(툼스톤) 정리: 시각1(레거시)·아주 오래된 삭제는 이미 전파됐다고 보고 버리고, 그래도 많으면 최신 것만 유지.
+   — 이걸 안 하면 형광펜을 껐다 켤 때마다 삭제 기록이 무한히 쌓여 병합이 매번 무거워지고(=먹통) 문서가 계속 커진다. */
+const TOMB_TTL=180*864e5, TOMB_CAP=4000;
+function trimDels(o){
+  if(!o)return {};
+  const cut=Date.now()-TOMB_TTL;
+  let keys=Object.keys(o).filter(k=>o[k]>1&&o[k]>=cut);
+  if(keys.length>TOMB_CAP){keys.sort((a,b)=>o[b]-o[a]);keys=keys.slice(0,TOMB_CAP);}   // 최신 삭제 우선
+  const n={};for(const k of keys)n[k]=o[k];return n;
+}
+let cur={book:"요한복음",chap:3};
+const last=store.get("last");
+if(last){const[b,c]=last.split("/");if(chapCount(b)>=+c)cur={book:b,chap:+c}}
+
+/* 보기 설정: 기본값·증감폭·최소값만 두고 상한 없음 */
+const SETTINGS={
+  /* ft: 본문 글꼴 (선택형 — 0 프리텐다드 / 1 본명조 / 2 KoPubWorld 바탕 / 3 나눔명조 / 4 마루부리).
+     css값은 --ft 변수로 들어간다 */
+  ft:{def:0,  step:1,   min:0,
+      fmt:v=>["프리텐다드","본명조","KoPubWorld 바탕","나눔명조","마루부리"][v]||"프리텐다드",
+      css:v=>[
+        "var(--serif)",
+        "'Noto Serif KR','Source Han Serif KR',AppleMyungjo,'Nanum Myeongjo',Batang,serif",
+        "'KoPubWorld Batang','Nanum Myeongjo',Batang,serif",
+        "'Nanum Myeongjo',AppleMyungjo,Batang,serif",
+        "'Maru Buri','Nanum Myeongjo',serif"
+      ][v]||"var(--serif)"},
+  fs:{def:17, step:1,   min:6,   fmt:v=>v+"px",           css:v=>v+"px"},
+  fw:{def:400,step:10,  min:100, fmt:v=>v,                css:v=>v},
+  lh:{def:1.9,step:0.1, min:0.8, fmt:v=>"×"+v.toFixed(1), css:v=>v},
+  ls:{def:0,  step:0.1, min:-2,  fmt:v=>v.toFixed(1)+"px",css:v=>v+"px"},   /* 자간 — 0.1px씩, 음수로 좁히기도 가능 */
+  vs:{def:0.9,step:0.1, min:0,   fmt:v=>v.toFixed(1)+"em",css:v=>v+"em"},
+  py:{def:0,  step:4,   min:0,   fmt:v=>v+"px",           css:v=>v+"px"},
+  px:{def:20, step:2,   min:0,   fmt:v=>v+"px",           css:v=>v+"px"}
+};
+const setVal={};
+for(const k in SETTINGS){
+  const saved=parseFloat(store.get("set."+k));
+  setVal[k]=isNaN(saved)?SETTINGS[k].def:saved;
+}
+let marks=[];                      // 가름끈: ["책/장/쪽", ...]
+try{marks=JSON.parse(store.get("marks")||"[]")}catch(e){}
+/* 옛 형식(책/장)·잘못된 항목 제거 — 자동으로 끼던 '창 1:1' 유령의 원인 */
+marks=marks.filter(m=>typeof m==="string"&&m.split("/").length===3);
+store.set("marks",JSON.stringify(marks));
+store.set("mark","");              // 옛 단일 가름끈 키 폐기
+let hls={};                        // 형광펜: { "책/장": [절번호,...] }
+try{hls=JSON.parse(store.get("hl")||"{}")}catch(e){}
+let hlt={};                        // 형광펜 추가 시각: { "책/장/절": epoch } (최근순 정렬·동기화 LWW용)
+try{hlt=JSON.parse(store.get("hlt")||"{}")}catch(e){}
+let hldel={};                      // 형광펜 삭제 시각(툼스톤): { "책/장/절": epoch } — 삭제 동기화용
+try{hldel=JSON.parse(store.get("hldel")||"{}")}catch(e){}
+/* 큐티(QT) 형광펜: 성경 본문이 아니라 그날 받아온 큐티 본문이라 TEXT로 되찾을 수 없다.
+   → 절 내용을 함께 보관한다. { "날짜#index": {n:"절번호", t:"본문", ti:"제목", d:"표시용 날짜", at:epoch} }
+   무한 증가 방지: 최근 QT_CAP개만 유지(오래된 것부터 버림). */
+const QT_CAP=400;
+let qthl={};
+try{qthl=JSON.parse(store.get("qthl")||"{}")}catch(e){}
+let qthldel={};                    // QT 형광펜 삭제 시각(툼스톤)
+try{qthldel=JSON.parse(store.get("qthldel")||"{}")}catch(e){}
+/* 별표: 아끼는 구절만 승격해 따로 모아 봄 — id는 성경 "책/장/절" 또는 큐티 "날짜#순번".
+   가름끈과 같은 추가/삭제 시각 LWW로 기기 간 동기화 */
+let stars=[],starAt={},starDel={};
+try{stars=JSON.parse(store.get("stars")||"[]")}catch(e){}
+try{starAt=JSON.parse(store.get("starat")||"{}")}catch(e){}
+try{starDel=JSON.parse(store.get("stardel")||"{}")}catch(e){}
+function saveStars(){
+  store.set("stars",JSON.stringify(stars));
+  store.set("starat",JSON.stringify(starAt));
+  store.set("stardel",JSON.stringify(starDel));
+}
+function toggleStar(id,silent){
+  const i=stars.indexOf(id);
+  if(i>=0){stars.splice(i,1);delete starAt[id];starDel[id]=Date.now();if(!silent)toast("별표를 해제했습니다");}
+  else{stars.push(id);starAt[id]=Date.now();delete starDel[id];if(!silent)toast("★ 별표에 추가했습니다");}
+  saveStars();
+}
+function capQt(o){                 // 최근 것 우선으로 QT_CAP개만 남김
+  const ks=Object.keys(o);
+  if(ks.length<=QT_CAP)return o;
+  ks.sort((a,b)=>((o[b]&&o[b].at)||0)-((o[a]&&o[a].at)||0));
+  const n={};for(const k of ks.slice(0,QT_CAP))n[k]=o[k];return n;
+}
+let markt={};                      // 가름끈 추가 시각: { "책/장/쪽": epoch }
+try{markt=JSON.parse(store.get("markt")||"{}")}catch(e){}
+let markdel={};                    // 가름끈 삭제 시각(툼스톤): { "책/장/쪽": epoch }
+try{markdel=JSON.parse(store.get("markdel")||"{}")}catch(e){}
+/* 레거시 마이그레이션: 시각 없는 기존 형광펜·가름끈에 기준 시각(1)을 부여해 삭제 동기화 기준 확보 */
+for(const key in hls)for(const v of hls[key])if(!hlt[key+"/"+v])hlt[key+"/"+v]=1;
+for(const m of marks)if(!markt[m])markt[m]=1;
+/* ★ 로그인·동기화 전에 로컬 삭제 이력을 즉시 정리 — 이미 비대해진 기기가 첫 병합에서 통째로 처리하다
+   멈춰(=먹통) 못 빠져나오던 것을 방지. 이 정리 결과를 바로 저장해 다음 실행부터 가볍게 시작한다. */
+{const h0=Object.keys(hldel).length,m0=Object.keys(markdel).length;
+ hldel=trimDels(hldel);markdel=trimDels(markdel);
+ if(Object.keys(hldel).length!==h0)store.set("hldel",JSON.stringify(hldel));
+ if(Object.keys(markdel).length!==m0)store.set("markdel",JSON.stringify(markdel));
+ const q0=Object.keys(qthldel).length;
+ qthldel=trimDels(qthldel);
+ if(Object.keys(qthldel).length!==q0)store.set("qthldel",JSON.stringify(qthldel));}
+let reads={};                      // 읽음 횟수: { "책/장": 1~5 }
+try{reads=JSON.parse(store.get("reads")||"{}")}catch(e){}
+let readt={};                      // 읽음 변경 시각: { "책/장": epoch } — 동기화 LWW용(해제·초기화도 전파)
+try{readt=JSON.parse(store.get("readt")||"{}")}catch(e){}
+for(const k in reads)if(!readt[k])readt[k]=1;   // 레거시: 시각 없는 기존 읽음에 기준 시각 부여
+let plan={};                       // (옛 기능) 180일 통독표 날짜 색칠 — 화면에는 안 쓰고 동기화만 유지
+try{plan=JSON.parse(store.get("plan")||"{}")}catch(e){}
+let plant={};                      // 통독표 변경 시각 — 읽음(readt)과 같은 LWW용
+try{plant=JSON.parse(store.get("plant")||"{}")}catch(e){}
+for(const k in plan)if(!plant[k])plant[k]=1;
+let testament=NT.some(b=>b[0]===cur.book)?"nt":"ot";   // 성경 서랍 탭: "ot" | "nt"
+let qtMode=false;                  // 오늘의 큐티(Q) 보기 중인지 — 비밀 통로로 켠 기기만 사용
+let pickedBook=null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+/* 읽음 횟수(1~5) 색: 인덱스 = 읽은 횟수 */
+const READ_COLORS=["","#F5C6C4","#BFE5E0","#F7E9B8","#DCD0F2","#CBE7C8"]; /* 파스텔 톤 (원색은 눈 아프다는 피드백) */
+/* 한 책의 모든 장이 읽힌 최소 횟수(=완독 횟수). 한 장이라도 0이면 0 */
+function bookReadLevel(bname){
+  const n=chapCount(bname);let min=Infinity;
+  for(let c=1;c<=n;c++)min=Math.min(min,reads[bname+"/"+c]||0);
+  return min===Infinity?0:min;
+}
+
+/* ── 페이지 나누기 ───────────────────────
+   본문을 다단(column)으로 흘려 화면 너비 단위로 자르고,
+   translateX로 한 쪽씩 이동한다. */
+let curPage=0,pageStep=0,pageCount=1;
+const markKey=()=>cur.book+"/"+cur.chap+"/"+curPage;   // 가름끈은 페이지 단위
+
+function paginate(target){
+  const page=$("page");
+  const pxVal=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--px"))||20;
+  const gap=Math.max(pxVal*2,24);
+  const W=page.clientWidth;
+  page.style.columnWidth=W+"px";
+  page.style.columnGap=gap+"px";
+  pageStep=W+gap;
+  pageCount=Math.max(1,Math.round((page.scrollWidth+gap)/pageStep));
+  if(target==="last")curPage=pageCount-1;
+  else if(typeof target==="number")curPage=Math.max(0,Math.min(target,pageCount-1));
+  else curPage=Math.min(curPage,pageCount-1);
+  jump();
+}
+function flip(){ /* 장 안에서 한 쪽 넘김: 슬라이드 */
+  $("page").style.transform=`translateX(${-curPage*pageStep}px)`;
+  updateNav();
+}
+function jump(){ /* 재조판·장 이동 직후: 애니메이션 없이 제자리에 */
+  const p=$("page");
+  p.style.transition="none";
+  p.style.transform=`translateX(${-curPage*pageStep}px)`;
+  p.offsetHeight; // 강제 리플로우로 즉시 적용
+  p.style.transition="";
+  updateNav();
+}
+function updateNav(){
+  $("rhPage").textContent=`(${curPage+1}/${pageCount}쪽)`;
+  /* 이 장(또는 큐티) 안에서의 진행 — 첫 쪽부터 차올라 마지막 쪽에서 꽉 참 */
+  $("rhFill").style.transform=`scaleX(${(curPage+1)/pageCount})`;
+  $("ribbonBtn").style.display=qtMode?"none":"";   // 큐티 모드에선 가름끈 숨김
+  if(qtMode){                                       // 큐티: 위치 표시만 바꾸고 성경 진행률 계산 생략
+    $("bookFill").style.transform="scaleX(0)";      // 책 타임라인(메뉴 배경)은 큐티에선 비움
+    $("prevBtn").disabled=curPage<=0;
+    $("nextBtn").disabled=curPage>=pageCount-1;
+    $("progressSub").textContent="오늘의 큐티";
+    $("progressText").textContent=`${curPage+1} / ${pageCount}쪽`;
+    return;
+  }
+  if(!pvLocked())store.set("lastPage",String(curPage));   // 읽던 쪽 저장(기기별) — 오늘의 잠언에선 저장 안 함
+  const unit=cur.book==="시편"?"편":"장";
+  $("prevBtn").disabled=curPage<=0&&cur.chap<=1&&cur.book===ALL[0][0];
+  $("nextBtn").disabled=curPage>=pageCount-1&&cur.chap>=chapCount(cur.book)&&cur.book===ALL[ALL.length-1][0];
+  /* 현재 페이지가 가름끈에 있는지 반영 (페이지 넘길 때마다) */
+  const on=marks.includes(markKey());
+  $("ribbonBtn").classList.toggle("marked",on);
+  $("ribbonBtn").setAttribute("aria-pressed",on?"true":"false");
+  /* 하단 메뉴 배경(책 타임라인) — 이 책 전체 장 중 몇 % 지점인지 (장 내 쪽 진행 포함) */
+  $("bookFill").style.transform=`scaleX(${((cur.chap-1)+(curPage+1)/pageCount)/chapCount(cur.book)})`;
+  /* 전체 1189장 기준 위치 (장 내 쪽 진행률 포함) */
+  const done=chapsBefore(cur.book)+(cur.chap-1)+(curPage+1)/pageCount;
+  /* 위: 현재 위치가 구약(또는 신약)에서 몇 % 지점인지, 아래: 전체 성경 몇 % */
+  const isNt=NT.some(b=>b[0]===cur.book);
+  const tDone=isNt?done-OT_CHAPS:done, tTotal=isNt?NT_CHAPS:OT_CHAPS;
+  if(cur.book+"/"+cur.chap===pvKey){   // 오늘의 잠언: 큐티처럼 이름 + 쪽 표시
+    $("progressSub").textContent="오늘의 잠언";
+    $("progressText").textContent=`${curPage+1} / ${pageCount}쪽`;
+    if(pvLock){$("prevBtn").disabled=curPage<=0;$("nextBtn").disabled=curPage>=pageCount-1;}   // 장 밖 이동 없음
+  }else{
+    $("progressSub").textContent=(isNt?"신약 ":"구약 ")+(tDone/tTotal*100).toFixed(1)+"%";
+    $("progressText").textContent="전체 "+(done/TOTAL_CHAPS*100).toFixed(1)+"%";
+  }
+}
+
+/* ── 렌더링 ─────────────────────────── */
+function render(target){
+  if(qtMode){   // 오늘의 큐티: 본문 영역에 그대로 렌더(보기 설정·쪽 넘김 공용)
+    $("page").innerHTML=qtHtml();
+    $("rhTitle").textContent="오늘의 큐티";
+    paginate(target===undefined?0:target);
+    return;
+  }
+  const key=cur.book+"/"+cur.chap;
+  const verses=TEXT[key];
+  const unit=cur.book==="시편"?"편":"장";
+  let html="";
+  if(verses){
+    if(key===pvKey)html+=`<div class="pv-title">오늘의 잠언 ${cur.chap}장</div>`;   // '잠' 버튼으로 연 장에만
+    const hlArr=hls[key]||[];
+    const labMap=(window.BIBLE_LABELS&&window.BIBLE_LABELS[key])||{};
+    /* 소제목·표제를 절 번호별로 모아 둠 (해당 절 바로 앞에 끼워 넣음) */
+    const hMap={};
+    for(const h of (HEADINGS[key]||[]))(hMap[h.v]||(hMap[h.v]=[])).push(h);
+    let firstV=true;   // 첫 절: 절 번호 대신 큰 장 번호(종이 성경 조판)
+    html+=verses.map((v,i)=>{
+      if(!v)return "";                       // 합본으로 빠진 번호 등 빈 절은 건너뜀
+      let pre="";
+      for(const h of (hMap[i+1]||[]))         // 이 절 앞의 제목: s=소제목, d=시편 표제
+        pre+=`<p class="bhead ${h.k==="d"?"btitle":"bsec"}">${esc(h.t)}</p>`;
+      const num=labMap[i+1]||(i+1);          // 합본 절이면 "18-19" 같은 표기
+      const body=esc(v).replace(/⟪/g,'<span class="rl">').replace(/⟫/g,"</span>");
+      /* 첫 절엔 큰 장 번호를 흘려 넣고 "1" 표기는 생략(합본 등 "1"이 아닌 표기는 유지) */
+      const lead=firstV
+        ?`<span class="chnum-in" aria-hidden="true">${cur.chap}</span>`+(String(num)==="1"?"":`<sup>${num}</sup>`)
+        :`<sup>${num}</sup>`;
+      firstV=false;
+      return pre+`<p class="verse${hlArr.includes(i+1)?" hl":""}" data-v="${i+1}">${lead}<span>${body}</span></p>`;
+    }).join("");
+    const rc=reads[key]||0;
+    const rcStyle=rc?`style="background:${READ_COLORS[rc]};border-color:${READ_COLORS[rc]};color:#3a2f22"`:"";
+    html+=`<div class="readrow"><button class="readbtn" id="readBtn" ${rcStyle}>${rc?"✓ "+rc+"번 읽음":"읽음으로 표시"}</button><button class="planbtn" id="planBtn" aria-label="성경통독표에서 이 장이 든 날의 장별 이동 창 열기">통독</button></div>`;
+    html+=`<p class="colophon">${verOf(key)}판</p>`;
+  }else{
+    html+=`<div class="no-text"><div class="num">${cur.chap}</div>
+      이 장의 본문은 아직 담기지 않았습니다.<br>
+      샘플에는 창세기 1장 · 시편 23편 · 요한복음 3장이 수록되어 있습니다.</div>`;
+  }
+  $("page").innerHTML=html;
+  $("rhTitle").textContent=`${cur.book} ${cur.chap}${unit}/${chapCount(cur.book)}${unit}`;
+  if(!(pvLock&&key===pvKey))store.set("last",key);   // 오늘의 잠언(임시 화면)은 마지막 위치로 저장 안 함
+  paginate(target===undefined?0:target);
+}
+
+/* ── 쪽 넘김 (장 경계를 넘으면 이전·다음 장으로) ── */
+let turning=false;
+function goChapter(book,chap,target){ /* 장·책 경계: 짧은 페이드로 전환 */
+  if(turning)return;
+  qtMode=false;   // 성경 장으로 이동 → 큐티 모드 해제
+  if(book+"/"+chap!==pvKey){pvReturn=null;pvLock=false;}   // 오늘의 잠언을 벗어나면 복귀 지점·잠금 해제
+  turning=true;
+  const p=$("page");
+  p.style.opacity=0;
+  setTimeout(()=>{
+    cur={book,chap};
+    render(target);
+    requestAnimationFrame(()=>{p.style.opacity=1;turning=false});
+  },180);
+}
+const bookIndex=name=>ALL.findIndex(b=>b[0]===name);
+const pvLocked=()=>pvLock&&cur.book+"/"+cur.chap===pvKey;   // 오늘의 잠언: 오늘 장만 보이게
+$("prevBtn").onclick=()=>{
+  if(qtMode||pvLocked()){if(curPage>0){curPage--;flip();}return}   // 큐티·오늘의 잠언: 쪽만 넘김
+  if(curPage>0){curPage--;flip();return}
+  if(cur.chap>1){goChapter(cur.book,cur.chap-1,"last");return}
+  const i=bookIndex(cur.book);                        // 첫 장 → 이전 책 마지막 장
+  if(i>0)goChapter(ALL[i-1][0],ALL[i-1][1],"last");
+};
+$("nextBtn").onclick=()=>{
+  if(qtMode||pvLocked()){if(curPage<pageCount-1){curPage++;flip();}return}   // 큐티·오늘의 잠언: 쪽만 넘김
+  if(curPage<pageCount-1){curPage++;flip();return}
+  if(cur.chap<chapCount(cur.book)){goChapter(cur.book,cur.chap+1,0);return}
+  const i=bookIndex(cur.book);                        // 마지막 장 → 다음 책 1장
+  if(i>=0&&i<ALL.length-1)goChapter(ALL[i+1][0],1,0);
+};
+
+/* 스와이프/드래그로 쪽 넘기기 (터치·마우스 공용) */
+let swX=null,swY=null,swMoved=false;
+const readArea=document.querySelector("main");
+readArea.addEventListener("pointerdown",e=>{
+  if(e.pointerType==="mouse"&&e.button!==0)return;
+  swX=e.clientX;swY=e.clientY;swMoved=false;
+},{passive:true});
+readArea.addEventListener("pointerup",e=>{
+  if(swX===null)return;
+  const dx=e.clientX-swX,dy=e.clientY-swY;
+  swX=null;
+  if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.4){
+    swMoved=true;                       // 뒤따르는 click(형광펜) 무시
+    (dx<0?$("nextBtn"):$("prevBtn")).onclick();
+  }
+},{passive:true});
+readArea.addEventListener("pointercancel",()=>{swX=null},{passive:true});
+
+/* ── 형광펜 칠한 절 길게 누르면 복사 ─────────────────── */
+function copyText(text){
+  return new Promise(res=>{
+    const api=navigator.clipboard&&navigator.clipboard.writeText;
+    const useApi=fb=>api?navigator.clipboard.writeText(text).then(()=>res(true),()=>res(fb())):res(fb());
+    /* 문서에 포커스가 없으면 clipboard API는 거부가 확정이고, 그 거부는 제스처가 끝난 뒤에야 돌아온다
+       (= 폴백도 제스처 밖에서 실행돼 실패). 그럴 땐 제스처 안에서 즉시 되는 execCommand를 먼저 쓴다. */
+    const focused=!document.hasFocus||document.hasFocus();
+    if(api&&focused)useApi(()=>fallbackCopy(text));
+    else if(fallbackCopy(text))res(true);
+    else useApi(()=>false);   // 그래도 안 되면 마지막으로 표준 API에 맡겨 본다
+  });
+}
+/* execCommand("copy")는 '현재 문서 선택 영역'을 복사한다.
+   앞서 복사에 썼던 임시 textarea가 지워져도 그 선택이 남아 있으면, 새 textarea 선택이
+   실패했을 때 브라우저가 '이전 선택'을 그대로 복사해 버린다(= 두 번째부터 옛 본문이 복사되던 원인).
+   → ① 남은 선택을 먼저 비우고 ② 새 textarea를 확실히 선택한 뒤 ③ 끝나면 다시 비운다.
+   body에 user-select:none 이 걸려 있어 상속되면 선택 자체가 안 되므로 textarea엔 text로 되돌린다. */
+function fallbackCopy(text){
+  const sel=window.getSelection&&window.getSelection();
+  const wasActive=document.activeElement;   // 임시 textarea에 뺏은 포커스를 되돌려 놓기 위해
+  let ta=null;
+  try{
+    if(sel&&sel.removeAllRanges)sel.removeAllRanges();
+    ta=document.createElement("textarea");
+    ta.value=text;
+    ta.setAttribute("readonly","");
+    ta.style.cssText="position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:0;"+
+                     "opacity:0;font-size:16px;-webkit-user-select:text;user-select:text;";
+    document.body.appendChild(ta);
+    ta.focus();
+    try{ta.select()}catch(e){}
+    try{ta.setSelectionRange(0,ta.value.length)}catch(e){}   // iOS 등 select()가 안 먹는 기기 대비
+    if(ta.selectionEnd-ta.selectionStart!==text.length)return false;   // 선택이 안 됐으면 '성공'이라 하지 않는다
+    let ok=false;
+    try{ok=document.execCommand("copy")}catch(e){ok=false}
+    return ok;
+  }catch(e){return false}
+  finally{
+    try{if(sel&&sel.removeAllRanges)sel.removeAllRanges()}catch(e){}
+    if(ta&&ta.parentNode)ta.parentNode.removeChild(ta);
+    /* 포커스를 남의 손에 두고 나오면 다음 복사에서 clipboard API가 '문서에 포커스 없음'으로 거부한다 */
+    try{if(wasActive&&wasActive.focus&&wasActive!==document.body)wasActive.focus();else window.focus();}catch(e){}
+  }
+}
+/* 복사 함수들은 성공 여부만 돌려준다 — 안내(토스트)는 부르는 쪽에서(재시도 때문에) */
+/* 꾹 누른 절에서 위·아래로 이어 붙은 형광펜 구간을 찾는다.
+   예) 요한복음 1장 1절·2절을 나란히 칠했으면 어느 쪽을 눌러도 [1,2] */
+function hlRun(book,chap,v){
+  const arr=(hls[book+"/"+chap]||[]);
+  if(arr.indexOf(v)<0)return [v];
+  const has={};for(const n of arr)has[n]=1;
+  let a=v,b=v;
+  while(has[a-1])a--;
+  while(has[b+1])b++;
+  const out=[];for(let n=a;n<=b;n++)out.push(n);
+  return out;
+}
+/* 형광펜이 이어져 있으면 한 덩어리로 복사한다 — "1절 2절 본문"요1:1-2 */
+function copyVerse(book,chap,v){
+  const t0=TEXT[book+"/"+chap]||[];
+  const vs=hlRun(book,chap,v).filter(n=>((t0[n-1]||"").replace(/⟪|⟫/g,"")));
+  if(!vs.length)return Promise.resolve(false);
+  const t=vs.map(n=>(t0[n-1]||"").replace(/⟪|⟫/g,"")).join(" ");
+  const last=vs[vs.length-1];
+  const ref=(ABBR[book]||book)+chap+":"+vs[0]+(last>vs[0]?"-"+last:"");
+  return copyText(planDayLine({book:book,chap:chap,v:vs[0]})+'"'+t+'"'+ref);
+}
+/* 꾹 누르기: 본문 복사·형광펜 삭제·가름끈 삭제 모두 같은 0.5초, 손가락이 10px 넘게 움직이면 취소 */
+const LP_MS=500;
+/* 누르고 있는 그 자리에서 바로 복사하고 곧장 안내한다.
+   다만 타이머 안 복사를 사용자 제스처로 인정하지 않는 기기가 있어(그래서 예전엔 두 번째부터 실패했다),
+   그때는 손을 뗄 때 진짜 입력 이벤트 안에서 한 번 더 시도한다. */
+let lpTimer=null,lpFired=false,lpX=0,lpY=0,lpCopy=null,lpDown=false;
+function cancelLp(){if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}}
+const copyDone=okd=>toast(okd?"본문이 복사되었습니다.":"복사에 실패했습니다.");
+readArea.addEventListener("pointerdown",e=>{
+  lpFired=false;lpCopy=null;lpDown=true;cancelLp();
+  const p=e.target.closest(".verse");
+  if(!p)return;
+  const v=+p.dataset.v;
+  let doCopy;
+  if(qtMode){                                      // 큐티: 형광펜 칠한 절만 복사 대상
+    const id=qtIdOf(v-1);
+    if(!id||!qthl[id])return;
+    doCopy=()=>copyQtVerse(v-1);
+  }else{
+    const key=cur.book+"/"+cur.chap;
+    if(!(hls[key]&&hls[key].indexOf(v)>=0))return;  // 형광펜 칠해진 절만 복사 대상
+    doCopy=()=>copyVerse(cur.book,cur.chap,v);
+  }
+  lpX=e.clientX;lpY=e.clientY;
+  lpTimer=setTimeout(()=>{
+    lpTimer=null;lpFired=true;                       // 뒤따르는 click(형광펜 토글) 무시
+    if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
+    doCopy().then(okd=>{                             // 누른 채로 바로 복사 → 즉시 안내
+      if(okd)copyDone(true);
+      else if(lpDown)lpCopy=doCopy;                  // 이 기기에선 막힘 → 손 뗄 때 재시도(안내도 그때)
+      else copyDone(false);
+    });
+  },LP_MS);
+},{passive:true});
+readArea.addEventListener("pointermove",e=>{
+  if(lpTimer){const dx=e.clientX-lpX,dy=e.clientY-lpY;if(dx*dx+dy*dy>100){cancelLp();lpCopy=null;}}
+},{passive:true});
+readArea.addEventListener("pointerup",()=>{
+  lpDown=false;cancelLp();
+  if(lpCopy){const f=lpCopy;lpCopy=null;f().then(copyDone);}
+},{passive:true});
+readArea.addEventListener("pointercancel",()=>{lpDown=false;cancelLp();lpCopy=null;},{passive:true});
+
+/* 하단 메뉴를 좌우로 스와이프 → 버튼 순서 반전 (저장됨) */
+const bar=document.querySelector(".bar");
+if(store.get("barrev")==="1")bar.classList.add("rev");
+let bx=null,by=null,barGhost=false;
+bar.addEventListener("pointerdown",e=>{bx=e.clientX;by=e.clientY;barGhost=false},{passive:true});
+bar.addEventListener("pointerup",e=>{
+  if(bx===null)return;
+  const dx=e.clientX-bx,dy=e.clientY-by;bx=null;
+  if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.4){
+    barGhost=true;                     // 이 스와이프 제스처가 만들 클릭 한 번만 무시
+    bar.classList.toggle("rev");
+    store.set("barrev",bar.classList.contains("rev")?"1":"0");
+    toast("메뉴 순서를 반전했습니다");
+  }
+},{passive:true});
+bar.addEventListener("pointercancel",()=>{bx=null},{passive:true});
+/* 스와이프 자신이 만든 클릭만 차단 — 새 터치는 pointerdown에서 플래그가 풀려 바로 동작 */
+bar.addEventListener("click",e=>{if(barGhost){barGhost=false;e.stopPropagation();e.preventDefault()}},true);
+
+/* 실물 키로 쪽 넘기기 — 방향키·PgUp/PgDn·스페이스,
+   볼륨키를 키 입력으로 보내주는 기기(전자잉크 리더, 블루투스 리모컨 등) 포함 */
+window.addEventListener("keydown",e=>{
+  if(document.querySelector(".sheet.open,.set-sheet.open"))return;   // 시트 열려 있으면 무시
+  const k=e.key;
+  if(["ArrowRight","ArrowDown","PageDown"," ","VolumeDown"].includes(k)){e.preventDefault();$("nextBtn").onclick()}
+  else if(["ArrowLeft","ArrowUp","PageUp","VolumeUp"].includes(k)){e.preventDefault();$("prevBtn").onclick()}
+});
+
+/* ── 형광펜 모아보기 ─────────────────── */
+/* 형광펜 서랍: null이면 성경 목록, 아니면 선택된 책의 절 목록 */
+let hlBook=null,hlRenderToken=0;
+let hlTest="ot";   // 형광펜 목록의 구약/신약 탭 선택
+const QT_BOOK=" QT";   // 책 이름과 겹치지 않는 '큐티' 구분 표식
+/* 클릭은 서랍에 위임 1개로 처리 — 항목마다 리스너를 달면 수천 개일 때 생성·메모리 비용이 큼 */
+$("hlBody").addEventListener("click",e=>{
+  if(hlLpFired){hlLpFired=false;return;}   // 꾹 눌러 삭제한 직후의 클릭은 무시
+  const stEl=e.target.closest("[data-star]");
+  if(stEl){   // ★ 토글 — 목록을 다시 그리지 않고 그 자리만 바꿔 스크롤을 유지
+    const id=stEl.dataset.star;
+    toggleStar(id);
+    if(hlBook===STAR_BOOK&&!stars.includes(id)){   // 별표 목록에서 해제 → 그 항목만 제거
+      const it=stEl.closest(".hl-item");if(it)it.remove();
+      if(!starCount())backToHlList();
+    }else{
+      const on=stars.includes(id);
+      stEl.textContent=on?"★":"☆";
+      stEl.classList.toggle("on",on);
+    }
+    return;
+  }
+  if(e.target.closest(".hl-starrow")){hlBook=STAR_BOOK;renderHl();pushSheetState(2);return;}
+  if(e.target.closest(".hl-qt")){hlBook=QT_BOOK;renderHl();pushSheetState(2);return;}
+  const it=e.target.closest(".hl-item");
+  if(it){
+    if(it.dataset.qt)goToQtVerse(it.dataset.qt);
+    else goToHlVerse(it.dataset.key,+it.dataset.v);
+    return;
+  }
+  const bk=e.target.closest("[data-book]");
+  if(bk){hlBook=bk.dataset.book;renderHl();pushSheetState(2);}
+});
+/* 목록에서 항목을 꾹 누르면 그 절의 형광펜을 지운다 (확인 후).
+   목록이 수천 개일 수 있어 항목마다 리스너를 달지 않고 서랍에 위임 1개로 처리한다.
+   손가락이 조금이라도 움직이면(=스크롤) 취소되므로 넘기다가 지워지는 일은 없다. */
+let hlLpTimer=null,hlLpFired=false,hlLpX=0,hlLpY=0;
+function cancelHlLp(){if(hlLpTimer){clearTimeout(hlLpTimer);hlLpTimer=null;}}
+$("hlBody").addEventListener("pointerdown",e=>{
+  hlLpFired=false;cancelHlLp();
+  const it=e.target.closest(".hl-item");
+  if(!it)return;
+  hlLpX=e.clientX;hlLpY=e.clientY;
+  const key=it.dataset.key,v=+it.dataset.v,qt=it.dataset.qt;
+  hlLpTimer=setTimeout(()=>{
+    hlLpTimer=null;hlLpFired=true;                 // 뒤따르는 click(본문으로 이동) 무시
+    if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
+    askDeleteHl(qt,key,v);
+  },LP_MS);
+},{passive:true});
+$("hlBody").addEventListener("pointermove",e=>{
+  if(hlLpTimer){const dx=e.clientX-hlLpX,dy=e.clientY-hlLpY;if(dx*dx+dy*dy>100)cancelHlLp();}
+},{passive:true});
+$("hlBody").addEventListener("pointerup",cancelHlLp,{passive:true});
+$("hlBody").addEventListener("pointercancel",cancelHlLp,{passive:true});
+async function askDeleteHl(qt,key,v){
+  const top=$("hlBody").scrollTop;               // 지운 뒤에도 보던 위치 유지
+  if(qt){                                        // ── 큐티 형광펜
+    const e=qthl[qt];
+    if(!e)return;
+    const ref=e.bk?(ABBR[e.bk]||e.bk)+e.ch+":"+e.bv:(e.n?e.n+"절":"이 절");
+    if(!await askConfirm(`${ref} 형광펜을 지우시겠습니까?`))return;
+    delete qthl[qt];qthldel[qt]=Date.now();
+    if(stars.includes(qt))toggleStar(qt,true);   // 형광펜이 사라지면 별표도 정리
+    saveQtHl();
+    if(!Object.keys(qthl).length)backToHlList();  // QT가 다 비면 목록 첫 화면으로
+    else renderHl(top);
+    if(qtMode)render(curPage);                   // 큐티 화면을 보고 있었다면 형광펜 제거 반영
+  }else{                                         // ── 성경 형광펜
+    const p=key.split("/"),bk=p[0],ch=+p[1],unit=bk==="시편"?"편":"장";
+    if(!await askConfirm(`${bk} ${ch}${unit} ${v}절 형광펜을 지우시겠습니까?`))return;
+    const arr=hls[key]||[],i=arr.indexOf(v);
+    if(i>=0)arr.splice(i,1);
+    if(!arr.length)delete hls[key];
+    const id=key+"/"+v;
+    delete hlt[id];hldel[id]=Date.now();          // 툼스톤 — 다른 기기에도 삭제 전파
+    if(stars.includes(id))toggleStar(id,true);    // 형광펜이 사라지면 별표도 정리
+    store.set("hl",JSON.stringify(hls));
+    store.set("hlt",JSON.stringify(hlt));
+    store.set("hldel",JSON.stringify(hldel));
+    if(!hlBookCounts()[bk])backToHlList();        // 그 책의 형광펜이 다 없어지면 목록 첫 화면으로
+    else renderHl(top);
+    if(!qtMode)render(curPage);                   // 본문에서도 형광펜 제거 반영
+  }
+  toast("형광펜을 지웠습니다");
+}
+function backToHlList(){
+  if(sheetDepth>1)history.back();                 // 뒤로가기 이력도 함께 정리
+  else{hlBook=null;renderHl();}
+}
+/* ── 실행할 때마다 다시 만나는 형광펜 한 구절 (모아둔 게 있을 때만) ── */
+function randomHlEntry(){
+  const pool=[];
+  for(const key in hls){
+    const p=key.split("/"),unit=p[0]==="시편"?"편":"장";
+    for(const v of hls[key]){
+      const t=((TEXT[key]||[])[v-1]||"").replace(/⟪|⟫/g,"");
+      if(t)pool.push({t,ref:`${p[0]} ${p[1]}${unit} ${v}절`});
+    }
+  }
+  for(const id in qthl){
+    const e=qthl[id];
+    if(e&&e.t)pool.push({t:e.t,ref:e.bk?`${e.bk} ${e.ch}장 ${e.bv}절 · 큐티`:(e.d||"큐티")});
+  }
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+}
+function showVod(){
+  const e=randomHlEntry();
+  if(!e)return;
+  $("vodText").textContent=e.t;
+  $("vodRef").textContent=e.ref;
+  $("vodScrim").classList.add("open");
+}
+$("vodNext").onclick=()=>{const e=randomHlEntry();if(e){$("vodText").textContent=e.t;$("vodRef").textContent=e.ref;}};
+$("vodClose").onclick=()=>$("vodScrim").classList.remove("open");
+$("vodScrim").addEventListener("click",e=>{if(e.target===$("vodScrim"))$("vodScrim").classList.remove("open")});
+/* 최근 날짜부터, 같은 날짜 안에서는 절 순서대로 */
+function qtHlItems(){
+  const arr=[];
+  for(const id in qthl){
+    const s=id.lastIndexOf("#");
+    arr.push({id,day:id.slice(0,s),i:+id.slice(s+1),v:qthl[id]});
+  }
+  arr.sort((a,b)=>(a.day<b.day?1:a.day>b.day?-1:0)||(a.i-b.i));
+  return arr;
+}
+/* 성경 본문에 형광펜 칠하기 (본문 화면의 절 터치와 같은 동작 — 목록에서 부를 때 사용) */
+function addHl(key,v){
+  const arr=hls[key]||(hls[key]=[]);
+  if(arr.indexOf(v)<0)arr.push(v);
+  arr.sort((a,b)=>a-b);
+  const id=key+"/"+v;
+  hlt[id]=Date.now();delete hldel[id];
+  store.set("hl",JSON.stringify(hls));
+  store.set("hlt",JSON.stringify(hlt));
+  store.set("hldel",JSON.stringify(hldel));
+}
+/* QT 목록에서 절 선택 → 성경 본문의 그 절로 이동.
+   큐티 본문은 매일 바뀌어 사라지므로, 형광펜을 칠할 때 적어 둔 성경 좌표(사19:17)로 찾아간다.
+   큐티에만 칠하고 성경 본문엔 표시가 없을 수 있어, 그때는 함께 칠할지 물어본다.
+   좌표가 없는 항목만 예외로 오늘 큐티 화면으로 보낸다. */
+async function goToQtVerse(id){
+  const e=qthl[id];
+  if(e&&e.bk&&chapCount(e.bk)>=e.ch){
+    const key=e.bk+"/"+e.ch,v=e.bv,unit=e.bk==="시편"?"편":"장";
+    const marked=hls[key]&&hls[key].indexOf(v)>=0;
+    const hasText=!!((TEXT[key]||[])[v-1]);
+    if(!marked&&hasText&&
+       await askConfirm(`성경 본문에 형광펜 표시가 없습니다.\n${e.bk} ${e.ch}${unit} ${v}절에 형광펜 표시할까요?`,
+                        {cancelText:"아니오",okText:"예"})){
+      addHl(key,v);
+      toast("형광펜을 칠했습니다");
+    }
+    goToHlVerse(key,v);
+    return;
+  }
+  const s=id.lastIndexOf("#"),day=id.slice(0,s),i=+id.slice(s+1);
+  if(!qtData||qtDateOf(qtData)!==day){toast("성경 위치를 알 수 없는 큐티 본문입니다");return;}
+  closeSheet();
+  if(!qtMode)qtReturnPage=curPage;   // 뒤로가기 복귀용
+  qtMode=true;qtLoading=false;stopQtPct();
+  render(0);
+  const el=$("page").querySelector(`.verse[data-v="${i+1}"]`);
+  if(el&&pageStep){
+    const x=el.getBoundingClientRect().left-$("page").getBoundingClientRect().left;
+    curPage=Math.max(0,Math.min(pageCount-1,Math.round(x/pageStep)));
+    jump();
+  }
+}
+function hlBookCounts(){   // {책이름: 형광펜 절 수}
+  const m={};
+  for(const key in hls){const b=key.split("/")[0];m[b]=(m[b]||0)+hls[key].length;}
+  return m;
+}
+function goToHlVerse(key,v){   // 목록에서 절 선택 → 본문의 해당 쪽으로 이동
+  const [bk,ch]=key.split("/");
+  cur={book:bk,chap:+ch};qtMode=false;
+  closeSheet();
+  render(0);
+  /* 해당 절이 있는 쪽으로 이동 (다단에서는 offsetLeft가 부정확 → 실제 렌더 위치 사용) */
+  const el=$("page").querySelector(`.verse[data-v="${v}"]`);
+  if(el&&pageStep){
+    const x=el.getBoundingClientRect().left-$("page").getBoundingClientRect().left; // page는 translateX(0) 상태
+    curPage=Math.max(0,Math.min(pageCount-1,Math.round(x/pageStep)));
+    jump();
+  }
+}
+const STAR_BOOK=" STAR";   // 책 이름과 겹치지 않는 '별표' 구분 표식
+let hlQuery="";            // 형광펜 검색어 (서랍 열 때 초기화)
+/* 별표 id가 가리키는 형광펜이 아직 살아있는지 (동기화로 형광펜만 지워졌을 수 있음) */
+function starAlive(id){
+  if(id.includes("#"))return !!qthl[id];
+  const s=id.lastIndexOf("/");
+  return !!(hls[id.slice(0,s)]&&hls[id.slice(0,s)].includes(+id.slice(s+1)));
+}
+function starCount(){return stars.filter(starAlive).length}
+/* 형광펜 목록 항목 한 개 — 탭하면 이동, ★로 별표 토글, 꾹 누르면 삭제(위임 핸들러 공용) */
+function hlItemHtml(o){   // o: {key,v}(성경) 또는 {qt}(큐티) + ref(표시 좌표), t(본문)
+  const id=o.qt||o.key+"/"+o.v;
+  const on=stars.includes(id);
+  const attrs=o.qt?`data-qt="${esc(o.qt)}"`:`data-key="${esc(o.key)}" data-v="${o.v}"`;
+  return `<button class="hl-item" ${attrs}><sup>${esc(String(o.ref))}</sup><span class="snip">${esc(o.t)}</span>`+
+    `<span class="hl-star${on?" on":""}" data-star="${esc(id)}" aria-label="별표">${on?"★":"☆"}</span></button>`;
+}
+/* 1단계 목록(검색창 아래 부분)만 다시 그림 — 입력 포커스를 잃지 않게 검색창은 그대로 둔다 */
+function renderHlList(){
+  const wrap=$("hlListWrap");if(!wrap)return;
+  const q=hlQuery.trim();
+  if(q){wrap.innerHTML=hlSearchHtml(q);return;}
+  const counts=hlBookCounts();
+  const books=(hlTest==="nt"?NT:OT).map(b=>b[0]).filter(n=>counts[n]);
+  const qn=Object.keys(qthl).length,sn=starCount();
+  let html="";
+  if(sn)html+=`<button class="hl-qt hl-starrow"><span>★ 별표 구절</span><span class="hl-cnt">${sn}</span></button>`;
+  if(books.length){
+    html+=`<div class="hl-books">`+books.map(n=>
+      `<button class="hl-book" data-book="${esc(n)}"><span>${esc(n)}</span><span class="hl-cnt">${counts[n]}</span></button>`
+    ).join("")+`</div>`;
+  }else{
+    html+=`<p class="hl-empty">${hlTest==="nt"?"신약":"구약"}에 칠한 절이 아직 없습니다.</p>`;
+  }
+  /* 큐티 본문에 칠한 형광펜은 성경 장·절 체계 밖이라 탭과 무관하게 맨 아래 */
+  if(qn)html+=`<div class="hl-div">QT</div>`+
+    `<button class="hl-qt"><span>[QT] 큐티 본문</span><span class="hl-cnt">${qn}</span></button>`;
+  wrap.innerHTML=html;
+}
+/* 검색: 성경(성경 순서)·큐티(최근순) 형광펜 본문에서 단어 찾기. 권역 탭과 무관하게 전체에서 */
+function hlSearchHtml(q){
+  const lq=q.toLowerCase();
+  const idx={};ALL.forEach((b,i)=>idx[b[0]]=i);
+  const res=[];
+  for(const key in hls){
+    const t0=TEXT[key]||[];
+    for(const v of hls[key]){
+      const t=(t0[v-1]||"").replace(/⟪|⟫/g,"");
+      if(t&&t.toLowerCase().includes(lq))res.push({key,v,t});
+    }
+  }
+  res.sort((a,b)=>{const A=a.key.split("/"),B=b.key.split("/");
+    return (idx[A[0]]-idx[B[0]])||(+A[1]-+B[1])||(a.v-b.v);});
+  const qres=[];
+  for(const it of qtHlItems()){
+    const t=((it.v&&it.v.t)||"");
+    if(t.toLowerCase().includes(lq))qres.push(it);
+  }
+  const total=res.length+qres.length;
+  if(!total)return `<p class="hl-empty">"${esc(q)}" 검색 결과가 없습니다.</p>`;
+  const CAP=200;   // 한 번에 붙이는 상한 — 검색 결과는 보통 적어 조각 렌더까지는 불필요
+  let html=`<div class="hl-hint">검색 결과 ${total}건${total>CAP?` — 앞 ${CAP}건만 표시`:""}</div>`,n=0;
+  for(const r of res){
+    if(n++>=CAP)break;
+    const p=r.key.split("/");
+    html+=hlItemHtml({key:r.key,v:r.v,ref:(ABBR[p[0]]||p[0])+p[1]+":"+r.v,t:r.t});
+  }
+  for(const it of qres){
+    if(n++>=CAP)break;
+    const v=it.v||{};
+    const rf=v.bk?(ABBR[v.bk]||v.bk)+v.ch+":"+v.bv:String(v.n||"");
+    html+=hlItemHtml({qt:it.id,ref:rf+" (QT)",t:v.t||""});
+  }
+  return html;
+}
+function renderHl(keepTop){   // keepTop: 다시 그린 뒤 되돌릴 스크롤 위치(항목 삭제 후 제자리 유지)
+  const body=$("hlBody");
+  syncHlTabs();
+  if(!hlBook){   // ── 1단계: 검색창 + 별표 줄 + 권역(하단 탭)별 책 목록 + 맨 아래 [QT]
+    const counts=hlBookCounts();
+    if(!Object.keys(counts).length&&!Object.keys(qthl).length){
+      body.innerHTML=`<p class="hl-empty">아직 칠한 절이 없습니다.<br>본문에서 절을 터치하면 형광펜이 칠해집니다.</p>`;
+    }else{
+      body.innerHTML=`<input class="hl-search" id="hlSearch" type="search" autocomplete="off"
+        placeholder="구절 검색 (단어·문구)" value="${esc(hlQuery)}"><div id="hlListWrap"></div>`;
+      $("hlSearch").oninput=e=>{hlQuery=e.target.value;renderHlList();};
+      renderHlList();
+    }
+  }else if(hlBook===STAR_BOOK){   // ── 2단계(별표): 별표한 구절만 (성경 순서 → 큐티 최근순)
+    const idx={};ALL.forEach((b,i)=>idx[b[0]]=i);
+    const bib=[],qts=[];
+    for(const id of stars){
+      if(!starAlive(id))continue;
+      if(id.includes("#"))qts.push(id);
+      else{const s=id.lastIndexOf("/");bib.push({key:id.slice(0,s),v:+id.slice(s+1)});}
+    }
+    bib.sort((a,b)=>{const A=a.key.split("/"),B=b.key.split("/");
+      return (idx[A[0]]-idx[B[0]])||(+A[1]-+B[1])||(a.v-b.v);});
+    qts.sort((a,b)=>a<b?1:-1);
+    let html=`<button class="back" id="hlBack">‹ 형광펜 목록으로</button>`+
+      `<div style="font-family:var(--display);font-weight:800;font-size:22px;color:var(--panel-ink)">★ 별표 구절</div>`+
+      `<div class="hl-hint">★를 누르면 해제 · 항목을 꾹 누르면 형광펜 삭제</div>`;
+    for(const b of bib){
+      const p=b.key.split("/");
+      const t=((TEXT[b.key]||[])[b.v-1]||"").replace(/⟪|⟫/g,"");
+      html+=hlItemHtml({key:b.key,v:b.v,ref:(ABBR[p[0]]||p[0])+p[1]+":"+b.v,t});
+    }
+    for(const id of qts){
+      const v=qthl[id]||{};
+      const rf=v.bk?(ABBR[v.bk]||v.bk)+v.ch+":"+v.bv:String(v.n||"");
+      html+=hlItemHtml({qt:id,ref:rf+" (QT)",t:v.t||""});
+    }
+    body.innerHTML=html;
+    $("hlBack").onclick=()=>{if(sheetDepth>1)history.back();else{hlBook=null;renderHl();}};
+  }else if(hlBook===QT_BOOK){   // ── 2단계(QT): 큐티 형광펜 절들 (최근 날짜부터)
+    const items=qtHlItems();
+    body.innerHTML=`<button class="back" id="hlBack">‹ 형광펜 목록으로</button>`+
+      `<div style="font-family:var(--display);font-weight:800;font-size:22px;color:var(--panel-ink)">[QT] 큐티 본문</div>`+
+      `<div class="hl-hint">★로 아끼는 구절 표시 · 항목을 꾹 누르면 삭제</div>`;
+    $("hlBack").onclick=()=>{if(sheetDepth>1)history.back();else{hlBook=null;renderHl();}};
+    const tok=++hlRenderToken;
+    let i=0,prevDay=null;
+    const step=()=>{
+      if(tok!==hlRenderToken)return;
+      let html="";
+      for(const end=Math.min(i+120,items.length);i<end;i++){
+        const it=items[i],v=it.v||{};
+        if(it.day!==prevDay){
+          html+=`<div class="hl-date">${esc(v.d||it.day)}${v.ti?`<small>${esc(v.ti)}</small>`:""}</div>`;
+          prevDay=it.day;
+        }
+        const rf=v.bk?(ABBR[v.bk]||v.bk)+v.ch+":"+v.bv:String(v.n||"");   // 성경 좌표를 알면 "사19:17"로 표시
+        html+=hlItemHtml({qt:it.id,ref:rf,t:v.t||""});
+      }
+      body.insertAdjacentHTML("beforeend",html);
+      if(keepTop)body.scrollTop=keepTop;   // 조각마다 다시 붙는 동안에도 보던 위치 유지
+      if(i<items.length)requestAnimationFrame(step);
+    };
+    step();
+  }else{         // ── 2단계: 선택된 책의 형광펜 절들 (장→절 순서)
+    const items=[];
+    for(const key in hls){if(key.split("/")[0]!==hlBook)continue;for(const v of hls[key])items.push({key,v});}
+    items.sort((a,b)=>(+a.key.split("/")[1]- +b.key.split("/")[1])||(a.v-b.v));
+    const unit=hlBook==="시편"?"편":"장";
+    body.innerHTML=`<button class="back" id="hlBack">‹ 형광펜 목록으로</button>`+
+      `<div style="font-family:var(--display);font-weight:800;font-size:22px;color:var(--panel-ink)">${esc(hlBook)}</div>`+
+      `<div class="hl-hint">★로 아끼는 구절 표시 · 항목을 꾹 누르면 삭제</div>`;
+    $("hlBack").onclick=()=>{if(sheetDepth>1)history.back();else{hlBook=null;renderHl();}};
+    /* 수천 개여도 멈추지 않게: 한 번에 통째로 붙이지 않고 프레임당 120개씩 나눠 붙임 */
+    const tok=++hlRenderToken;
+    let i=0,prevKey=null;
+    const step=()=>{
+      if(tok!==hlRenderToken)return;   // 그 사이 서랍이 다시 그려졌으면 이 조각 렌더는 중단
+      let html="";
+      for(const end=Math.min(i+120,items.length);i<end;i++){
+        const it=items[i],c=+it.key.split("/")[1];
+        if(it.key!==prevKey){html+=`<div class="hl-chap">${c}${unit}</div>`;prevKey=it.key;}
+        const t=((TEXT[it.key]||[])[it.v-1]||"").replace(/⟪|⟫/g,"");
+        html+=hlItemHtml({key:it.key,v:it.v,ref:it.v,t});
+      }
+      body.insertAdjacentHTML("beforeend",html);
+      if(keepTop)body.scrollTop=keepTop;   // 조각마다 다시 붙는 동안에도 보던 위치 유지
+      if(i<items.length)requestAnimationFrame(step);
+    };
+    step();
+  }
+  body.scrollTop=keepTop||0;
+}
+/* 하단 구약/신약 탭 상태·건수 갱신 (성경 서랍의 syncTabs와 같은 요령) */
+function syncHlTabs(){
+  const counts=hlBookCounts();
+  const sum=a=>a.reduce((s,b)=>s+(counts[b[0]]||0),0);
+  const o=sum(OT),n=sum(NT);
+  $("hlTabOt").textContent="구약"+(o?" "+o:"");
+  $("hlTabNt").textContent="신약"+(n?" "+n:"");
+  $("hlTabOt").setAttribute("aria-selected",hlTest==="ot");
+  $("hlTabNt").setAttribute("aria-selected",hlTest==="nt");
+}
+/* 탭 전환 — 2단계(책 상세·QT)에서 눌러도 그 권역의 책 목록으로, 검색 중이면 검색 종료 */
+function switchHlTest(t){
+  if(hlTest===t&&hlBook===null&&!hlQuery)return;
+  hlTest=t;hlBook=null;hlQuery="";renderHl();
+}
+$("hlTabOt").onclick=()=>switchHlTest("ot");
+$("hlTabNt").onclick=()=>switchHlTest("nt");
+function openHl(){
+  doCloseSheets();
+  hlBook=null;hlQuery="";
+  /* 기본 탭: 지금 읽는 책의 권역. 단 그쪽에 형광펜이 하나도 없고 반대쪽엔 있으면 있는 쪽을 편다 */
+  hlTest=NT.some(b=>b[0]===cur.book)?"nt":"ot";
+  const c=hlBookCounts();
+  const has=t=>(t==="nt"?NT:OT).some(b=>c[b[0]]);
+  if(!has(hlTest)&&has(hlTest==="nt"?"ot":"nt"))hlTest=hlTest==="nt"?"ot":"nt";
+  renderHl();
+  $("scrim").classList.add("open");$("hlSheet").classList.add("open");
+  pushSheetState(1);
+}
+$("hlBtn").onclick=()=>$("hlSheet").classList.contains("open")?closeSheet():openHl();
+
+/* 절 터치 → 형광펜 켜고 끄기 */
+function cycleRead(){
+  const key=cur.book+"/"+cur.chap;
+  const c=((reads[key]||0)+1)%6;       // 0→1→2→3→4→5→0
+  reads[key]=c;                        // 해제도 0을 '명시적으로' 저장 — 키를 지우면 Firestore merge가
+                                       // 클라우드의 옛 값을 못 지워 해제가 안 먹히고 이전 상태로 되돌아감
+  readt[key]=Date.now();               // 변경 시각 기록(0으로 해제한 경우도 포함)
+  store.set("reads",JSON.stringify(reads));
+  store.set("readt",JSON.stringify(readt));
+  render(curPage);                     // 버튼 색 갱신, 현재 쪽 유지
+  toast(c?c+"번 읽음으로 표시":"읽음 해제");
+}
+readArea.addEventListener("click",e=>{
+  if(lpFired){lpFired=false;return;}    // 길게 눌러 복사한 직후의 클릭은 무시
+  if(swMoved){swMoved=false;return;}   // 스와이프 넘김 직후의 클릭은 무시
+  if(e.target.closest(".readbtn")){cycleRead();return}   // 읽음 버튼
+  if(e.target.closest(".planbtn")){openPlanPopHere();return}   // 통독 버튼 → 이 장이 든 날의 장별 이동 창
+  /* 좌우 가장자리 탭 → 쪽 이동 (빈 공간·여백 포함, 가운데는 형광펜) */
+  const r=readArea.getBoundingClientRect();
+  const rel=(e.clientX-r.left)/r.width;
+  if(rel<0.24){$("prevBtn").onclick();return}
+  if(rel>0.76){$("nextBtn").onclick();return}
+  const p=e.target.closest(".verse");
+  if(!p)return;
+  if(qtMode){toggleQtHl(p,+p.dataset.v-1);return;}   // 큐티 본문도 형광펜 칠하기
+  const v=+p.dataset.v,key=cur.book+"/"+cur.chap;
+  const arr=hls[key]||(hls[key]=[]);
+  const i=arr.indexOf(v);
+  const id=key+"/"+v;
+  if(i>=0){arr.splice(i,1);p.classList.remove("hl");delete hlt[id];hldel[id]=Date.now();}
+  else{arr.push(v);p.classList.add("hl");hlt[id]=Date.now();delete hldel[id];}
+  if(!arr.length)delete hls[key];
+  store.set("hl",JSON.stringify(hls));
+  store.set("hlt",JSON.stringify(hlt));
+  store.set("hldel",JSON.stringify(hldel));
+});
+
+/* 모바일 브라우저는 스크롤 중 주소창 출몰로 resize가 연발됨 — 잠잠해진 뒤 한 번만 재조판 */
+let rzTimer;
+window.addEventListener("resize",()=>{clearTimeout(rzTimer);rzTimer=setTimeout(()=>paginate(),120)});
+if(document.fonts)document.fonts.ready.then(()=>paginate());
+
+/* ── 가름끈 ─────────────────────────── */
+$("ribbonBtn").onclick=()=>{
+  const key=markKey();
+  const i=marks.indexOf(key);
+  if(i>=0){marks.splice(i,1);markdel[key]=Date.now();delete markt[key];}
+  else{marks.push(key);markt[key]=Date.now();delete markdel[key];}
+  const on=marks.includes(key);
+  store.set("marks",JSON.stringify(marks));
+  store.set("markt",JSON.stringify(markt));
+  store.set("markdel",JSON.stringify(markdel));
+  $("ribbonBtn").classList.toggle("marked",on);
+  $("ribbonBtn").setAttribute("aria-pressed",on?"true":"false");
+  toast(on?"가름끈을 끼웠습니다":"가름끈을 뺐습니다");
+};
+
+/* ── 오늘의 큐티 (성서유니온 sum.su.or.kr, /qt 프록시) ─────────
+   비밀 통로로 켠 기기에서만 Q 버튼이 보인다. 본문 영역(#page)에 렌더 →
+   보기 설정·쪽 넘김을 그대로 사용. Q를 누를 때마다 항상 새로 받아온다
+   (실패 뒤 재시도 포함). 받는 동안 진행률(%)을 보여주고, 새로 받기에
+   실패하면 저장해 둔 지난 본문이라도 보여준다. */
+const qtDateOf=d=>{const m=d&&d.date&&d.date.match(/(\d{4})\.(\d{2})\.(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:"";};
+let qtData=null;try{qtData=JSON.parse(store.get("qt")||"null")}catch(e){}
+let qtLoading=false;
+/* 진행률 — /qt 응답에 크기 정보가 없어 실제 %는 알 수 없다. 시간이 갈수록
+   90%까지 차오르게 흉내내고 완료 때 본문으로 바뀐다. 숫자만 갈아끼워
+   전자책의 전체 재렌더 부담을 피한다. */
+let qtPct=0,qtPctTimer=null;
+function startQtPct(){
+  qtPct=0;clearInterval(qtPctTimer);
+  qtPctTimer=setInterval(()=>{
+    qtPct=Math.min(90,qtPct+Math.max(1,Math.round((90-qtPct)/6)));
+    const el=$("qtPct");if(el)el.textContent=qtPct+"%";
+  },250);
+}
+function stopQtPct(){clearInterval(qtPctTimer);qtPctTimer=null;}
+function qtHtml(){
+  const d=qtData;
+  if(qtLoading)return `<div class="no-text">오늘의 큐티 불러오는 중… <span id="qtPct">${qtPct}%</span></div>`;
+  if(!d||!d.title)return `<div class="no-text">오늘의 큐티를 불러오지 못했습니다.<br>인터넷 연결을 확인하고 다시 눌러 주세요.</div>`;
+  const info=(d.info||"").replace(/\s*찬송가?\s*\d+장.*$/,"").trim();   // '찬송가 419장' 제거
+  let out=`<div class="qt-head"><div class="qt-date">${esc(d.date||"")}</div>`+
+          (d.title?`<div class="qt-title">${esc(d.title)}</div>`:"")+
+          (info?`<div class="qt-info">${esc(info)}</div>`:"")+`</div>`;
+  const day=qtDateOf(d);
+  out+=(d.verses||[]).map((v,i)=>{
+    const on=day&&qthl[day+"#"+i];
+    return `<p class="verse${on?" hl":""}" data-v="${i+1}"><sup>${esc(v.n)}</sup><span>${esc(v.t)}</span></p>`;
+  }).join("");
+  return out;
+}
+/* 큐티 절 식별자 — 본문 날짜 + 절 순번 (같은 날 본문은 절 순서가 고정) */
+const qtIdOf=i=>{const day=qtDateOf(qtData);return day?day+"#"+i:""};
+/* ── 큐티 본문의 성경 좌표 찾기 ───────────────
+   큐티는 매일 본문이 바뀌므로, 형광펜을 칠할 때 그 절이 성경 어디인지(책·장·절)를 함께 적어 둔다.
+   그래야 지난 큐티 형광펜도 나중에 성경 본문으로 찾아갈 수 있고, 복사도 "사19:17"로 나온다. */
+const BOOK_ALIAS={};   // 정식 이름·약어 → 정식 이름
+for(const b of ALL)BOOK_ALIAS[b[0]]=b[0];
+for(const k in ABBR)BOOK_ALIAS[ABBR[k]]=k;
+function resolveBook(s){
+  s=(s||"").trim();
+  if(BOOK_ALIAS[s])return BOOK_ALIAS[s];
+  for(let i=1;i<s.length;i++){const t=s.slice(i);if(BOOK_ALIAS[t])return BOOK_ALIAS[t];}   // "말씀이사야" 같이 붙은 경우
+  return null;
+}
+/* 정보줄("본문 : 이사야(Isaiah) 19:16 - 20:6")에서 책·장을 뽑는다. 없으면 제목에서 한 번 더 찾는다.
+   괄호 안 영문 이름은 책 이름과 장 사이를 갈라 놓으므로 먼저 걷어낸다. */
+function qtPassage(){
+  const d=qtData;if(!d)return null;
+  for(const raw of [d.info||"",d.title||""]){
+    const s=raw.replace(/\([^)]*\)/g," ");
+    const re=/([가-힣]{1,10}?)\s*(\d{1,3})\s*[:：]\s*\d/g;
+    let m;
+    while((m=re.exec(s))){
+      const bk=resolveBook(m[1]);
+      if(bk&&+m[2]>=1&&+m[2]<=chapCount(bk))return {book:bk,chap:+m[2]};
+    }
+  }
+  return null;
+}
+/* 절마다의 성경 좌표. 절 번호가 작아지면 다음 장으로 넘어간 것으로 본다("사 19:16-20:5" 같은 본문) */
+function qtVerseRefs(){
+  const p=qtPassage();if(!p)return null;
+  const out=[];let chap=p.chap,prev=0;
+  for(const v of ((qtData&&qtData.verses)||[])){
+    const n=parseInt(v.n,10);
+    if(!(n>0)){out.push(null);prev=0;continue;}
+    if(prev&&n<prev&&chap<chapCount(p.book))chap++;
+    prev=n;
+    out.push({book:p.book,chap,v:n});
+  }
+  return out;
+}
+const bibleRefText=r=>r?(ABBR[r.book]||r.book)+r.chap+":"+r.v:"";
+/* 좌표 없이 저장된 항목(구버전·좌표를 못 찾던 때)에 지금 본문 기준으로 좌표를 채워 넣는다 */
+function backfillQtRefs(){
+  const day=qtDateOf(qtData);if(!day)return;
+  const refs=qtVerseRefs();if(!refs)return;
+  let changed=false;
+  for(let i=0;i<refs.length;i++){
+    const e=qthl[day+"#"+i];
+    if(e&&!e.bk&&refs[i]){e.bk=refs[i].book;e.ch=refs[i].chap;e.bv=refs[i].v;changed=true;}
+  }
+  if(changed)saveQtHl();
+}
+function saveQtHl(){
+  qthl=capQt(qthl);
+  store.set("qthl",JSON.stringify(qthl));
+  store.set("qthldel",JSON.stringify(qthldel));
+}
+/* 큐티 절 터치 → 형광펜 켜고 끄기 (본문 내용까지 함께 보관해 나중에도 모아 볼 수 있게) */
+function toggleQtHl(p,i){
+  const id=qtIdOf(i);
+  if(!id)return;
+  const v=(qtData.verses||[])[i];
+  if(!v)return;
+  if(qthl[id]){delete qthl[id];p.classList.remove("hl");qthldel[id]=Date.now();}
+  else{
+    const refs=qtVerseRefs(),r=refs&&refs[i];
+    qthl[id]={n:v.n,t:v.t,ti:qtData.title||"",d:qtData.date||"",at:Date.now()};
+    if(r){qthl[id].bk=r.book;qthl[id].ch=r.chap;qthl[id].bv=r.v;}   // 성경 좌표(나중에 본문으로 이동·복사 표기용)
+    p.classList.add("hl");delete qthldel[id];
+  }
+  saveQtHl();
+}
+function copyQtVerse(i){
+  const v=(qtData&&qtData.verses||[])[i];
+  if(!v||!v.t)return Promise.resolve(false);
+  const refs=qtVerseRefs(),r=refs&&refs[i];
+  return copyText(planDayLine(r&&{book:r.book,chap:r.chap,v:r.v})+'"'+v.t+'"'+bibleRefText(r));
+}
+let qtReturnPage=0;   // 큐티 들어오기 직전에 읽던 쪽 — 뒤로가기로 복귀할 때 사용(책·장은 cur가 그대로 유지)
+/* 큐티에서 뒤로가기 → 직전에 읽던 본문 그 쪽으로 */
+function exitQt(){
+  qtMode=false;qtLoading=false;stopQtPct();
+  render(qtReturnPage);
+}
+function finishQt(gotNew){
+  stopQtPct();
+  qtLoading=false;
+  if(!gotNew&&qtData&&qtData.title)toast("새 큐티를 받지 못해 저장된 본문을 보여줍니다");
+  backfillQtRefs();
+  if(qtMode)render(0);
+}
+function enterQt(){
+  if(qtLoading||turning)return;   // 받는 중·장 전환 중의 연타는 무시(상태 꼬임 방지)
+  /* 본문에서 들어올 때만 히스토리 한 칸(잠 화면 위에서 열면 그 칸을 같이 쓴다 — 한 번의 외출에 한 칸) */
+  if(!qtMode){qtReturnPage=curPage;if(!pvLocked())pushViewState();}
+  qtMode=true;
+  qtLoading=true;startQtPct();
+  render(0);             // 진행률 화면을 즉시 표시
+  /* 쿼리로 캐시버스트(구형 전자책 브라우저는 {cache:'no-store'} 옵션을 무시/오작동할 수 있어
+     옵션 대신 URL로 매번 새 요청). 절대경로로 PWA 설치 컨텍스트에서도 확실히 /qt 를 친다. */
+  fetch("/qt?_="+Date.now()).then(r=>r.json()).then(d=>{
+    const ok=!!(d&&!d.error&&d.title);
+    if(ok){qtData=d;store.set("qt",JSON.stringify(d));}
+    finishQt(ok);
+  }).catch(()=>finishQt(false));
+}
+$("qtBtn").onclick=()=>{
+  if(document.querySelector(".sheet.open,.set-sheet.open")){   // 열린 서랍이 있으면 먼저 닫기
+    if(sheetDepth>0)history.go(-sheetDepth);
+    doCloseSheets();
+  }
+  enterQt();   // 큐티 보는 중이어도 다시 누르면 새로 받아온다
+};
+
+/* ── 오늘의 잠언('잠' 버튼): 오늘 날짜 = 잠언 장 (17일 → 17장). 보는 방식은 일반 본문과 동일 ── */
+let pvKey=null;      // 이 키의 장을 볼 때만 본문 위에 '오늘의 잠언 N장' 타이틀
+let pvReturn=null;   // 잠 버튼 직전 위치 — 뒤로가기로 복귀 (큐티의 qtReturnPage와 같은 요령)
+let pvLock=false;    // 오늘의 잠언 잠금 — 켜져 있으면 그 장 안에서 쪽만 넘김(다른 장 이동 금지)
+$("pvBtn").onclick=()=>{
+  if(turning)return;   // 장 전환 중의 연타는 무시 — goChapter가 무시될 때 상태만 바뀌는 꼬임 방지
+  if(document.querySelector(".sheet.open,.set-sheet.open")){
+    if(sheetDepth>0)history.go(-sheetDepth);
+    doCloseSheets();
+  }
+  const d=Math.min(new Date().getDate(),31);
+  pvKey="잠언/"+d;
+  /* 복귀 지점(pvReturn)은 언제나 '실제 읽던 본문'만 가리킨다 — 잠·큐티를 아무리 오가도
+     임시 화면 위치로 덮어쓰지 않아, 뒤로가기의 끝은 항상 읽던 성경 본문. */
+  if(!qtMode&&cur.book+"/"+cur.chap!==pvKey){          // 본문에서 진입: 지금 위치 기억 + 히스토리 한 칸
+    pvReturn={book:cur.book,chap:cur.chap,page:curPage};
+    pushViewState();
+  }else if(qtMode&&!pvReturn&&cur.book+"/"+cur.chap!==pvKey){
+    pvReturn={book:cur.book,chap:cur.chap,page:qtReturnPage};   // 큐티 밑에 있던 실제 위치
+  }
+  pvLock=true;
+  goChapter("잠언",d,0);
+};
+
+/* ── 비밀 통로: '길성경통독'을 연속 30번 클릭하면 Q 버튼 활성화 ── */
+function showQtBtn(on){$("qtBtn").style.display=on?"":"none";}
+showQtBtn(store.get("qtOn")==="1");
+(function secretGate(){
+  const el=$("secretQtBtn");
+  let n=0,last=0,open=false;
+  el.addEventListener("click",async()=>{
+    if(open)return;           // 확인창 떠 있는 동안의 여분 연타는 무시(창 유지)
+    const now=Date.now();
+    n=(now-last<600)?n+1:1;   // 0.6초 이내 연타일 때만 누적, 끊기면 리셋
+    last=now;
+    if(n>=30){
+      n=0;open=true;
+      /* 30번 넘겨 계속 누른 연타가 배경이든 버튼이든 창을 닫지 못하게:
+         바깥 탭 무시 + 여는 직후 0.8초는 모든 탭 무시(연타가 잦아든 뒤 확인/취소 가능) */
+      const okd=await askConfirm("Q가 활성화됐습니다.",{noBackdropClose:true,guardMs:800});
+      open=false;
+      if(okd){
+        store.set("qtOn","1");showQtBtn(true);
+        toast("오늘의 큐티(Q)가 켜졌습니다");
+      }
+    }
+  });
+})();
+
+/* ── 가름끈 모아보기 ─────────────────── */
+async function askDeleteMark(key){
+  const p=key.split("/"),bk=p[0],ch=+p[1],unit=bk==="시편"?"편":"장";
+  if(!await askConfirm(`${bk} ${ch}${unit} 가름끈을 삭제하시겠습니까?`))return;
+  const i=marks.indexOf(key);
+  if(i>=0)marks.splice(i,1);
+  markdel[key]=Date.now();delete markt[key];
+  store.set("marks",JSON.stringify(marks));
+  store.set("markt",JSON.stringify(markt));
+  store.set("markdel",JSON.stringify(markdel));
+  renderBmBody();   // 목록 갱신
+  updateNav();      // 현재 쪽 가름끈 상태 반영
+  toast("가름끈을 삭제했습니다");
+}
+function renderBmBody(){
+  const keys=marks.slice().sort((a,b)=>((markt[b]||0)-(markt[a]||0))||(a<b?-1:a>b?1:0));   // 최근에 끼운 것부터(추가 시각 기준 → 기기 공통 순서)
+  let out="";
+  for(const key of keys){
+    const p=key.split("/"),bk=p[0],ch=+p[1],pg=+(p[2]||0);
+    const unit=bk==="시편"?"편":"장";
+    out+=`<div class="bm-card"><button class="bm-go" data-key="${esc(key)}"><span class="mini"></span>`+
+         `<span class="bm-where">${esc(bk)} ${ch}${unit}</span></button></div>`;
+  }
+  $("bmBody").innerHTML=out?`<div class="bm-grid">${out}</div>`:`<p class="hl-empty">아직 끼운 가름끈이 없습니다.<br>본문 우측의 가름끈을 눌러 표시하세요.<br><small style="opacity:.8">목록에서 항목을 꾹 누르면 삭제할 수 있어요.</small></p>`;
+  $("bmBody").querySelectorAll(".bm-go").forEach(b=>{
+    const key=b.dataset.key;
+    let t=null,fired=false,px=0,py=0;
+    const go=()=>{                       // 짧게 탭 → 해당 쪽으로 이동
+      const p=key.split("/");
+      cur={book:p[0],chap:+p[1]};qtMode=false;
+      closeSheet();render(+(p[2]||0));   // 저장된 페이지로 이동
+    };
+    const cancel=()=>{if(t){clearTimeout(t);t=null;}};
+    b.addEventListener("pointerdown",e=>{fired=false;px=e.clientX;py=e.clientY;cancel();
+      t=setTimeout(()=>{                 // 꾹 누르면 → 삭제 확인
+        t=null;fired=true;
+        if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
+        askDeleteMark(key);
+      },LP_MS);
+    },{passive:true});
+    b.addEventListener("pointermove",e=>{if(t){const dx=e.clientX-px,dy=e.clientY-py;if(dx*dx+dy*dy>100)cancel();}},{passive:true});
+    b.addEventListener("pointercancel",cancel,{passive:true});
+    b.onclick=()=>{cancel();if(fired){fired=false;return;}go();};   // 꾹 눌러 삭제한 직후 클릭은 무시
+  });
+  $("bmBody").scrollTop=0;
+}
+function openBm(){
+  doCloseSheets();
+  renderBmBody();
+  $("scrim").classList.add("open");$("bmSheet").classList.add("open");
+  pushSheetState();
+}
+$("bmBtn").onclick=()=>$("bmSheet").classList.contains("open")?closeSheet():openBm();
+
+/* ── 바텀시트 ─────────────────────────── */
+/* 시트를 열 때 히스토리를 쌓아, 폰 뒤로가기가 앱 종료가 아니라 시트 닫기가 되게 한다.
+   책·장 선택은 2단계: 책 목록(1) → 장 격자(2). 장 격자에서 뒤로가기 → 책 목록으로 */
+let sheetDepth=0;
+function pushSheetState(n){n=n||1;disarmExit(true);if(sheetDepth>=n)return;try{history.pushState({sheet:n},"")}catch(e){}sheetDepth=n}
+/* 잠·큐티 같은 '임시 화면'에 들어갈 때 히스토리 한 칸을 미리 쌓는다 — 뒤로가기가
+   임시 화면 복귀에 쓰여도 본문의 종료 가드(base)가 소모되지 않게 (시트와 같은 요령) */
+function pushViewState(){disarmExit(true);try{history.pushState({rb:"view"},"")}catch(e){}}
+function doCloseSheets(){$("scrim").classList.remove("open");$("sheet").classList.remove("open");$("setSheet").classList.remove("open");$("hlSheet").classList.remove("open");$("bmSheet").classList.remove("open");$("planFull").classList.remove("open");$("ppScrim").classList.remove("open")}
+/* 본문 화면에서 뒤로가기를 누르면 곧장 앱을 벗어나지 않도록 히스토리에 한 칸(base)을 미리 쌓아 둔다.
+   서랍은 그 위에 쌓이므로 서랍 닫기는 base로, 본문 화면에서의 뒤로가기는 root로 떨어진다. */
+try{history.replaceState({rb:"root"},"");history.pushState({rb:"base"},"");}catch(e){}
+/* 본문 화면에서 뒤로가기 → 안내만 하고 머무른다. 2초 안에 한 번 더 누르면 그대로 종료.
+   두 번째 뒤로가기는 가드를 다시 쌓지 않아 시스템이 처리한다(웹앱은 스스로 앱을 끝낼 수 없다). */
+const EXIT_WINDOW=2000;
+let exitArmed=false,exitTimer=null;
+function armExit(){
+  exitArmed=true;
+  toast("뒤로가기를 한 번 더 누르면 종료됩니다");
+  if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
+  clearTimeout(exitTimer);
+  exitTimer=setTimeout(()=>disarmExit(true),EXIT_WINDOW);
+}
+/* restore=true면 가드 한 칸을 다시 쌓아, 다음 뒤로가기를 다시 붙잡는다 */
+function disarmExit(restore){
+  if(!exitArmed)return;
+  exitArmed=false;clearTimeout(exitTimer);
+  if(restore)try{history.pushState({rb:"base"},"")}catch(e){}
+}
+window.addEventListener("popstate",e=>{
+  const st=e.state;
+  if(st&&st.sheet){                    // 시트 안의 한 단계 위로 (장 격자 → 책 목록)
+    sheetDepth=st.sheet;
+    if($("sheet").classList.contains("open")&&pickedBook!==null){pickedBook=null;renderSheet()}
+    if($("hlSheet").classList.contains("open")&&hlBook!==null){hlBook=null;renderHl()}
+    if(sheetDepth<2)closePlanPop();     // 통독표 장별 이동 창 → 통독표로
+    return;
+  }
+  const hadSheet=!!document.querySelector(".sheet.open,.set-sheet.open,.full-view.open");
+  sheetDepth=0;doCloseSheets();        // 서랍이 열려 있었다면 먼저 닫기
+  if(qtMode&&!hadSheet){               // 큐티 화면에서의 뒤로가기 → 종료가 아니라 읽던 본문으로 복귀
+    if(st&&st.rb==="root")try{history.pushState({rb:"base"},"")}catch(e){}   // 소모한 종료 가드 복구
+    exitQt();
+    return;
+  }
+  if(pvReturn&&!qtMode&&!hadSheet&&cur.book+"/"+cur.chap===pvKey){   // 오늘의 잠언에서 뒤로가기 → 읽던 본문으로
+    if(st&&st.rb==="root")try{history.pushState({rb:"base"},"")}catch(e){}   // 소모한 종료 가드 복구
+    if(turning)return;   // 장 전환 중이면 이번 뒤로가기는 무시 — 복귀 지점을 잃지 않게(다음 뒤로가기가 처리)
+    const r=pvReturn;pvReturn=null;
+    goChapter(r.book,r.chap,r.page);
+    return;
+  }
+  if(st&&st.rb==="root")armExit();     // 본문 화면에서의 뒤로가기 → 한 번 더 누르면 종료
+});
+/* 한 번에 하나의 서랍만: 다른 서랍은 닫고 대상 서랍만 연다.
+   메뉴 버튼을 다시 누르면 토글로 닫힘 (아래 openWith 참고) */
+function openSheet(){doCloseSheets();pickedBook=null;bibleQuery="";clearTimeout(bsTimer);renderSheet();$("scrim").classList.add("open");$("sheet").classList.add("open");pushSheetState(1)}
+function closeSheet(){if(sheetDepth>0)history.go(-sheetDepth);else doCloseSheets()}
+/* 메뉴 버튼 토글: 해당 서랍이 열려 있으면 닫고, 아니면 연다 */
+function toggleSheet(id,openFn){ $(id).classList.contains("open")?closeSheet():openFn(); }
+$("titleBtn").onclick=()=>toggleSheet("sheet",openSheet);
+/* 러닝헤드(책·장 제목)는 성경통독표를 전체 화면으로 연다 — 책·장 선택은 하단 메뉴 '성경'에서 */
+$("rhBtn").onclick=()=>toggleSheet("planFull",openPlanFull);
+$("scrim").onclick=closeSheet;
+function switchTestament(t){
+  if(testament===t&&pickedBook===null&&!bibleQuery)return;
+  if(pickedBook!==null&&sheetDepth>1)history.back();
+  /* 검색은 구약·신약을 가리지 않으므로, 탭을 누르면 검색을 끝내고 그 권역 책 목록으로 돌아간다 */
+  testament=t;pickedBook=null;bibleQuery="";clearTimeout(bsTimer);syncTabs();renderSheet();
+}
+$("tabOt").onclick=()=>switchTestament("ot");
+$("tabNt").onclick=()=>switchTestament("nt");
+function syncTabs(){
+  $("tabOt").setAttribute("aria-selected",testament==="ot");
+  $("tabNt").setAttribute("aria-selected",testament==="nt");
+}
+const legendHtml=()=>`<p class="legend">읽은 횟수 ${[1,2,3,4,5].map(n=>`<span class="lg-box" style="background:${READ_COLORS[n]}">${n}회</span>`).join("")}</p>`;
+
+/* ── 180일 성경통독표 ─────────────────────
+   날짜를 누르면 그 날 첫 성경으로 이동한다. 색(읽은 횟수)은 각 장에서 찍은 '읽음 표시'를 따른다
+   — 그 날 읽을 장이 모두 n회 읽음이면 n회 색으로 칠해진다(표에서는 색을 바꾸지 않는다). */
+const PLAN_RANGES=Array.from({length:10},(_,i)=>[i*18+1,i*18+18]);   // 18일씩 열 구간으로 나눠 보여 준다
+let planRange=0;
+function planStyle(c){return c?`background:${READ_COLORS[c]};border-color:${READ_COLORS[c]};color:#3a2f22`:""}
+const ABBR_REV=(()=>{const m={};for(const k in ABBR)m[ABBR[k]]=k;return m})();
+/* 그 날 읽을 장 목록 — 종이 읽기표 표기를 그대로 해석해 "책/장" 키(읽음 표시와 같은 키)로 편다.
+   "창 1~5장" → 창세기 1~5장 / "민 34~36장, 신 1~3장" → 두 책 / "시 59, 56, 34편" → 앞의 책이 이어짐
+   절 표기(:)는 그 절이 든 장으로 친다 — "왕하 18:1~12"는 18장, "삼하 12:16b~15장"은 12~15장 */
+const planChapCache={};
+function planChaps(d){
+  if(planChapCache[d])return planChapCache[d];
+  const out=[];let book=null;
+  (PLAN180[d-1]||"").split(",").forEach(tok=>{
+    let s=tok.trim();
+    const bm=s.match(/^([가-힣]+)\s*(?=\d)/);          // 약어가 붙어 있으면 책이 바뀐다
+    if(bm){const bk=ABBR_REV[bm[1].trim()];if(bk)book=bk;s=s.slice(bm[0].length);}
+    const unit=/[장편]\s*$/.test(s);                   // 끝의 '장·편' → 물결 뒤 숫자는 장 번호
+    s=s.replace(/[장편]\s*$/,"");
+    const p=s.split("~"),num=t=>{const m=String(t).match(/^\s*(\d+)/);return m?+m[1]:null};
+    const a=num(p[0]);
+    if(a==null||!book)return;
+    let b=a;
+    /* 물결 뒤가 장인 경우: "…~12:15a"(장:절) · "1~5장"(단위 표기) · "79~83"(앞이 절 표기가 아님).
+       그 밖("왕하 18:1~12")은 절 범위이므로 시작 장 하나만 담는다. */
+    if(p.length>1&&(/:/.test(p[1])||unit||!/:/.test(p[0])))b=num(p[1]);
+    if(b==null||b<a)b=a;
+    for(let c=a,n=chapCount(book);c<=b&&c<=n;c++)out.push(book+"/"+c);
+  });
+  return planChapCache[d]=out;
+}
+/* 그 날의 읽은 횟수 = 그 날 읽을 장들의 최소 읽음 횟수 (한 장이라도 덜 읽었으면 그 횟수로 본다) */
+function planReadCount(d){
+  const ch=planChaps(d);
+  if(!ch.length)return 0;
+  let m=5;
+  for(const k of ch){m=Math.min(m,reads[k]||0);if(!m)break}
+  return m;
+}
+function planDone(){let n=0;for(let d=1;d<=180;d++)if(planReadCount(d))n++;return n}
+/* 한 구간(18일)의 읽은 횟수 = 구간 안 모든 날의 최소 읽음 횟수 — 구간 탭 색칠용 */
+function planRangeCount(a,b){let m=5;for(let d=a;d<=b;d++){m=Math.min(m,planReadCount(d));if(!m)break}return m}
+/* ── 복사할 때 붙는 "N일차" ─────────────────────
+   PLAN180 표기를 절 단위로 펴서(책 · 시작장:절 ~ 끝장:절) 색인해 둔다.
+   한 장이 이틀에 걸쳐 있어도(예: "왕하 18:1~12" / "왕하 18:13~19장") 절까지 보고 그 날을 가른다.
+   "22:17~24"처럼 물결 뒤 숫자가 절인지 장인지 표기만으로는 못 가리는 자리는 아래 표로 못 박는다
+   (기본은 절로 읽는다 — 표기 대부분이 절 범위다). 표에 없는 장·절은 0(= "00일차")으로 돌려준다. */
+const PLAN_CHAP_END={"93|18:18~20":1,"111|잠 22:17~24":1,"119|스 5:2~6":1};   // "날|표기" → 물결 뒤는 장
+function planSpans(d){
+  const out=[];let book=null;
+  (PLAN180[d-1]||"").split(",").forEach(tok=>{
+    const raw=tok.trim();
+    let s=raw;
+    const bm=s.match(/^([가-힣]+)\s*(?=\d)/);                 // 약어가 붙어 있으면 책이 바뀐다
+    if(bm){const bk=ABBR_REV[bm[1].trim()];if(bk)book=bk;s=s.slice(bm[0].length);}
+    if(!book)return;
+    const unit=/[장편]\s*$/.test(s);                          // 끝의 '장·편' → 물결 뒤 숫자는 장 번호
+    s=s.replace(/[장편]\s*$/,"").replace(/[a-z]/g,"").trim();  // 12:15a·3b 같은 절 쪼갬 표시는 그 절로 친다
+    const p=s.split("~");
+    const L=p[0].match(/^\s*(\d+)\s*(?::\s*(\d+))?/);
+    if(!L)return;
+    const c1=+L[1],v1=L[2]?+L[2]:1;
+    let c2=c1,v2=Infinity;
+    if(p.length>1){
+      const R=p[1].match(/^\s*(\d+)\s*(?::\s*(\d+))?/);
+      if(!R)return;
+      if(R[2]){c2=+R[1];v2=+R[2];}                             // "35:20~36:4" — 장:절
+      else if(unit||!L[2]||PLAN_CHAP_END[d+"|"+raw]){c2=+R[1];} // "1~5장" · "79~83" · 못 박아 둔 자리 — 장
+      else v2=+R[1];                                           // "18:1~12" — 같은 장의 절 범위
+    }
+    const n=chapCount(book);
+    if(c2>n)c2=n;
+    if(c2<c1){c2=c1;v2=Infinity;}
+    out.push({book:book,c1:c1,v1:v1,c2:c2,v2:v2});
+  });
+  return out;
+}
+let planIdx=null;
+function planIndex(){
+  if(planIdx)return planIdx;
+  planIdx={};
+  for(let d=1;d<=180;d++)for(const s of planSpans(d))
+    for(let c=s.c1;c<=s.c2;c++){
+      const k=s.book+"/"+c;
+      (planIdx[k]=planIdx[k]||[]).push({d:d,v1:c===s.c1?s.v1:1,v2:c===s.c2?s.v2:Infinity});
+    }
+  return planIdx;
+}
+/* 절까지 들어맞는 날을 먼저, 그런 날이 없으면 그 장을 읽는 가장 이른 날. 표에 없으면 0 */
+function planDayOf(book,chap,v){
+  const list=planIndex()[book+"/"+chap];
+  if(!list||!list.length)return 0;
+  const hit=list.filter(e=>v>=e.v1&&v<=e.v2);
+  return (hit.length?hit:list)[0].d;
+}
+/* 복사글 첫 줄 — 며칠 치인지 모르면 "00일차" */
+const planDayLine=r=>String(r?planDayOf(r.book,r.chap,r.v):0).padStart(2,"0")+"일차 읽었습니다:)\n\n";
+/* 통독표는 전체 화면(#planFull)에서만 본다 — 러닝헤드(책·장 제목)를 눌러 연다.
+   진행 표시는 id 대신 .plan-root 안의 클래스로 찾는다(같은 표를 여러 번 그려도 안 섞이게). */
+/* 한 구간(15일)의 내용 — 범례·안내문·날짜 목록. 구간을 바꿀 때 이 부분만 옆으로 미끄러진다. */
+function planPageHtml(a,b){
+  return legendHtml()+
+    `<p class="hl-hint">날짜를 누르면 그 날 읽을 장을 골라 이동합니다. 색은 각 장에서 찍은 읽음 표시를 따라 그 날 분량을 모두 읽으면 칠해집니다. 화면을 좌우로 밀면 구간이 바뀝니다. <span class="plan-done">${planDone()}</span>/180일</p>
+    <div class="plan-list">`+
+    PLAN180.slice(a-1,b).map((r,i)=>{
+      const d=a+i,c=planReadCount(d);
+      return `<button class="plan-item${c?" on":""}" data-day="${d}" style="${planStyle(c)}"><span class="d">${d}일</span><span class="r">${esc(r)}</span></button>`;
+    }).join("")+`</div>`;
+}
+/* 날짜를 누르면 장별 이동 창이 뜬다 — 그 날 읽을 장을 골라 바로 이동 */
+const bindPlanDays=el=>el.querySelectorAll("[data-day]").forEach(b=>{
+  b.onclick=()=>openPlanPop(+b.dataset.day);
+});
+/* 장별 이동 창 — 그 날 읽을 장(planChaps)을 "대상15 · 시8 · 시19 …" 버튼으로 펴고,
+   각 버튼은 그 장의 읽은 횟수 색으로 칠한다. 뒤로가기는 창만 닫는다(서랍 2단계). */
+function openPlanPop(d,depth){
+  const ks=[...new Set(planChaps(d))];
+  if(!ks.length){toast("이동할 성경을 찾지 못했습니다");return}
+  const curKey=cur.book+"/"+cur.chap;   // 지금 읽던 장은 테두리로 표시
+  $("ppTitle").textContent=`${d}일`;
+  $("ppSub").textContent=PLAN180[d-1]||"";
+  $("ppGrid").innerHTML=ks.map(k=>{
+    const i=k.lastIndexOf("/"),bk=k.slice(0,i),c=k.slice(i+1),n=reads[k]||0;
+    return `<button data-pk="${esc(k)}"${k===curKey?' class="cur" aria-current="true"':""} style="${planStyle(n)}" aria-label="${esc(bk)} ${c}${bk==="시편"?"편":"장"}${n?` · ${n}회 읽음`:""}">${esc(ABBR[bk]||bk)}${c}</button>`;
+  }).join("");
+  $("ppGrid").querySelectorAll("[data-pk]").forEach(el=>el.onclick=()=>{
+    const k=el.dataset.pk,i=k.lastIndexOf("/");
+    goPlanChap(d,k.slice(0,i),+k.slice(i+1));
+  });
+  $("ppScrim").classList.add("open");
+  pushSheetState(depth||2);   // 통독표 위에서는 2단계, 본문의 '통독' 버튼에서는 1단계
+}
+/* 본문 아래 '통독' 버튼 — 지금 읽는 장이 든 통독표 날짜의 장별 이동 창을 본문 위에 바로 띄운다.
+   한 장이 이틀에 걸친 경우(왕하 18장 등)는 그 장을 읽는 가장 이른 날로 본다. */
+function openPlanPopHere(){
+  const d=planDayOf(cur.book,cur.chap,1);
+  if(!d){toast("성경통독표에 없는 장입니다");return}
+  doCloseSheets();
+  openPlanPop(d,1);
+}
+function closePlanPop(){$("ppScrim").classList.remove("open")}
+$("ppClose").onclick=()=>closeSheet1();
+$("ppScrim").onclick=e=>{if(e.target===$("ppScrim"))closeSheet1()};
+/* 창만 닫고 통독표는 남긴다 — 히스토리 한 칸(2→1)만 되돌린다.
+   본문의 '통독' 버튼으로 연 창(1단계)은 서랍 닫기와 같은 요령으로 한 칸 되돌려 닫는다. */
+function closeSheet1(){if(sheetDepth>1)history.back();else closeSheet()}
+function renderPlan(body){
+  body=body||$("planFullBody");
+  const [a,b]=PLAN_RANGES[planRange];
+  body.innerHTML=`<div class="plan-root"><div class="plan-range"><div class="seg" role="tablist"><span class="seg-ind"></span>`+
+    PLAN_RANGES.map(([s,e],i)=>`<button role="tab" data-range="${i}" aria-selected="${i===planRange}" style="${planStyle(planRangeCount(s,e))}">${s}~${e}</button>`).join("")+
+    `</div></div><div class="plan-stage"><div class="plan-page">${planPageHtml(a,b)}</div></div></div>`;
+  bindPlanDays(body);
+  body.querySelectorAll("[data-range]").forEach(el=>el.onclick=()=>switchPlanRange(+el.dataset.range,body));
+  movePlanInd(body.querySelector(".plan-range .seg"),false);
+}
+/* 구간 탭의 흰 둥근 표시(.seg-ind)를 선택된 탭 자리로 옮긴다 — animate면 미끄러져 간다.
+   탭이 5칸씩 두 줄 격자라 가로뿐 아니라 세로로도 움직인다. */
+function movePlanInd(seg,animate){
+  if(!seg)return;
+  const ind=seg.querySelector(".seg-ind"),btn=seg.querySelector('[aria-selected="true"]');
+  if(!ind||!btn)return;
+  if(!animate)ind.style.transition="none";
+  ind.style.width=btn.offsetWidth+"px";ind.style.height=btn.offsetHeight+"px";
+  ind.style.transform=`translate(${btn.offsetLeft}px,${btn.offsetTop}px)`;
+  if(!animate){ind.getBoundingClientRect();ind.style.transition=""}
+}
+/* 화면이 돌아가거나 폭이 바뀌면 표시 자리를 다시 잡는다(애니메이션 없이) */
+window.addEventListener("resize",()=>movePlanInd($("planFullBody").querySelector(".plan-range .seg"),false));
+/* 진행 중인 미끄러짐을 즉시 마무리 — 연달아 넘길 때 겹치지 않게 */
+function finishPlanAnim(stage){if(stage&&stage._planDone)stage._planDone()}
+/* 구간 바꾸기 — 보던 목록은 옆으로 밀려 나가고 새 목록이 반대쪽에서 들어온다.
+   구간 탭 줄은 제자리에 두고 아래 내용(.plan-page)만 움직인다.
+   나가는 목록은 보던 스크롤 위치 그대로 겹쳐 두어(top:-scrollTop) 뚝 튀지 않게 한다. */
+function switchPlanRange(next,body){
+  body=body||$("planFullBody");
+  if(next===planRange||next<0||next>=PLAN_RANGES.length)return;
+  const dir=next>planRange?1:-1;              // 1: 다음 구간(오른쪽에서 들어옴), -1: 이전 구간
+  planRange=next;
+  const stage=body.querySelector(".plan-stage");
+  if(!stage||matchMedia("(prefers-reduced-motion:reduce)").matches){renderPlan(body);body.scrollTop=0;return}
+  finishPlanAnim(stage);
+  body.querySelectorAll("[data-range]").forEach(el=>el.setAttribute("aria-selected",+el.dataset.range===next));
+  movePlanInd(body.querySelector(".plan-range .seg"),true);   // 흰 표시가 새 탭으로 미끄러져 간다
+  const old=stage.querySelector(".plan-page"),[a,b]=PLAN_RANGES[next];
+  const page=document.createElement("div");page.className="plan-page";page.innerHTML=planPageHtml(a,b);
+  bindPlanDays(page);
+  old.classList.add("out");old.style.top=-body.scrollTop+"px";
+  stage.classList.add("anim");
+  page.style.transform=`translateX(${dir*100}%)`;
+  stage.appendChild(page);
+  body.scrollTop=0;
+  page.getBoundingClientRect();               // 시작 위치를 먼저 그리게 한 뒤 움직인다
+  old.style.transform=`translateX(${-dir*100}%)`;
+  page.style.transform="";
+  const done=()=>{
+    clearTimeout(timer);stage._planDone=null;
+    old.remove();page.style.transform="";stage.classList.remove("anim");
+  };
+  const timer=setTimeout(done,400);           // transitionend가 안 오는 경우(탭 전환 등) 대비
+  page.addEventListener("transitionend",e=>{if(e.target===page)done()});
+  stage._planDone=done;
+}
+/* 통독표 화면을 보고 있을 때만 다시 그린다 */
+function refreshPlanViews(){
+  if($("planFull").classList.contains("open"))renderPlan();
+}
+/* 러닝헤드 → 성경통독표 전체 화면 */
+function openPlanFull(){
+  doCloseSheets();
+  renderPlan();
+  $("planFullBody").scrollTop=0;
+  $("planFull").classList.add("open");
+  pushSheetState(1);
+}
+$("planFullClose").onclick=()=>closeSheet();
+/* 통독표 본문을 좌우로 스와이프 → 구간 탭 이동(왼쪽으로 밀면 다음 구간, 오른쪽으로 밀면 이전 구간).
+   목록 아래 빈 공간·날짜 항목·탭 어디서나 동작한다. 하단 메뉴 스와이프와 같은 요령 —
+   스와이프가 만들어 낸 클릭 한 번만 차단해 항목이 눌리지 않게 한다. */
+{
+  const body=$("planFullBody");let px=null,py=null,ghost=false;
+  body.addEventListener("pointerdown",e=>{px=e.clientX;py=e.clientY;ghost=false},{passive:true});
+  body.addEventListener("pointerup",e=>{
+    if(px===null)return;
+    const dx=e.clientX-px,dy=e.clientY-py;px=null;
+    if(Math.abs(dx)<40||Math.abs(dx)<Math.abs(dy)*1.4)return;
+    const next=planRange+(dx<0?1:-1);
+    if(next<0||next>=PLAN_RANGES.length)return;   // 양 끝에서는 그대로
+    ghost=true;switchPlanRange(next,body);
+  },{passive:true});
+  body.addEventListener("pointercancel",()=>{px=null},{passive:true});
+  body.addEventListener("click",e=>{if(ghost){ghost=false;e.stopPropagation();e.preventDefault()}},true);
+}
+/* 장별 이동 창에서 고른 장으로 이동 */
+function goPlanChap(d,book,chap){
+  cur={book:book,chap:chap};qtMode=false;
+  closeSheet();
+  render();
+  toast(`${d}일 · ${book} ${chap}${book==="시편"?"편":"장"}`);
+}
+/* ── 성경 본문 검색 ───────────────────
+   성경 서랍 맨 위 검색창에 낱말을 넣으면 구약·신약 전체에서 성경 순서대로 찾아 보여 준다.
+   쉼표로 나누면 "사랑,소망"처럼 낱말이 모두 들어 있는 절만 나온다(그리고/AND). */
+let bibleQuery="";          // 성경 본문 검색어 (서랍 열 때 초기화)
+let bsTimer=null;           // 글자를 칠 때마다 3만 절을 훑지 않게 잠깐 모았다 한 번만 찾기
+const BS_CAP=300;           // 한 번에 보여 주는 상한 (건수는 전부 세어 알려 준다)
+const rxEsc=w=>w.replace(/[-\/\\^$*+?.()|[\]{}]/g,x=>"\\"+x);
+/* 찾은 낱말을 <mark>으로 감싸기 — 쪼개어 바꿔치기가 아니라
+   나눈 조각을 각각 esc()해야 본문 속 <·& 가 태그로 샐지 않는다 */
+function bsMark(t,terms){
+  if(!terms.length)return esc(t);
+  const re=new RegExp("("+terms.map(rxEsc).join("|")+")","gi");
+  return t.split(re).map((x,i)=>i%2?`<mark>${esc(x)}</mark>`:esc(x)).join("");
+}
+function bsTerms(q){return q.split(",").map(x=>x.trim()).filter(Boolean)}
+function bibleSearchHtml(q){
+  const terms=bsTerms(q);
+  if(!terms.length)return "";
+  /* 한글은 대·소문자가 없으므로 영문자가 섞인 검색어일 때만 소문자로 내려 비교한다 */
+  const ci=/[a-z]/i.test(q),keys=ci?terms.map(w=>w.toLowerCase()):terms;
+  const res=[];let total=0;
+  for(const b of ALL){
+    const bk=b[0],n=b[1];
+    for(let c=1;c<=n;c++){
+      const arr=TEXT[bk+"/"+c];
+      if(!arr)continue;
+      for(let i=0;i<arr.length;i++){
+        const raw=arr[i];
+        if(!raw)continue;
+        const hay=ci?raw.toLowerCase():raw;
+        let ok=true;
+        for(let k=0;k<keys.length;k++)if(hay.indexOf(keys[k])<0){ok=false;break}
+        if(!ok)continue;
+        total++;
+        if(res.length<BS_CAP)res.push({bk,c,v:i+1,t:raw.replace(/⟪|⟫/g,"")});
+      }
+    }
+  }
+  if(!total)return `<p class="hl-empty">"${esc(q)}" 검색 결과가 없습니다.</p>`;
+  let html=`<div class="hl-hint">검색 결과 ${total}건${total>BS_CAP?` — 앞 ${BS_CAP}건만 표시`:""} · 구약·신약 전체에서 성경 순서로</div>`;
+  for(const r of res){
+    const unit=r.bk==="시편"?"편":"장";
+    html+=`<button class="bs-item" data-key="${esc(r.bk)}/${r.c}" data-v="${r.v}">`+
+      `<span class="ref">${esc(r.bk)} ${r.c}${unit} ${r.v}절</span>`+
+      `<span class="txt">${bsMark(r.t,terms)}</span></button>`;
+  }
+  return html;
+}
+/* 검색창 아랫부분만 다시 그린다 — 입력 포커스를 잃지 않게 검색창은 그대로 둔다 */
+function renderBookList(){
+  const wrap=$("bsWrap");
+  if(!wrap)return;
+  const q=bibleQuery.trim();
+  if(q){
+    wrap.innerHTML=bibleSearchHtml(q);
+    wrap.querySelectorAll(".bs-item").forEach(el=>el.onclick=()=>goToHlVerse(el.dataset.key,+el.dataset.v));
+    return;
+  }
+  wrap.innerHTML=`${legendHtml()}<div class="book-grid">`+BOOKS[testament].map(([n])=>{
+    const lvl=bookReadLevel(n);   // 모든 장 읽으면 책 이름도 색칠
+    const st=lvl?`style="background:${READ_COLORS[lvl]};border-color:${READ_COLORS[lvl]};color:#3a2f22"`:"";
+    return `<button data-book="${esc(n)}" ${st}>${esc(n)}</button>`;
+  }).join("")+`</div>`;
+  wrap.querySelectorAll("[data-book]").forEach(b=>b.onclick=()=>{pickedBook=b.dataset.book;renderSheet();pushSheetState(2)});
+}
+
+function renderSheet(){
+  const body=$("sheetBody");
+  if(!pickedBook){
+    body.innerHTML=`<div class="bs-searchwrap"><input class="hl-search" id="bsSearch" type="search" autocomplete="off"
+      placeholder="성경 본문 검색 (쉼표로 여러 낱말)" value="${esc(bibleQuery)}"></div><div id="bsWrap"></div>`;
+    $("bsSearch").oninput=e=>{
+      bibleQuery=e.target.value;
+      clearTimeout(bsTimer);
+      bsTimer=setTimeout(()=>{renderBookList();body.scrollTop=0;},180);
+    };
+    renderBookList();
+  }else{
+    const n=chapCount(pickedBook);
+    const unit=pickedBook==="시편"?"편":"장";
+    body.innerHTML=`<button class="back" id="backBtn">‹ 책 목록으로</button>
+      <div style="font-family:var(--display);font-weight:800;font-size:22px;margin-bottom:10px;color:var(--panel-ink)">${esc(pickedBook)} <span style="font-family:var(--ui);font-size:14px;color:var(--panel-soft);font-weight:400">${n}${unit}</span></div>
+      ${legendHtml()}
+      <div class="chap-grid">`+
+      Array.from({length:n},(_,i)=>{
+        const c=i+1,has=!!TEXT[pickedBook+"/"+c];
+        const now=pickedBook===cur.book&&c===cur.chap;
+        const rc=reads[pickedBook+"/"+c]||0;
+        let cls="",st="";
+        if(rc){   // 읽은 장은 항상 그 횟수 색 (현재 장이면 진한 링으로 구분)
+          const ring=now?";box-shadow:inset 0 0 0 2.5px var(--ink)":"";
+          st=`style="background:${READ_COLORS[rc]};border-color:${READ_COLORS[rc]};color:#3a2f22${ring}"`;
+        }else{
+          cls=now?"now":has?"has":"";
+        }
+        return `<button data-chap="${c}" class="${cls}" ${st}>${c}</button>`;
+      }).join("")+`</div>`;
+    $("backBtn").onclick=()=>{if(sheetDepth>1)history.back();else{pickedBook=null;renderSheet()}};
+    body.querySelectorAll("[data-chap]").forEach(b=>b.onclick=()=>{
+      cur={book:pickedBook,chap:+b.dataset.chap};qtMode=false;
+      closeSheet();render();
+    });
+  }
+  body.scrollTop=0;
+}
+
+/* ── 보기 설정 ─────────────────────────── */
+function applySettings(){
+  for(const k in SETTINGS){
+    const s=SETTINGS[k],v=setVal[k];
+    document.documentElement.style.setProperty("--"+k,s.css(v));
+    store.set("set."+k,v);
+  }
+  document.querySelectorAll(".set-row").forEach(row=>{
+    const k=row.dataset.key,s=SETTINGS[k];
+    const val=row.querySelector(".val");
+    if(!val){  // 선택형(글꼴): 셀렉트박스 값 맞추기
+      row.querySelector("select").value=String(setVal[k]);
+      return;
+    }
+    val.textContent=s.fmt(setVal[k]);
+    row.querySelector('[data-dir="-1"]').disabled=setVal[k]<=s.min;
+    row.querySelector('[data-dir="1"]').disabled=false;
+  });
+  if($("page").firstChild)paginate(); // 조판이 바뀌면 쪽수 다시 계산
+}
+document.querySelectorAll(".set-row button").forEach(b=>{
+  b.onclick=()=>{
+    const k=b.closest(".set-row").dataset.key,s=SETTINGS[k];
+    const v=Math.round((setVal[k]+s.step*(+b.dataset.dir))*10)/10;
+    setVal[k]=Math.max(s.min,v);
+    applySettings();
+  };
+});
+document.querySelectorAll(".set-row select").forEach(sel=>{   // 선택형(글꼴)
+  sel.onchange=()=>{setVal[sel.closest(".set-row").dataset.key]=+sel.value;applySettings();};
+});
+function openSet(){doCloseSheets();$("scrim").classList.add("open");$("setSheet").classList.add("open");pushSheetState()}
+$("fsBtn").onclick=()=>$("setSheet").classList.contains("open")?closeSheet():openSet();
+
+/* 가름끈 전체 초기화 (툼스톤 남겨 다른 기기에도 삭제 전파) */
+$("resetMarksBtn").onclick=async()=>{
+  if(!await askConfirm("정말 삭제하시겠습니까?\n확인을 누르시면 가름끈 모든 데이터가 삭제됩니다."))return;
+  const now=Date.now();
+  for(const m of marks)markdel[m]=now;
+  for(const k in markt)markdel[k]=now;   // 알고 있는 모든 가름끈을 '지금 삭제'로 표시
+  marks=[];markt={};
+  store.set("marks","[]");
+  store.set("markt","{}");
+  store.set("markdel",JSON.stringify(markdel));
+  updateNav();   // 현재 쪽 가름끈 상태 반영
+  toast("가름끈이 모두 삭제되었습니다");
+};
+/* 형광펜 전체 초기화 (툼스톤 남겨 다른 기기에도 삭제 전파) */
+$("resetHlsBtn").onclick=async()=>{
+  if(!await askConfirm("정말 삭제하시겠습니까?\n확인을 누르시면 형광펜 모든 데이터가 삭제됩니다."))return;
+  const now=Date.now();
+  for(const key in hls)for(const v of hls[key])hldel[key+"/"+v]=now;
+  for(const id in hlt)hldel[id]=now;
+  hls={};hlt={};
+  for(const id in qthl)qthldel[id]=now;   // 큐티 형광펜도 함께 삭제(툼스톤 전파)
+  qthl={};
+  store.set("hl","{}");
+  store.set("hlt","{}");
+  store.set("hldel",JSON.stringify(hldel));
+  store.set("qthl","{}");
+  store.set("qthldel",JSON.stringify(qthldel));
+  render(curPage);   // 본문에서 형광펜 제거 반영
+  toast("형광펜이 모두 삭제되었습니다");
+};
+/* 읽은횟수 전체 초기화 — 키를 지우지 않고 0을 명시 저장 + 시각 갱신(cycleRead와 같은 이유:
+   Firestore merge가 옛 값을 못 지우므로, 0이 '더 최신'임을 시각으로 알려 다른 기기에도 전파) */
+$("resetReadsBtn").onclick=async()=>{
+  if(!await askConfirm("정말 삭제하시겠습니까?\n확인을 누르시면 읽은횟수 표시가 모두 초기화됩니다."))return;
+  const now=Date.now();
+  for(const k in reads){reads[k]=0;readt[k]=now;}
+  store.set("reads",JSON.stringify(reads));
+  store.set("readt",JSON.stringify(readt));
+  render(curPage);   // 읽음 버튼 색 갱신, 현재 쪽 유지
+  toast("읽은횟수가 모두 초기화되었습니다");
+};
+
+/* ── 확인창 (네이티브 confirm 대체 — 도메인 안 보임) ── */
+function askConfirm(msg,opt){
+  const noBackdrop=opt&&opt.noBackdropClose;   // 바깥 탭으로 안 닫히게(연타가 배경에 꽂혀 닫히는 것 방지)
+  $("cfmCancel").textContent=(opt&&opt.cancelText)||"취소";   // 질문 성격에 따라 '취소' 대신 '아니오' 등
+  $("cfmOk").textContent=(opt&&opt.okText)||"확인";
+  const guardMs=(opt&&opt.guardMs)||0;         // 여는 직후 이 시간(ms) 동안은 어떤 탭도 무시(연타가 버튼에 꽂혀 닫히는 것 방지)
+  const openAt=Date.now();
+  const live=()=>Date.now()-openAt>=guardMs;
+  return new Promise(res=>{
+    const scrim=$("cfmScrim"),ok=$("cfmOk"),cancel=$("cfmCancel");
+    $("cfmMsg").textContent=msg;
+    scrim.classList.add("open");
+    /* 롱프레스로 열렸을 때, 그 손가락을 '떼는' 동작(스크림 위에서 시작하지 않은 release)이
+       곧바로 확인창을 닫거나 삭제를 확정하지 않도록 — 확인창 위에서 '새로 누른' 제스처만 유효. */
+    let ready=false;
+    const arm=()=>{ready=true;};
+    scrim.addEventListener("pointerdown",arm);
+    const done=v=>{
+      scrim.classList.remove("open");
+      scrim.removeEventListener("pointerdown",arm);
+      ok.onclick=cancel.onclick=scrim.onclick=null;
+      res(v);
+    };
+    ok.onclick=()=>{if(ready&&live())done(true);};
+    cancel.onclick=()=>{if(ready&&live())done(false);};
+    scrim.onclick=e=>{if(!noBackdrop&&ready&&live()&&e.target===scrim)done(false);};   // 바깥 탭하면 취소(창 위에서 누른 경우만; noBackdrop·가드시간이면 무시)
+  });
+}
+
+/* ── 토스트 ─────────────────────────── */
+let toastTimer;
+function toast(msg){
+  const t=$("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+/* ── 시작 ─────────────────────────── */
+applySettings();
+syncTabs();
+render(Math.max(0,+(store.get("lastPage")||0)||0));   // 마지막으로 읽던 책·장·쪽 그대로 복원
+setTimeout(showVod,400);   // 실행할 때마다 모아둔 형광펜 한 구절 다시 만나기
+
+/* ── 오프라인(PWA): 서비스워커가 본문·앱을 통째로 캐시 ── */
+if("serviceWorker"in navigator&&location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+  /* 새 버전 서비스워커가 활성화되면 한 번만 자동 새로고침 — 배포가 바로 반영되게 */
+  let swReloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(swReloaded)return;swReloaded=true;location.reload();
+  });
+}
+/* 저장공간 부족 시에도 캐시가 지워지지 않게 보존 요청 (브라우저 접속자 보호) */
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+/* 오프라인 안내 — 성경은 기기에 통째로 저장돼 있어 인터넷 없이도 계속 읽을 수 있음을 알림.
+   토스트(순간)와 별개로, 끊겨 있는 동안엔 러닝헤드 오른쪽에 '오프라인' 배지가 계속 떠 있다 */
+function updateNet(){$("netBadge").hidden=navigator.onLine!==false;}
+updateNet();
+if(navigator.onLine===false)setTimeout(()=>toast("인터넷 없음 — 저장해 둔 성경으로 봅니다"),600);
+window.addEventListener("offline",()=>{updateNet();toast("인터넷 끊김 — 계속 읽을 수 있습니다");});
+window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 — 동기화합니다");});
+
+/* ── 계정 로그인 & 동기화 (이 사이트 회원 로그인 — xms) ─────────────
+   로그인은 이 사이트 회원 로그인(/member/login, 로그인 유지). 형광펜·가름끈·읽음·별표·설정을 회원별로 서버(/api/sync)에 둔다.
+   합치는 규칙은 예전 그대로(mergeCloud — 항목별 최신 동작이 이김). 서버는 버전 번호로
+   '내가 받은 뒤 다른 기기가 먼저 올렸는지'만 가린다 → 그랬으면(409) 받은 걸 합쳐 다시 올린다.
+   다른 기기 변경은 화면으로 돌아올 때 · 1분마다 받아 온다. 로그인 안 하면 이 브라우저에만 저장. */
+(function initSync(){
+  const st=$("authStatus"),btn=$("authBtn"),migRow=$("migRow"),migNote=$("migNote"),migBtn=$("migBtn");
+  let user=null,ver=0,timer=null,busy=false,again=false,first=true,migrated=true;
+
+  const collect=()=>({marks,hl:hls,hlt,hldel,markt,markdel,reads,readt,plan,plant,qthl,qthldel,
+                      stars,starat:starAt,stardel:starDel,set:setVal,updatedAt:Date.now()});
+  const api=(method,body)=>fetch("/api/sync",{method,credentials:"same-origin",cache:"no-store",
+    headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+
+  const origSet=store.set;
+  /* 값이 실제로 바뀐 저장만 올림 (읽던 위치 last 는 기기별이라 안 올림) */
+  store.set=(k,v)=>{const old=store.get(k);origSet(k,v);if(k!=="last"&&k!=="lastPage"&&String(v)!==old)schedule();};
+
+  function mergeCloud(d,initial){
+    if(!d)return;
+    const before=JSON.stringify([hls,marks,reads])+"|"+Object.keys(qthl).sort().join();   // 재렌더 필요 여부 판단용
+    /* 형광펜: 절별로 '추가 시각' vs '삭제 시각' 중 최신 동작이 이김 (LWW) → 한쪽에서 지우면 다른쪽도 지워짐.
+       들어오는 클라우드 삭제 이력은 미리 정리해 비대한 옛 문서(오프라인 캐시 포함)도 가볍게 병합. */
+    const addC=d.hlt||{},delC=trimDels(d.hldel),clHl=d.hl||{};
+    const clPresent=new Set();                       // 클라우드에 살아있는 형광펜 절 (O(1) 조회용)
+    for(const k in clHl)for(const v of (clHl[k]||[]))clPresent.add(k+"/"+v);
+    const ids=new Set([...Object.keys(hlt),...Object.keys(hldel),...Object.keys(addC),...Object.keys(delC),...clPresent]);
+    const nHls={},nHlt={},nHldel={};
+    ids.forEach(id=>{
+      const aT=Math.max(hlt[id]||0,addC[id]||0,clPresent.has(id)?1:0);
+      const dT=Math.max(hldel[id]||0,delC[id]||0);
+      if(aT>dT){nHlt[id]=aT;const s=id.lastIndexOf("/");(nHls[id.slice(0,s)]||(nHls[id.slice(0,s)]=[])).push(+id.slice(s+1));}
+      else if(dT>0)nHldel[id]=dT;
+    });
+    for(const k in nHls)nHls[k].sort((a,b)=>a-b);
+    hls=nHls;hlt=nHlt;hldel=trimDels(nHldel);
+    origSet("hl",JSON.stringify(hls));origSet("hlt",JSON.stringify(hlt));origSet("hldel",JSON.stringify(hldel));
+    /* 가름끈: 키별로 추가/삭제 최신 동작이 이김 (LWW) */
+    const maT=d.markt||{},mdT=trimDels(d.markdel),clMarks=d.marks||[];
+    const lMarkSet=new Set(marks),cMarkSet=new Set(clMarks);   // includes 대신 O(1) 조회
+    const mids=new Set([...lMarkSet,...cMarkSet,...Object.keys(markt),...Object.keys(markdel),...Object.keys(maT),...Object.keys(mdT)]);
+    const nMarks=[],nMarkt={},nMarkdel={};
+    mids.forEach(id=>{
+      const aT=Math.max(markt[id]||0,maT[id]||0,lMarkSet.has(id)?1:0,cMarkSet.has(id)?1:0);
+      const dT=Math.max(markdel[id]||0,mdT[id]||0);
+      if(aT>dT){nMarkt[id]=aT;nMarks.push(id);}
+      else if(dT>0)nMarkdel[id]=dT;
+    });
+    marks=nMarks;markt=nMarkt;markdel=trimDels(nMarkdel);
+    origSet("marks",JSON.stringify(marks));origSet("markt",JSON.stringify(markt));origSet("markdel",JSON.stringify(markdel));
+    /* 읽음: 키별로 변경 시각이 더 최근인 값이 이김 (LWW) → 횟수 증가뿐 아니라 해제·초기화도 동기화 */
+    const cr=d.reads||{},crt=d.readt||{};
+    const rids=new Set([...Object.keys(reads),...Object.keys(readt),...Object.keys(cr),...Object.keys(crt)]);
+    const nReads={},nReadt={};
+    rids.forEach(k=>{
+      const lt=Math.max(readt[k]||0,reads[k]?1:0),ct=Math.max(crt[k]||0,cr[k]?1:0);
+      let val;
+      if(ct>lt)val=cr[k]||0; else if(lt>ct)val=reads[k]||0; else val=Math.max(reads[k]||0,cr[k]||0);  // 동시각(레거시)엔 큰 값
+      const t=Math.max(lt,ct);
+      if(t>0)nReadt[k]=t;
+      if(val>0)nReads[k]=val;
+    });
+    const readsBefore=JSON.stringify(reads);
+    reads=nReads;readt=nReadt;
+    origSet("reads",JSON.stringify(reads));origSet("readt",JSON.stringify(readt));
+    /* 통독표 색은 장별 읽음 표시를 따른다 — 값이 실제로 바뀐 경우에만 다시 그림(스크롤 튐 방지) */
+    if(JSON.stringify(reads)!==readsBefore)refreshPlanViews();
+    /* 옛 날짜 색칠 기록(plan) — 지금은 화면에 쓰지 않지만, 예전 버전을 쓰는 기기의 값이 지워지지 않게 그대로 합친다 */
+    const cp=d.plan||{},cpt=d.plant||{};
+    const pids=new Set([...Object.keys(plan),...Object.keys(plant),...Object.keys(cp),...Object.keys(cpt)]);
+    const nPlan={},nPlant={};
+    pids.forEach(k=>{
+      const lt=Math.max(plant[k]||0,plan[k]?1:0),ct=Math.max(cpt[k]||0,cp[k]?1:0);
+      let val;
+      if(ct>lt)val=cp[k]||0; else if(lt>ct)val=plan[k]||0; else val=Math.max(plan[k]||0,cp[k]||0);
+      const t=Math.max(lt,ct);
+      if(t>0)nPlant[k]=t;
+      if(val>0)nPlan[k]=val;
+    });
+    plan=nPlan;plant=nPlant;
+    origSet("plan",JSON.stringify(plan));origSet("plant",JSON.stringify(plant));
+    /* 큐티 형광펜: 절 내용을 담은 항목이라 id별로 '칠한 시각 vs 지운 시각' LWW로만 합친다 */
+    const cq=d.qthl||{},cqd=trimDels(d.qthldel);
+    const qids=new Set([...Object.keys(qthl),...Object.keys(qthldel),...Object.keys(cq),...Object.keys(cqd)]);
+    const nQ={},nQd={};
+    qids.forEach(id=>{
+      const lo=qthl[id],co=cq[id];
+      const lT=(lo&&lo.at)||0,cT=(co&&co.at)||0;
+      const aT=Math.max(lT,cT),dT=Math.max(qthldel[id]||0,cqd[id]||0);
+      if(aT>dT&&(lo||co))nQ[id]=lT>=cT?(lo||co):(co||lo);
+      else if(dT>0)nQd[id]=dT;
+    });
+    qthl=capQt(nQ);qthldel=trimDels(nQd);
+    origSet("qthl",JSON.stringify(qthl));origSet("qthldel",JSON.stringify(qthldel));
+    /* 별표: 가름끈과 같은 id별 추가/삭제 LWW */
+    const csA=d.starat||{},csD=trimDels(d.stardel),clStars=d.stars||[];
+    const lSt=new Set(stars),cSt=new Set(clStars);
+    const sidsAll=new Set([...lSt,...cSt,...Object.keys(starAt),...Object.keys(starDel),...Object.keys(csA),...Object.keys(csD)]);
+    const nSt=[],nStA={},nStD={};
+    sidsAll.forEach(id=>{
+      const aT=Math.max(starAt[id]||0,csA[id]||0,lSt.has(id)?1:0,cSt.has(id)?1:0);
+      const dT=Math.max(starDel[id]||0,csD[id]||0);
+      if(aT>dT){nStA[id]=aT;nSt.push(id);}
+      else if(dT>0)nStD[id]=dT;
+    });
+    stars=nSt;starAt=nStA;starDel=trimDels(nStD);
+    origSet("stars",JSON.stringify(stars));origSet("starat",JSON.stringify(starAt));origSet("stardel",JSON.stringify(starDel));
+    /* 설정은 최초 로그인 때만 클라우드에서 가져옴. 읽던 위치(last)는 동기화하지 않음(기기별 독립) */
+    if(initial&&d.set)for(const kk in d.set)if(SETTINGS[kk]){setVal[kk]=d.set[kk];origSet("set."+kk,d.set[kk]);}
+    /* 보이는 데이터가 실제로 바뀐 경우에만 재조판 — 내 push의 메아리 스냅샷마다 전체 재렌더 방지 */
+    if(initial||JSON.stringify([hls,marks,reads])+"|"+Object.keys(qthl).sort().join()!==before){applySettings();render(curPage);}   // 지금 보던 쪽은 유지
+  }
+
+  function showMig(){const on=!!user&&!migrated;migRow.hidden=!on;migNote.hidden=!on;}
+  function setUser(u){
+    user=u;
+    if(u){
+      btn.textContent="로그아웃";
+      st.textContent=(u.login_id||u.name||"회원")+" · 동기화 켜짐";
+    }else{
+      btn.textContent="로그인";
+      st.textContent="로그인하면 다른 기기와 형광펜·가름끈·읽은 기록이 동기화됩니다.";
+      first=true;ver=0;
+    }
+    showMig();
+  }
+  /* 서버 것을 받아 합친다 */
+  async function pull(){
+    const r=await api("GET");
+    if(r.status===401){setUser(null);return false;}
+    if(!r.ok)throw new Error("sync "+r.status);
+    const j=await r.json();
+    if(j.doc)mergeCloud(j.doc,first);
+    first=false;ver=j.ver||0;migrated=!!j.migrated;showMig();
+    return true;
+  }
+  /* 이 기기 것을 올린다 (다른 기기가 먼저 올렸으면 합쳐서 다시) */
+  async function push(extra){
+    if(!user)return;
+    if(busy){again=true;return;}
+    busy=true;
+    try{
+      for(let i=0;i<4;i++){
+        const r=await api("PUT",Object.assign({doc:collect(),base:ver},extra||{}));
+        if(r.status===409){const j=await r.json();if(j.doc)mergeCloud(j.doc,false);ver=j.ver||0;continue;}
+        if(r.status===401){setUser(null);break;}
+        if(r.ok){const j=await r.json();ver=j.ver;if(j.migrated)migrated=true;showMig();}
+        break;
+      }
+    }catch(e){/* 오프라인 — 연결되면 다시 */}
+    finally{busy=false;if(again){again=false;schedule();}}
+  }
+  function schedule(){ if(!user)return; clearTimeout(timer);timer=setTimeout(()=>push(),800); }
+
+  async function start(){
+    try{
+      const r=await fetch("/xms-api/me",{credentials:"same-origin",cache:"no-store"});
+      const me=r.ok?await r.json():{guest:true};
+      if(!me.login_id){setUser(null);return;}
+      setUser(me);
+      if(await pull())await push();   // 이 기기에만 있던 것도 서버로
+    }catch(e){
+      if(!user)st.textContent="(인터넷이 연결되면 로그인 상태를 확인합니다)";
+    }
+  }
+
+  btn.onclick=async()=>{
+    if(!user){location.href="/member/login";return;}
+    if(!await askConfirm("로그아웃할까요?\n이 기기의 형광펜·가름끈은 그대로 남습니다."))return;
+    try{await fetch("/xms-api/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});}catch(e){}
+    setUser(null);toast("로그아웃했습니다");
+  };
+
+  /* 예전 구글(Firebase) 기록 한 번 옮겨오기 — 그때만 Firebase 를 받는다 */
+  const loadJs=src=>new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc);});
+  migBtn.onclick=async()=>{
+    if(!user)return;
+    migBtn.disabled=true;const label=migBtn.textContent;migBtn.textContent="가져오는 중…";
+    try{
+      const V="https://www.gstatic.com/firebasejs/10.12.2/";
+      if(!window.RB_FIREBASE)await loadJs("firebase-config.js");
+      if(!window.firebase)await loadJs(V+"firebase-app-compat.js");
+      await loadJs(V+"firebase-auth-compat.js");await loadJs(V+"firebase-firestore-compat.js");
+      const app=firebase.apps.length?firebase.app():firebase.initializeApp(window.RB_FIREBASE);
+      const auth=app.auth();
+      const cred=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      const snap=await app.firestore().collection("users").doc(cred.user.uid).get();
+      if(snap.exists)mergeCloud(snap.data(),true);
+      await auth.signOut().catch(()=>{});
+      await push({migrated:true});
+      toast(snap.exists?"구글 기록을 모두 옮겼습니다":"구글 계정에 저장된 기록이 없습니다");
+    }catch(e){
+      toast("가져오지 못했습니다"+(e&&e.code?" ("+e.code+")":""));
+    }finally{migBtn.disabled=false;migBtn.textContent=label;}
+  };
+
+  start();
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&user)pull().catch(()=>{}); });
+  setInterval(()=>{ if(user&&!document.hidden&&navigator.onLine!==false)pull().catch(()=>{}); },60000);
+  /* 인터넷이 다시 붙으면 오프라인 동안 바꾼 것을 올림 */
+  window.addEventListener("online",()=>{ if(user)pull().then(()=>push()).catch(()=>{}); else start(); });
+})();
+</script>
+</body>
+</html>

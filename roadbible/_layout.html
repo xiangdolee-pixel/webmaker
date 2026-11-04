@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>길 성경통독</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!-- 회원가입 · 로그인 · 내 정보 화면의 틀 (xms 가 <main> 자리에 내용을 넣는다) — 앱 본문(index.html)과 같은 종이색 · 글꼴 -->
+<style>
+:root{--paper:#FAF6ED;--ink:#26221C;--line:#ECEAE4}
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif}
+.lay-top{display:flex;align-items:center;gap:12px;height:52px;padding:0 16px;padding-top:env(safe-area-inset-top);border-bottom:1px solid var(--line)}
+.lay-top a.back{display:inline-flex;align-items:center;gap:6px;color:var(--ink);text-decoration:none;font-weight:700;font-size:17px}
+.lay-top .sp{flex:1}
+.lay-top [data-xms-account]{--xa-bg:#ECEAE4;--xa-fg:#6D6459}
+.xms-c{--brand:#26221C}
+main{min-height:calc(100vh - 52px)}
+</style>
+</head>
+<body>
+<header class="lay-top">
+  <a class="back" href="/"><span aria-hidden="true">‹</span> 길 성경통독</a>
+  <span class="sp"></span>
+  <span data-xms-account></span>
+</header>
+<main></main>
+</body>
+</html>

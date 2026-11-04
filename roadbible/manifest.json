@@ -1,0 +1,16 @@
+{
+  "name": "길 성경통독",
+  "short_name": "길 성경통독",
+  "description": "페이지를 넘기며 읽는 모바일 성경",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF6ED",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "icon.png", "sizes": "256x256", "type": "image/png", "purpose": "maskable" }
+  ]
+}

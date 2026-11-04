@@ -1,0 +1,21 @@
+{
+  "xim": true,
+  "assets": {
+    "run_worker_first": [
+      "/*",
+      "!/bible-data.js",
+      "!/icon*.png",
+      "!/manifest.json",
+      "!/sw.js",
+      "!/firebase-config.js"
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "SYNC", "class_name": "Sync" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Sync"] }
+  ]
+}
