@@ -14,17 +14,28 @@ const LISTS = ['top', 'coins', 'f13'];
 const COUNTS = [5, 10, 15, 20];
 const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'macro', 'f13']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
 const KEY = 'xip:layout:v1';
+const MAXC = 5; // 칸은 1~5개 (칸 가장자리에 놓으면 새 칸)
 
 const $ = (id) => document.getElementById(id);
 const dash = document.querySelector('.dash');
-const cols = [...dash.querySelectorAll('.col')];
+const colsNow = () => [...dash.querySelectorAll(':scope > .col')];
+// 칸 수를 맞춘다 (모자라면 만들고, 남는 빈 칸은 뺀다 — 블록은 place 가 옮긴다)
+function ensureCols(n) {
+  let list = colsNow();
+  while (list.length < n) { const c = document.createElement('div'); c.className = 'col'; dash.append(c); list = colsNow(); }
+  list.slice(n).forEach((c) => { if (!c.querySelector('[data-block]')) c.remove(); });
+  return colsNow();
+}
+const numberCols = () => colsNow().forEach((c, i) => { c.dataset.col = i; });
 const sec = (id) => dash.querySelector(`[data-block="${id}"]`);
 const copy = (l) => JSON.parse(JSON.stringify(l));
 
 // 모르는 값 · 빠진 블록을 채운다 (서버와 같은 규칙)
 function clean(v) {
   const seen = new Set();
-  const out = [0, 1, 2, 3].map((i) => ((v && v.cols && v.cols[i]) || []).filter((id) => BLOCKS[id] && !seen.has(id) && seen.add(id)));
+  let out = ((v && Array.isArray(v.cols) && v.cols) || []).slice(0, MAXC)
+    .map((c) => (Array.isArray(c) ? c : []).filter((id) => BLOCKS[id] && !seen.has(id) && seen.add(id))).filter((c) => c.length);
+  if (!out.length) out = [[]];
   Object.keys(BLOCKS).forEach((id) => {
     if (seen.has(id)) return;
     // 새로 생긴 블록(예전에 저장한 모습에 없음): 기본 모습에서 바로 앞 블록 뒤에, 없으면 기본 칸 끝에
@@ -32,7 +43,7 @@ function clean(v) {
     const before = DEF.cols[home][DEF.cols[home].indexOf(id) - 1];
     const ci = before ? out.findIndex((c) => c.includes(before)) : -1;
     if (ci >= 0) out[ci].splice(out[ci].indexOf(before) + 1, 0, id);
-    else out[home].push(id);
+    else out[Math.min(home, out.length - 1)].push(id);
     seen.add(id);
   });
   const hidden = ((v && v.hidden) || []).filter((id, i, a) => BLOCKS[id] && a.indexOf(id) === i);
@@ -42,8 +53,20 @@ function clean(v) {
 }
 
 // 화면에 반영: 블록을 칸으로 옮기고(다시 그리지 않음 — 값 · 탭 상태 그대로), 숨기고, 목록 줄 수를 자른다
-function apply(l) {
+function place(l) {
+  const cols = ensureCols(l.cols.length);
   l.cols.forEach((ids, i) => ids.forEach((id) => cols[i].appendChild(sec(id))));
+  ensureCols(l.cols.length);
+  numberCols();
+  LISTS.forEach((id) => {
+    const ol = sec(id).querySelector('.coin-list');
+    COUNTS.forEach((n) => ol.classList.toggle(`lim-${n}`, l.counts[id] === n && n < 20));
+    sec(id).classList.toggle('lim', l.counts[id] < 20); // 줄을 줄이면 블록 높이도 줄고, 같은 칸 다른 블록이 그 자리를 쓴다
+  });
+  return colsNow();
+}
+function apply(l) {
+  const cols = place(l);
   Object.keys(BLOCKS).forEach((id) => { sec(id).hidden = l.hidden.includes(id); });
   let shown = 0;
   cols.forEach((c) => {
@@ -51,12 +74,8 @@ function apply(l) {
     if (!c.hidden) shown++;
   });
   dash.style.setProperty('--cols', shown || 1);
-  // 1200~1499 화면: 1~3열만 첫 줄에 (4열은 아래 줄 전체 폭)
+  // 1200~1499 화면: 1~3열만 첫 줄에 (4열부터는 아래 줄 전체 폭)
   dash.style.setProperty('--cols3', cols.slice(0, 3).filter((c) => !c.hidden).length || 1);
-  LISTS.forEach((id) => {
-    const ol = sec(id).querySelector('.coin-list');
-    COUNTS.forEach((n) => ol.classList.toggle(`lim-${n}`, l.counts[id] === n && n < 20));
-  });
   const cn = dash.querySelector('[data-coin-n]');
   if (cn) cn.textContent = l.counts.coins;
   window.dispatchEvent(new Event('resize')); // 알약 탭 배경 다시 재기
@@ -147,10 +166,10 @@ const queueSave = () => { clearTimeout(saveTimer); status('저장 중…'); save
 
 // 편집 중 모습: 꺼진 블록도 흐리게 보이고, 빈 칸도 놓을 자리로 보인다
 function applyEdit(l) {
-  l.cols.forEach((ids, i) => ids.forEach((id) => cols[i].appendChild(sec(id))));
+  const cols = place(l);
   cols.forEach((c) => { c.hidden = false; });
-  dash.style.setProperty('--cols', 4);
-  dash.style.setProperty('--cols3', 3);
+  dash.style.setProperty('--cols', cols.length);
+  dash.style.setProperty('--cols3', Math.min(3, cols.length));
   Object.keys(BLOCKS).forEach((id) => {
     const s = sec(id);
     const on = !l.hidden.includes(id);
@@ -161,15 +180,11 @@ function applyEdit(l) {
     const sel = s.querySelector('.ed-cnt');
     if (sel) sel.value = l.counts[id];
   });
-  LISTS.forEach((id) => {
-    const ol = sec(id).querySelector('.coin-list');
-    COUNTS.forEach((n) => ol.classList.toggle(`lim-${n}`, l.counts[id] === n && n < 20));
-  });
   window.dispatchEvent(new Event('resize'));
 }
 // 지금 화면 → 값
 function readEdit() {
-  const out = { cols: cols.map((c) => [...c.querySelectorAll(':scope > [data-block]')].map((s) => s.dataset.block)), hidden: [], counts: {} };
+  const out = { cols: colsNow().map((c) => [...c.querySelectorAll(':scope > [data-block]')].map((s) => s.dataset.block)).filter((c) => c.length), hidden: [], counts: {} };
   Object.keys(BLOCKS).forEach((id) => { if (sec(id).classList.contains('ed-off')) out.hidden.push(id); });
   LISTS.forEach((id) => { out.counts[id] = +sec(id).querySelector('.ed-cnt').value; });
   return clean(out);
@@ -220,7 +235,35 @@ bar.addEventListener('click', (e) => {
   queueSave();
 });
 
-// 끌어서 옮기기 — 칸 안 위아래 + 다른 칸으로. 끄는 블록은 손가락을 따라오고, 나머지는 미끄러지듯 비켜난다(FLIP)
+// 블록들 자리 바꾸기를 부드럽게 (FLIP: 바꾸기 전 위치 → 바꾼 뒤 차이만큼 되돌렸다가 0 으로)
+function flipBlocks(mutate, skip) {
+  const list = [...dash.querySelectorAll('[data-block]')].filter((b) => b !== skip);
+  const first = new Map(list.map((b) => [b, b.getBoundingClientRect()]));
+  mutate();
+  if (reduced()) return;
+  for (const b of list) {
+    const a = first.get(b);
+    const n = b.getBoundingClientRect();
+    const dx = a.left - n.left;
+    const dy = a.top - n.top;
+    if (!dx && !dy) continue;
+    b.style.transition = 'none';
+    b.style.transform = `translate(${dx}px, ${dy}px)`;
+    void b.offsetHeight;
+    b.style.transition = `transform 220ms ${EASE}`;
+    b.style.transform = '';
+  }
+}
+// 새 칸 자리 안내선 (칸 가장자리에 끌고 오면)
+const colLine = document.createElement('div');
+colLine.className = 'ed-colline';
+colLine.hidden = true;
+colLine.innerHTML = '<span>여기에 새 칸</span>';
+document.body.appendChild(colLine);
+
+// 끌어서 옮기기
+//   칸 가운데에 놓으면 그 칸 안 위아래로(나머지 블록이 비켜난다), 칸 왼쪽 · 오른쪽 가장자리에 놓으면 그 자리에 새 칸(세로 안내선)
+//   끄는 블록은 손가락을 따라오고, 놓으면 제자리로 내려앉은 뒤 빈 칸을 정리한다
 dash.addEventListener('pointerdown', (e) => {
   if (!editing || e.button > 0) return;
   const handle = e.target.closest('.ed-tools .handle');
@@ -231,7 +274,11 @@ dash.addEventListener('pointerdown', (e) => {
   const sy = e.clientY;
   let lx = sx;
   let ly = sy;
-  const r0 = el.getBoundingClientRect();
+  let r0 = el.getBoundingClientRect();
+  let ox = 0; // 새 칸으로 옮긴 뒤 기준점 보정
+  let oy = 0;
+  const grid = getComputedStyle(dash).display === 'grid'; // 폰(칸이 위아래로 쌓임)에서는 새 칸 없음
+  let newCol = null; // { ref: 그 앞에 넣을 칸 (null = 맨 끝) }
   el.classList.add('ed-drag');
   document.body.classList.add('is-sorting');
 
@@ -239,32 +286,13 @@ dash.addEventListener('pointerdown', (e) => {
   const follow = () => {
     el.style.transform = 'none';
     const r = el.getBoundingClientRect();
-    el.style.transform = `translate(${lx - sx - (r.left - r0.left)}px, ${ly - sy - (r.top - r0.top)}px)`;
-  };
-  const others = () => [...dash.querySelectorAll('[data-block]')].filter((b) => b !== el);
-  const flip = (mutate) => {
-    const list = others();
-    const first = new Map(list.map((b) => [b, b.getBoundingClientRect()]));
-    mutate();
-    if (reduced()) return;
-    for (const b of list) {
-      const a = first.get(b);
-      const n = b.getBoundingClientRect();
-      const dx = a.left - n.left;
-      const dy = a.top - n.top;
-      if (!dx && !dy) continue;
-      b.style.transition = 'none';
-      b.style.transform = `translate(${dx}px, ${dy}px)`;
-      void b.offsetHeight;
-      b.style.transition = `transform 220ms ${EASE}`;
-      b.style.transform = '';
-    }
+    el.style.transform = `translate(${lx - sx - (r.left - r0.left) + ox}px, ${ly - sy - (r.top - r0.top) + oy}px)`;
   };
   // 손가락에 가장 가까운 칸 (PC: 가로 위치가 먼저, 폰: 칸이 위아래로 쌓여 세로 위치로)
   const pickCol = () => {
-    let best = cols[0];
+    let best = colsNow()[0];
     let bd = Infinity;
-    for (const c of cols) {
+    for (const c of colsNow()) {
       const r = c.getBoundingClientRect();
       const dx = lx < r.left ? r.left - lx : lx > r.right ? lx - r.right : 0;
       const dy = ly < r.top ? r.top - ly : ly > r.bottom ? ly - r.bottom : 0;
@@ -273,25 +301,53 @@ dash.addEventListener('pointerdown', (e) => {
     }
     return best;
   };
+  const showLine = (x) => {
+    const d = dash.getBoundingClientRect();
+    const top = Math.max(d.top, 0);
+    colLine.style.left = `${Math.round(x)}px`;
+    colLine.style.top = `${Math.round(top)}px`;
+    colLine.style.height = `${Math.round(Math.min(d.bottom, innerHeight) - top)}px`;
+    colLine.hidden = false;
+  };
   const move = () => {
     const col = pickCol();
+    const r = col.getBoundingClientRect();
+    // 칸 가장자리(폭의 16%, 적어도 32px) → 새 칸. 칸이 이미 5개면 없음
+    const edge = Math.max(32, r.width * 0.16);
+    const alone = el.parentNode === col && col.querySelectorAll(':scope > [data-block]').length === 1;
+    const canNew = grid && (colsNow().length < MAXC || alone);
+    if (canNew && (lx < r.left + edge || lx > r.right - edge)) {
+      const after = lx > r.right - edge;
+      const ref = after ? col.nextElementSibling : col;
+      // 자기 혼자 있는 칸 바로 옆 = 제자리 (안내선 안 보임)
+      const same = alone;
+      if (!same) {
+        newCol = { ref };
+        showLine(after ? r.right + 6 : r.left - 6);
+        follow();
+        return;
+      }
+    }
+    newCol = null;
+    colLine.hidden = true;
     const sibs = [...col.querySelectorAll(':scope > [data-block]')].filter((b) => b !== el);
     let target = null;
     for (const b of sibs) {
-      const r = b.getBoundingClientRect();
-      const m = new DOMMatrixReadOnly(getComputedStyle(b).transform === 'none' ? undefined : getComputedStyle(b).transform);
-      if (ly < r.top - m.f + r.height / 2) { target = b; break; } // 미끄러지는 중이면 도착 위치로
+      const br = b.getBoundingClientRect();
+      const tf = getComputedStyle(b).transform;
+      const m = new DOMMatrixReadOnly(tf === 'none' ? undefined : tf);
+      if (ly < br.top - m.f + br.height / 2) { target = b; break; } // 미끄러지는 중이면 도착 위치로
     }
     const here = el.parentNode === col && el.nextElementSibling === target
       && (target || !sibs.length || sibs[sibs.length - 1].nextElementSibling === el);
-    if (!here) flip(() => col.insertBefore(el, target));
+    if (!here) flipBlocks(() => col.insertBefore(el, target), el);
     follow();
   };
   // 화면 끝에 가까우면 저절로 스크롤 (폰)
   let raf = 0;
   const auto = () => {
-    const edge = 70;
-    const v = ly < edge ? -12 : ly > innerHeight - edge ? 12 : 0;
+    const edgeY = 70;
+    const v = ly < edgeY ? -12 : ly > innerHeight - edgeY ? 12 : 0;
     if (v && document.scrollingElement.scrollHeight > innerHeight) { window.scrollBy(0, v); move(); }
     raf = requestAnimationFrame(auto);
   };
@@ -303,14 +359,36 @@ dash.addEventListener('pointerdown', (e) => {
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
     document.body.classList.remove('is-sorting');
+    colLine.hidden = true;
+    if (newCol) {
+      // 새 칸을 만들어 거기로 — 다른 블록들은 새 자리로 미끄러지고, 끄던 블록은 새 칸으로 내려앉는다
+      const ref = newCol.ref;
+      const before = el.getBoundingClientRect(); // 지금 화면에 보이는 자리 (손가락 밑)
+      flipBlocks(() => {
+        const c = document.createElement('div');
+        c.className = 'col';
+        dash.insertBefore(c, ref);
+        c.appendChild(el);
+        colsNow().forEach((x) => { if (!x.querySelector('[data-block]')) x.remove(); });
+        numberCols();
+        dash.style.setProperty('--cols', colsNow().length);
+        dash.style.setProperty('--cols3', Math.min(3, colsNow().length));
+      }, el);
+      // 보이던 자리에서 새 자리로 내려앉게
+      el.style.transform = 'none';
+      const now = el.getBoundingClientRect();
+      el.style.transition = 'none';
+      el.style.transform = `translate(${before.left - now.left}px, ${before.top - now.top}px)`;
+      void el.offsetHeight;
+    }
     el.style.transition = reduced() ? 'none' : `transform 240ms ${EASE}`;
     el.style.transform = '';
-    // 내려앉은 뒤에 정리 (바로 다시 그리면 끊긴다)
+    // 내려앉은 뒤에 정리 (바로 다시 그리면 끊긴다): 빈 칸 빼기도 부드럽게
     setTimeout(() => {
       el.classList.remove('ed-drag');
       el.style.transition = '';
-      others().forEach((b) => { b.style.transition = ''; });
-      window.dispatchEvent(new Event('resize'));
+      flipBlocks(() => applyEdit(readEdit()));
+      setTimeout(() => dash.querySelectorAll('[data-block]').forEach((b) => { b.style.transition = ''; }), 240);
       queueSave();
     }, reduced() ? 0 : 240);
   };

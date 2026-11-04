@@ -770,9 +770,11 @@ const LIST_IDS = ['top', 'coins', 'f13'];
 // 화면이 보낸 값을 믿지 않고 다시 만든다: 아는 블록만, 한 번씩, 4칸, 개수는 5·10·15·20
 function cleanLayout(v) {
   const seen = new Set();
-  const cols = [0, 1, 2, 3].map((i) => (Array.isArray(v?.cols?.[i]) ? v.cols[i] : [])
-    .filter((id) => BLOCK_IDS.includes(id) && !seen.has(id) && seen.add(id)));
-  for (const id of BLOCK_IDS) if (!seen.has(id)) cols[3].push(id);
+  // 칸은 1~5개 (빈 칸은 뺀다)
+  const cols = (Array.isArray(v?.cols) ? v.cols.slice(0, 5) : []).map((c) => (Array.isArray(c) ? c : [])
+    .filter((id) => BLOCK_IDS.includes(id) && !seen.has(id) && seen.add(id))).filter((c) => c.length);
+  if (!cols.length) cols.push([]);
+  for (const id of BLOCK_IDS) if (!seen.has(id)) cols[cols.length - 1].push(id);
   const hidden = (Array.isArray(v?.hidden) ? v.hidden : []).filter((id, i, a) => BLOCK_IDS.includes(id) && a.indexOf(id) === i);
   const counts = {};
   for (const id of LIST_IDS) counts[id] = [5, 10, 15, 20].includes(v?.counts?.[id]) ? v.counts[id] : 20;
