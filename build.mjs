@@ -190,6 +190,51 @@ function faviconFrom(html) {
   return fs.existsSync(path.join(OUT, 'favicon.ico')) ? '/favicon.ico' : '';
 }
 
+// xms 파비콘(32 · 180 · 192 · 512)으로 처음 한 번 가져올 사이트 아이콘 PNG (사용자 지시 2026-11-04: "처음에 가져와야지")
+//   후보: html 의 icon · apple-touch-icon, manifest 의 icons, 폴더 안 이름에 favicon · icon · apple-touch 가 든 PNG (maskable 빼고)
+//   PNG 머리(IHDR)에서 실제 폭 · 높이를 읽어 정사각형만, 크기마다 그보다 크거나 같은 것 중 가장 작은 것(없으면 가장 큰 것)
+//   SVG · ICO 만 있으면 가져오지 않는다 (xms 는 PNG 로 둔다 — 그때는 xms 파비콘 화면에서 올린다)
+const FAV_SIZES = [32, 180, 192, 512];
+function pngSize(file) {
+  try {
+    const b = fs.readFileSync(file);
+    if (b.length < 24 || b.readUInt32BE(0) !== 0x89504e47) return null;
+    return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), bytes: b.length };
+  } catch { return null; }
+}
+function siteIcons(html) {
+  const cand = new Set();
+  for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = m[0];
+    const rel = ((tag.match(/\brel\s*=\s*["']([^"']*)["']/i) || [])[1] || '').toLowerCase();
+    const href = ((tag.match(/\bhref\s*=\s*["']([^"']*)["']/i) || [])[1] || '').trim();
+    if (/(^|\s)(icon|apple-touch-icon)(\s|$)/.test(rel) && href && !/^(data:|https?:|\/\/)/i.test(href)) cand.add(href.replace(/^\.?\//, '').split(/[?#]/)[0]);
+  }
+  try {
+    const mf = (html.match(/<link\b[^>]*rel=["']manifest["'][^>]*href=["']([^"']+)["']/i) || [])[1];
+    if (mf && !/^(https?:|\/\/)/i.test(mf)) {
+      const j = JSON.parse(fs.readFileSync(path.join(OUT, mf.replace(/^\.?\//, '')), 'utf8'));
+      for (const i of j.icons || []) if (i.src && !/maskable/.test(i.purpose || '') && !/^(https?:|\/\/)/i.test(i.src)) cand.add(i.src.replace(/^\.?\//, ''));
+    }
+  } catch { /* manifest 없음 */ }
+  (function walk(dir, depth) {
+    if (depth > 2) return;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full, depth + 1);
+      else if (/(favicon|icon|apple-touch)[^/]*\.png$/i.test(e.name) && !/maskable/i.test(e.name)) cand.add(path.relative(OUT, full).split(path.sep).join('/'));
+    }
+  })(OUT, 0);
+  const list = [...cand].map((rel) => ({ rel, ...(pngSize(path.join(OUT, rel)) || {}) }))
+    .filter((x) => x.w && x.w === x.h && x.bytes <= 70000); // 정사각형 · D1 한 줄에 들어가는 크기
+  if (!list.length) return [];
+  list.sort((x, y) => x.w - y.w);
+  return FAV_SIZES.map((n) => {
+    const f = list.find((x) => x.w >= n) || list[list.length - 1];
+    return { size: n, path: `/${f.rel}`, w: f.w };
+  });
+}
+
 if (CONNECT) {
   let marked = 0;
   (function walk(dir) {
@@ -204,7 +249,7 @@ if (CONNECT) {
   })(OUT);
   const index = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
   const title = textOf((index.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '') || slug;
-  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), static_bytes: bytes, favicon: faviconFrom(index), menus: menusFrom(index) }, null, 2));
+  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), static_bytes: bytes, favicon: faviconFrom(index), icons: siteIcons(index), menus: menusFrom(index) }, null, 2));
   config.main = './xim/_worker/site-worker.js';
   config.assets.binding = 'ASSETS';
   config.assets.run_worker_first = true;

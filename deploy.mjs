@@ -124,6 +124,16 @@ SELECT * FROM (${rows})
 WHERE NOT EXISTS (SELECT 1 FROM site_import WHERE site = ${q(c.slug)}) AND NOT EXISTS (SELECT 1 FROM menus WHERE site = ${q(c.slug)});`);
   }
   lines.push(`INSERT OR IGNORE INTO site_import (site, imported_at) VALUES (${q(c.slug)}, ${t});`);
+  // 파비콘: 사이트 폴더의 아이콘 PNG 를 xms 파비콘(32 · 180 · 192 · 512)으로 — xms 에 하나도 없을 때만, 한꺼번에(32 를 맨 뒤에 넣어 조건이 끝까지 같게)
+  const icons = (c.icons || []).slice().sort((x, y) => (x.size === 32) - (y.size === 32));
+  for (const ic of icons) {
+    try {
+      const b64 = fs.readFileSync(path.join(ROOT, `.deploy/${slug}`, ic.path.replace(/^\//, ''))).toString('base64');
+      lines.push(`INSERT INTO site_files (site, kind, mime, data, updated_at)
+SELECT ${q(c.slug)}, 'favicon-${ic.size}', 'image/png', '${b64}', ${t}
+WHERE NOT EXISTS (SELECT 1 FROM site_files WHERE site = ${q(c.slug)} AND kind = 'favicon-32');`);
+    } catch (e) { console.warn(`[xim] 아이콘을 읽지 못함 ${ic.path}:`, e.message); }
+  }
   const xmsSql = path.join(tmp, 'xms.sql');
   fs.writeFileSync(xmsSql, `${lines.join('\n')}\n`);
   const sh = (cmd) => spawnSync(cmd, { cwd: ROOT, env, shell: true, encoding: 'utf8' });
