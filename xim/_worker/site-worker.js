@@ -105,13 +105,41 @@ export default {
         return new Response('Not found', { status: 404 });
       }
     }
-    const res = await handle(request, env);
+    let res = await handle(request, env);
+    if (env.XMS) res = countVisit(request, env, ctx, res);
     if (ip && env.XIM && res.status === 404 && !BENIGN.test(url.pathname) && !GOOD_BOT.test(request.headers.get('User-Agent') || '')) {
       ctx.waitUntil(secReport(env, request, ip, '404'));
     }
     return res;
   },
 };
+// ───── 방문 통계 (xms "방문 통계") ─────
+//   방문자가 html 페이지를 열면 xms 에 알린다(기다리지 않음). 그날 처음 온 브라우저에는 쿠키 xms_v=<날짜> 를 남겨 방문자 수를 센다.
+//   관리 화면 · API · 검색엔진 로봇 · 미리 불러오기 · 오류 화면은 세지 않는다.
+const BOT = /bot|crawl|spider|slurp|scrap|preview|fetch|curl|wget|python|java\/|go-http|okhttp|axios|node|headless|lighthouse|pagespeed|monitor|uptime|facebookexternalhit|kakaotalk-scrap|yeti|daumoa/i;
+const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i;
+const kstDay = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+function countVisit(request, env, ctx, res) {
+  if (request.method !== 'GET' || (res.status !== 200 && res.status !== 304)) return res;
+  const url = new URL(request.url);
+  const p = url.pathname;
+  if (!looksHtml(p) || /^\/(admin|xms|xms-api)(\/|$)/.test(p) || /^\/member\/(logout|verify)/.test(p)) return res;
+  if (res.status === 200 && !(res.headers.get('Content-Type') || '').includes('text/html')) return res;
+  const h = request.headers;
+  const ua = h.get('User-Agent') || '';
+  if (!ua || BOT.test(ua) || /prefetch|prerender/i.test(`${h.get('Sec-Purpose') || ''} ${h.get('Purpose') || ''}`)) return res;
+  const day = kstDay();
+  const fresh = !(h.get('Cookie') || '').split(/;\s*/).includes(`xms_v=${day}`);
+  let ref = '';
+  try { const r = new URL(h.get('Referer') || ''); if (r.host !== url.host) ref = r.hostname.replace(/^(www|m)\./, ''); } catch { /* 바로 들어옴 */ }
+  const path = p === '/index.html' || p === '/index' ? '/' : p.replace(/\.html?$/i, '').replace(/(.)\/+$/, '$1');
+  ctx.waitUntil(env.XMS.visit(env.XIM_SITE, { path, fresh, ref, mobile: MOBILE.test(ua) }).catch(() => {}));
+  if (!fresh) return res;
+  const out = new Response(res.body, res);
+  out.headers.append('Set-Cookie', `xms_v=${day}; Path=/; Max-Age=172800; SameSite=Lax${url.protocol === 'https:' ? '; Secure' : ''}`);
+  return out;
+}
+
 // xms 배포 번호 (site-head 가 알려 줌) → ?v=번호. 배포하면 방문자 브라우저가 바로 새 파일을 받는다
 const vq = (data) => (data?.ver && /^[\w-]+$/.test(data.ver) ? `?v=${data.ver}` : '');
 function decodeURIComponentSafe(s) { try { return decodeURIComponent(s); } catch { return s; } }

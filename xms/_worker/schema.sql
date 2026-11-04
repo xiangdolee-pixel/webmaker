@@ -237,3 +237,31 @@ CREATE TABLE IF NOT EXISTS signup_codes (
   ticket_until INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (site, email)
 );
+
+-- 방문 통계 (2026-11-04) — 하루 단위로 모아 둔다, 최근 1년(366일)만 남기고 지운다. 날짜는 한국 시간 'YYYY-MM-DD'
+--   방문자 = 그날 처음 온 브라우저(쿠키 xms_v), 페이지뷰 = html 페이지를 연 횟수. 검색엔진 로봇 · 미리 불러오기는 세지 않는다
+CREATE TABLE IF NOT EXISTS visit_days (
+  site     TEXT NOT NULL,
+  day      TEXT NOT NULL,
+  views    INTEGER NOT NULL DEFAULT 0,
+  visitors INTEGER NOT NULL DEFAULT 0,
+  mobile   INTEGER NOT NULL DEFAULT 0,      -- 방문자 중 폰 · 태블릿
+  PRIMARY KEY (site, day)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS visit_pages (
+  site  TEXT NOT NULL,
+  day   TEXT NOT NULL,
+  path  TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (site, day, path)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS visit_refs (   -- 방문자가 들어온 곳 (다른 사이트 주소의 호스트, 바로 들어오면 '')
+  site     TEXT NOT NULL,
+  day      TEXT NOT NULL,
+  ref      TEXT NOT NULL,
+  visitors INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (site, day, ref)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS idx_visit_days_day ON visit_days(day);
+CREATE INDEX IF NOT EXISTS idx_visit_pages_day ON visit_pages(day);
+CREATE INDEX IF NOT EXISTS idx_visit_refs_day ON visit_refs(day);

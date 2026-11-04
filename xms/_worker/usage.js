@@ -12,6 +12,9 @@ const DB_QUERIES = [
   'SELECT SUM(length(title) + length(body) + length(link_url) + 80) AS n FROM popups WHERE site = ?',
   'SELECT SUM(length(level_names) + length(signup_fields)) AS n FROM site_settings WHERE site = ?',
   'SELECT SUM(length(title) + length(description) + length(verify) + length(robots) + length(share_description)) AS n FROM site_seo WHERE site = ?',
+  'SELECT COUNT(*) * 40 AS n FROM visit_days WHERE site = ?',
+  'SELECT SUM(length(path) + 30) AS n FROM visit_pages WHERE site = ?',
+  'SELECT SUM(length(ref) + 30) AS n FROM visit_refs WHERE site = ?',
 ];
 
 export async function usageOf(env, site) {

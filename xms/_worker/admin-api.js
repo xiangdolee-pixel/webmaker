@@ -8,6 +8,7 @@ import {
 import { settingsApi } from './site-meta.js';
 import { usageOf } from './usage.js';
 import { popupsApi } from './popups.js';
+import { statsApi } from './visits.js';
 
 const PAGE = 20;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -38,6 +39,7 @@ export async function adminApi(ctx) {
   }
 
   if (path === '/usage' && method === 'GET') return json(await usageOf(env, site));
+  if (path === '/stats' && method === 'GET') return statsApi(db, site, q);
 
   // ───── 회원 ─────
   if (path === '/members' && method === 'GET') return json(await listMembers(db, site, q, false));

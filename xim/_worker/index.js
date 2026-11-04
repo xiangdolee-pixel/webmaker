@@ -587,7 +587,10 @@ async function siteUsage(env) {
     "SELECT site, SUM(length(actor_name) + length(target) + length(detail) + length(ip) + 60) AS n FROM audit_log GROUP BY site",
     "SELECT site, SUM(length(title) + length(body) + length(link_url) + 80) AS n FROM popups GROUP BY site",
     "SELECT site, SUM(length(level_names) + length(signup_fields)) AS n FROM site_settings GROUP BY site",
-    "SELECT site, SUM(length(title) + length(description) + length(verify) + length(robots) + length(share_description)) AS n FROM site_seo GROUP BY site"
+    "SELECT site, SUM(length(title) + length(description) + length(verify) + length(robots) + length(share_description)) AS n FROM site_seo GROUP BY site",
+    "SELECT site, COUNT(*) * 40 AS n FROM visit_days GROUP BY site",
+    "SELECT site, SUM(length(path) + 30) AS n FROM visit_pages GROUP BY site",
+    "SELECT site, SUM(length(ref) + 30) AS n FROM visit_refs GROUP BY site"
   ];
   const res = await x.batch([
     ...DB_QUERIES.map((q) => x.prepare(q)),

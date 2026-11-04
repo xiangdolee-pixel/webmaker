@@ -17,6 +17,7 @@ import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site
 import { livePopups } from './popups.js';
 import { uploadApi, serveUpload } from './uploads.js';
 import { embedCss } from './css-scope.js';
+import { recordVisit } from './visits.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const headCache = new Map();
@@ -47,6 +48,12 @@ const withVer = (env, res) => new HTMLRewriter()
   .transform(res);
 
 export class Cms extends WorkerEntrypoint {
+  // 방문 기록 (사이트 Worker 가 html 페이지를 내보낸 뒤 RPC 로 부른다)
+  async visit(site, hit) {
+    if (!SITE_RE.test(site || '') || !hit) return;
+    try { await recordVisit(this.env.DB, site, hit); } catch (e) { console.error('방문 기록 실패', e); }
+  }
+
   async fetch(request) {
     const env = this.env;
     const url = new URL(request.url);

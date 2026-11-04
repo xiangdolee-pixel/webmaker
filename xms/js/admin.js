@@ -79,11 +79,12 @@ const SIDE_ICON = {
   share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c-4.4 0-8 2.8-8 6.3 0 2.2 1.5 4.2 3.7 5.3L7 20l4.3-3.1c.2 0 .5.1.7.1 4.4 0 8-2.8 8-6.3S16.4 4 12 4z"/></svg>',
   requests: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>',
   account: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+  stats: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-4M12 16V7M17 16v-7"/></svg>',
   audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
 };
 // 왼쪽 메뉴: 묶음 이름 아래 같은 모양의 한 단계 목록 (만들기 · 추가는 각 화면 오른쪽 위 버튼)
 const SIDE = [
-  [null, [['#/storage', '저장 공간', 'storage']]],
+  [null, [['#/storage', '저장 공간', 'storage'], ['#/stats', '방문 통계', 'stats']]],
   ['회원', [['#/members', '가입회원', 'members'], ['#/members/withdrawn', '탈퇴회원', 'withdrawn'], ['#/levels', '등급 이름', 'levels'],
     ['#/fields', '가입 항목', 'fields'], ['#/terms', '이용약관', 'terms'], ['#/privacy', '개인정보 처리방침', 'privacy']]],
   ['사이트', [['#/boards', '게시판', 'boards'], ['#/menus', '메뉴', 'menus'], ['#/popups', '팝업', 'popups'],
@@ -162,6 +163,7 @@ async function route() {
     if (parts[0] === 'seo') return await seoPage(qs);
     if (parts[0] === 'share') return await sharePage();
     if (parts[0] === 'storage') return await storagePage();
+    if (parts[0] === 'stats') return await statsPage();
     if (parts[0] === 'account') return accountPage();
     if (parts[0] === 'audit') return await auditPage(qs);
     location.hash = '#/members';
@@ -768,6 +770,122 @@ function requestWrite() {
 }
 
 // ───────── 저장 공간 · 내 계정 · 관리 로그 ─────────
+// ───────── 방문 통계 (최근 1년치만 남는다) ─────────
+const REF_NAMES = { 'google.com': '구글', 'google.co.kr': '구글', 'search.naver.com': '네이버 검색', 'naver.com': '네이버', 'blog.naver.com': '네이버 블로그', 'cafe.naver.com': '네이버 카페',
+  'search.daum.net': '다음 검색', 'daum.net': '다음', 'bing.com': '빙', 'kakao.com': '카카오', 'talk.kakao.com': '카카오톡', 'instagram.com': '인스타그램', 'l.instagram.com': '인스타그램',
+  'facebook.com': '페이스북', 'l.facebook.com': '페이스북', 'lm.facebook.com': '페이스북', 'youtube.com': '유튜브', 'band.us': '밴드', 't.co': 'X(트위터)', 'x.com': 'X(트위터)' };
+const refName = (r) => (r ? REF_NAMES[r] || (/(^|\.)google\./.test(r) ? '구글' : '') : '바로 들어옴 · 즐겨찾기');
+const num = (n) => Number(n || 0).toLocaleString('ko-KR');
+const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+let statsRange = '30';
+async function statsPage() {
+  main.innerHTML = `${head('사이트', '방문 통계', '홈페이지 방문자와 많이 본 페이지입니다. 최근 1년치만 남고 그보다 오래된 기록은 저절로 지워집니다.')}
+    <div class="st-bar"><div class="tabs" id="st-tabs"></div></div>
+    <div id="st-body"></div>`;
+  const load = async () => {
+    const body = $('#st-body');
+    body.classList.add('loading');
+    const d = await api(`/stats?range=${statsRange}`);
+    if (location.hash.split('?')[0] !== '#/stats') return;
+    body.classList.remove('loading');
+    body.innerHTML = statsBody(d);
+    statsChart(body, d);
+  };
+  // 탭은 한 번만 그리고, 누르면 배경부터 미끄러진 뒤 아래 내용만 다시 받는다
+  pillTabs($('#st-tabs'), [['7', '최근 7일'], ['30', '최근 30일'], ['365', '최근 12개월']], statsRange, (v) => { statsRange = v; load().catch((e) => toast(e.message)); });
+  await load();
+}
+// 날짜 칸 채우기 (기록이 없는 날 · 달은 0)
+function statsSeries(d) {
+  const map = Object.fromEntries(d.days.map((x) => [x.day, x]));
+  const out = [];
+  if (d.monthly) {
+    let [y, m] = d.from.split('-').map(Number);
+    for (let i = 0; i < 12; i++) {
+      const k = `${y}-${String(m).padStart(2, '0')}`;
+      out.push({ key: k, label: `${m}월`, full: `${y}년 ${m}월`, ...(map[k] || { views: 0, visitors: 0 }) });
+      if (++m > 12) { m = 1; y++; }
+    }
+  } else {
+    const t0 = Date.parse(`${d.from}T00:00:00Z`);
+    for (let i = 0; i < d.range; i++) {
+      const dt = new Date(t0 + i * 86400000);
+      const k = dt.toISOString().slice(0, 10);
+      out.push({ key: k, label: `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`, full: `${dt.getUTCMonth() + 1}월 ${dt.getUTCDate()}일 (${WEEK[dt.getUTCDay()]})`, ...(map[k] || { views: 0, visitors: 0 }) });
+    }
+  }
+  return out;
+}
+function statsBody(d) {
+  const t = d.total;
+  const label = { 7: '최근 7일', 30: '최근 30일', 365: '최근 12개월' }[d.range];
+  const mobilePct = t.visitors ? Math.round((t.mobile / t.visitors) * 100) : 0;
+  const series = statsSeries(d);
+  const maxPage = Math.max(1, ...d.pages.map((p) => p.views));
+  const refTotal = d.refs.reduce((s, r) => s + r.visitors, 0) || 1;
+  const bar = (v, max) => `<i style="width:${Math.max(2, (v / max) * 100)}%"></i>`;
+  return `<div class="st-tiles">
+      <div class="panel st-tile"><span>오늘 방문자</span><b>${num(d.today_stat.visitors)}</b><small>페이지뷰 ${num(d.today_stat.views)}</small></div>
+      <div class="panel st-tile"><span>어제 방문자</span><b>${num(d.yesterday.visitors)}</b><small>페이지뷰 ${num(d.yesterday.views)}</small></div>
+      <div class="panel st-tile"><span>${label} 방문자</span><b>${num(t.visitors)}</b><small>페이지뷰 ${num(t.views)}</small></div>
+      <div class="panel st-tile"><span>폰으로 온 방문자</span><b>${mobilePct}%</b><small>PC ${t.visitors ? 100 - mobilePct : 0}%</small></div>
+    </div>
+    <div class="panel pad gap"><h2>${d.monthly ? '달마다' : '날마다'} 방문자</h2>
+      ${t.visitors ? `<div class="st-chart" role="img" aria-label="${label} 방문자 막대 그래프"></div>` : `<p class="meta">아직 ${label} 동안 기록된 방문이 없습니다. 지금부터 홈페이지 방문을 셉니다.</p>`}
+      <details class="st-table"><summary>표로 보기</summary><table class="tbl"><thead><tr><th>${d.monthly ? '달' : '날짜'}</th><th>방문자</th><th>페이지뷰</th></tr></thead><tbody>
+        ${series.slice().reverse().map((s) => `<tr><td>${s.full}</td><td>${num(s.visitors)}</td><td>${num(s.views)}</td></tr>`).join('')}</tbody></table></details>
+    </div>
+    <div class="st-cols gap">
+      <div class="panel pad"><h2>많이 본 페이지 <small class="meta">페이지뷰</small></h2>
+        ${d.pages.length ? `<ol class="st-rank">${d.pages.map((p) => `<li><a href="${esc(p.path)}" target="_blank" rel="noopener"><b>${esc(p.name || p.path)}</b>${p.name ? `<small>${esc(p.path)}</small>` : ''}</a><span>${num(p.views)}</span>${bar(p.views, maxPage)}</li>`).join('')}</ol>` : '<p class="meta">아직 기록이 없습니다.</p>'}
+      </div>
+      <div class="panel pad"><h2>들어온 곳 <small class="meta">방문자</small></h2>
+        ${d.refs.length ? `<ol class="st-rank">${d.refs.map((r) => `<li><span class="st-name"><b>${esc(refName(r.ref) || r.ref)}</b>${r.ref && refName(r.ref) ? `<small>${esc(r.ref)}</small>` : ''}</span><span>${num(r.visitors)} <small>${Math.round((r.visitors / refTotal) * 100)}%</small></span>${bar(r.visitors, refTotal)}</li>`).join('')}</ol>` : '<p class="meta">아직 기록이 없습니다.</p>'}
+      </div>
+    </div>
+    <p class="meta gap">방문자 = 그날 처음 들어온 브라우저 수(같은 사람이 하루에 여러 번 와도 1명), 페이지뷰 = 페이지를 연 횟수. 검색엔진 로봇과 관리 화면은 세지 않습니다.${d.first_day ? ` 기록 시작: ${esc(d.first_day)}` : ''}</p>`;
+}
+// 눈금 간격: 1 · 2 · 5 × 10ⁿ 중 눈금이 4~5개 되는 것
+function niceStep(max) {
+  if (max <= 4) return 1;
+  const base = 10 ** Math.floor(Math.log10(max / 4));
+  return [1, 2, 5, 10].map((m) => m * base).find((s) => max / s <= 5);
+}
+// 막대 그래프 (한 가지 색, 막대에 대면 숫자)
+function statsChart(body, d) {
+  const box = body.querySelector('.st-chart');
+  if (!box) return;
+  const series = statsSeries(d);
+  const max = Math.max(1, ...series.map((s) => s.visitors));
+  const step = niceStep(max);
+  const top = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = 0; v <= top; v += step) ticks.push(v);
+  const every = series.length > 14 ? Math.ceil(series.length / 7) : 1; // 아래 글자는 띄엄띄엄
+  const nowKey = d.monthly ? d.today.slice(0, 7) : d.today;
+  box.innerHTML = `<div class="st-y">${ticks.slice().reverse().map((v) => `<span>${num(v)}</span>`).join('')}</div>
+    <div class="st-plot"><div class="st-grid">${ticks.map(() => '<i></i>').join('')}</div>
+      <div class="st-bars">${series.map((s, i) => `<button type="button" class="st-col${s.key === nowKey ? ' now' : ''}" data-i="${i}" aria-label="${s.full} 방문자 ${s.visitors}명, 페이지뷰 ${s.views}"><i style="height:${(s.visitors / top) * 100}%"></i><em>${(series.length - 1 - i) % every === 0 ? s.label : ''}</em></button>`).join('')}</div>
+      <div class="st-tip" hidden></div></div>`;
+  const tip = box.querySelector('.st-tip');
+  const plot = box.querySelector('.st-plot');
+  const cols = [...box.querySelectorAll('.st-col')];
+  const show = (b) => {
+    const s = series[+b.dataset.i];
+    tip.innerHTML = `<b>${s.full}</b><span>방문자 ${num(s.visitors)}명</span><span>페이지뷰 ${num(s.views)}</span>`;
+    tip.hidden = false;
+    const pr = plot.getBoundingClientRect();
+    const br = b.getBoundingClientRect();
+    const half = tip.offsetWidth / 2;
+    tip.style.left = `${Math.min(Math.max(br.left - pr.left + br.width / 2, half), pr.width - half)}px`;
+    cols.forEach((c) => c.classList.toggle('hover', c === b));
+  };
+  const hide = () => { tip.hidden = true; cols.forEach((c) => c.classList.remove('hover')); };
+  cols.forEach((b) => { b.addEventListener('pointerenter', () => show(b)); b.addEventListener('focus', () => show(b)); b.addEventListener('click', () => show(b)); });
+  plot.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') hide(); });
+  box.addEventListener('focusout', (e) => { if (!box.contains(e.relatedTarget)) hide(); });
+}
+
 async function storagePage() {
   const u = await api('/usage');
   const quota = (u.quota_mb || 0) * 1048576;
