@@ -1,5 +1,6 @@
 /* 모든 서비스 공통 계정 버튼 — 사이트 Worker 가 머리에 바로 넣는다(따로 받지 않음). xa- 접두어로만. */
 .xa-host{position:relative;display:inline-flex;align-items:center;vertical-align:middle}
+.xa-host[hidden]{display:none}
 .xa-host.xa-float{position:fixed;top:12px;right:12px;z-index:2147482000}
 .xa-host *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
 .xa-avatar{display:inline-grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:50%;cursor:pointer;
