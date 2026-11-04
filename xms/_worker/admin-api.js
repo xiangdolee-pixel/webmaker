@@ -17,6 +17,16 @@ const LAYOUTS = ['TABLE', 'CARD', 'BLOG'];
 const FIELD_TYPES = ['TEXT', 'NUMBER', 'DATE', 'SELECT', 'RADIO', 'CHECKBOX'];
 const MODES = ['REQUIRED', 'OPTIONAL', 'EXCLUDED'];
 
+// 사용량(무거운 계산) 5분 기억 — 사이트마다
+const usageMem = new Map();
+async function usageCached(env, site) {
+  const hit = usageMem.get(site);
+  if (hit && Date.now() - hit.at < 300000) return hit.u;
+  const u = await usageOf(env, site);
+  usageMem.set(site, { u, at: Date.now() });
+  return u;
+}
+
 export async function adminApi(ctx) {
   const { request, env, site, me, url } = ctx;
   if (!isAdmin(me)) throw new HttpError(me.kind === 'guest' ? 401 : 403, me.kind === 'guest' ? '로그인이 필요합니다.' : '관리자만 들어올 수 있습니다.');
@@ -28,9 +38,12 @@ export async function adminApi(ctx) {
 
   // ───── 공통 정보 ─────
   if (path === '/me') {
-    const s = await env.XIM_DB.prepare('SELECT name, domain, quota_mb, used_mb, status FROM sites WHERE slug = ?').bind(site).first();
-    const { levelNames } = await siteSettings(db, site);
-    const u = await usageOf(env, site);
+    // 셋을 한꺼번에 (차례로 기다리면 느리다). 사용량은 계산이 무거워 5분 기억해 둔다 — 화면 위 '사용 중' 숫자에만 쓴다
+    const [s, { levelNames }, u] = await Promise.all([
+      env.XIM_DB.prepare('SELECT name, domain, quota_mb, used_mb, status FROM sites WHERE slug = ?').bind(site).first(),
+      siteSettings(db, site),
+      usageCached(env, site),
+    ]);
     return json({
       site: { slug: site, name: s?.name || site, domain: s?.domain || '', quota_mb: s?.quota_mb ?? 0, used_mb: Math.round((u.files / 1048576) * 10) / 10, status: s?.status },
       me: me.kind === 'staff' ? { staff: true, name: '운영자' } : { staff: false, name: me.member.name, login_id: me.member.login_id },

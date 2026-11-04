@@ -170,10 +170,13 @@ async function embedPage(request, env) {
   const req = new Request(url, request);
   req.headers.set('X-Xim-Site', env.XIM_SITE);
   req.headers.set('X-Xms-Embed', '1');
+  // 걸린 시간을 Server-Timing 으로 (브라우저 개발자 도구 · curl 로 어디가 느린지 본다)
+  const t0 = Date.now(); const tm = {};
+  const time = (k, p) => p.then((v) => { tm[k] = Date.now() - t0; return v; });
   const [xr, shell, data] = await Promise.all([
-    env.XMS.fetch(req),
-    env.ASSETS.fetch(new Request(new URL(env.XIM_SHELL || '/', url.origin))),
-    siteHead(request, env, false),
+    time('xms', env.XMS.fetch(req)),
+    time('shell', env.ASSETS.fetch(new Request(new URL(env.XIM_SHELL || '/', url.origin)))),
+    time('head', siteHead(request, env, false)),
   ]);
   if (!(xr.headers.get('Content-Type') || '').includes('application/json')) return xr; // 이동(로그인 뒤 등) · 오류는 그대로
   const d = await xr.json();
@@ -181,6 +184,7 @@ async function embedPage(request, env) {
   const headers = new Headers(shell.headers);
   ['ETag', 'Last-Modified', 'Content-Length'].forEach((h) => headers.delete(h));
   headers.set('Cache-Control', 'no-store');
+  headers.set('Server-Timing', [...Object.entries(tm).map(([k, v]) => `${k};dur=${v}`), xr.headers.get('Server-Timing') || ''].filter(Boolean).join(', '));
   let replaced = false;
   const framed = new HTMLRewriter()
     .on('title', { element(el) { el.setInnerContent(d.title); } })

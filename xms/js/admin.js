@@ -3,7 +3,19 @@ import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, slideTabs, for
 import { mountEditor, mountAttach } from './editor.js';
 import { sortable, treeFromDepths } from './drag.js';
 
-const api = makeApi('/xms-api/admin');
+const api0 = makeApi('/xms-api/admin');
+// index.html 이 미리 요청해 둔 자료(window.__xmsPre)가 있으면 그것을 한 번 쓴다 — 기다리는 왕복을 줄여 빨리 뜨게
+const api = (path, opt) => {
+  const pre = !opt && window.__xmsPre && window.__xmsPre[path];
+  if (!pre) return api0(path, opt);
+  delete window.__xmsPre[path];
+  return pre.then(async (res) => {
+    let out = null;
+    try { out = await res.json(); } catch { /* 본문 없음 */ }
+    if (!res.ok) { const err = new Error(out?.error || `요청이 실패했습니다 (${res.status})`); err.status = res.status; throw err; }
+    return out;
+  });
+};
 const pub = makeApi('/xms-api');
 const main = $('#main');
 let INFO = null; // { site, me, levelNames }

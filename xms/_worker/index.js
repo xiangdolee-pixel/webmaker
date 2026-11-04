@@ -95,8 +95,16 @@ export class Cms extends WorkerEntrypoint {
         return await asset(env, rest, null, url.searchParams.has('v'));
       }
 
+      const t0 = Date.now();
       const me = await whoAmI(env.DB, request, site);
+      const tWho = Date.now() - t0;
       const ctx = { request, env, site, me, url };
+      // 걸린 시간을 Server-Timing 으로 (어디가 느린지 본다): who = 로그인 확인, xmsall = xms 전체
+      const timed = async (p) => {
+        const r = await p;
+        try { r.headers.append('Server-Timing', `who;dur=${tWho}, xmsall;dur=${Date.now() - t0}`); return r; }
+        catch { const o = new Response(r.body, r); o.headers.append('Server-Timing', `who;dur=${tWho}, xmsall;dur=${Date.now() - t0}`); return o; }
+      };
       // 사이트 Worker 가 html 을 내보낼 때 한 번에 묻는다: 메뉴 · 머리(head) 값 · 홈 팝업
       if (p === '/xms-api/site-head') {
         const home = url.searchParams.get('home') === '1';
@@ -112,10 +120,10 @@ export class Cms extends WorkerEntrypoint {
         return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
-      if (p === '/xms-api/uploads' && request.method === 'POST') return await uploadApi(ctx);
-      if (p.startsWith('/xms-api/admin/')) return await adminApi(ctx);
-      if (p.startsWith('/xms-api/')) return await publicApi(ctx);
-      if (p.startsWith('/member/') || p.startsWith('/board/') || p === '/board') return await publicPage(ctx);
+      if (p === '/xms-api/uploads' && request.method === 'POST') return await timed(uploadApi(ctx));
+      if (p.startsWith('/xms-api/admin/')) return await timed(adminApi(ctx));
+      if (p.startsWith('/xms-api/')) return await timed(publicApi(ctx));
+      if (p.startsWith('/member/') || p.startsWith('/board/') || p === '/board') return await timed(publicPage(ctx));
       return new Response('Not found', { status: 404 });
     } catch (e) {
       return fail(e);
