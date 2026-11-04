@@ -315,10 +315,11 @@
   var ICONS = {
     'index:KOSPI': flag('kr'), 'index:KOSDAQ': flag('kr'),
     'index:.INX': flag('us'), 'index:.IXIC': flag('us'), 'index:.DJI': flag('us'),
-    'fx:FX_USDKRW': flag('us'), 'fx:FX_JPYKRW': flag('jp'), 'fx:FX_CNYKRW': flag('cn'), 'fx:FX_EURKRW': flag('eu'),
+    'fx:FX_USDKRW': flag('us'), 'fx:FX_JPYKRW': flag('jp'), 'fx:FX_CNYKRW': flag('cn'), 'fx:FX_EURKRW': flag('eu'), 'fx:.DXY': '<span class="ic ic-txt" style="background:#1f2937;color:#fff">$</span>',
     'cmdty:GCcv1': metal('Au', '#f7d774', '#c99a1e', '#5a3d00'),
     'cmdty:SIcv1': metal('Ag', '#f1f3f5', '#a9b1bb', '#3b4350'),
     'cmdty:PLcv1': metal('Pt', '#e6eef5', '#8fa3b5', '#24384a'),
+    'cmdty:PAcv1': metal('Pd', '#eef0f3', '#9aa3ad', '#2b3440'),
     'cmdty:HGcv1': metal('Cu', '#f0a37a', '#b5582e', '#fff'),
     'cmdty:CLcv1': drop('#1f2937'),
     'cmdty:LCOcv1': drop('#6b4423'),

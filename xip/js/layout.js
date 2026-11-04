@@ -1,7 +1,11 @@
 // xip 화면 구성 — 회원은 블록 보이기 · 숨기기 · 순서 · 칸 · 목록 개수를 바꿔 저장한다 (서버 /api/prefs, 회원별)
 //   손님: 머리글에 "회원가입하면 편집할 수 있어요" 흐르는 글자
-//   회원: "화면 편집" 버튼 → 지금 화면에서 바로 편집(블록마다 ⠿ 끌기 · 켜기/끄기 · 줄 수), 아래 막대에서 저장
+//   회원: "화면 편집" 버튼 → 지금 화면에서 바로 편집(블록마다 ⠿ 끌기 · 켜기/끄기 · 줄 수), 바꾸면 바로 저장
 //   끌기는 xms 공통 sortable(xms/js/drag.js)과 같은 움직임(따라오기 · FLIP 비켜나기 · 내려앉기)을 칸 사이로 넓힌 것
+import { topTabs } from './tabs.js?v=1';
+
+topTabs(document.getElementById('top-tabs'));
+
 const BLOCKS = {
   hours: '장 시간', indices: '주요 지수', fx: '환율', cmdty: '원자재', bonds: '미국채 금리',
   top: '거래대금 상위 종목', coins: '코인 시가총액', f13: '13F 매수 종목',
@@ -98,11 +102,43 @@ Object.keys(BLOCKS).forEach((id) => {
 const bar = document.createElement('div');
 bar.className = 'ed-bar';
 bar.hidden = true;
-bar.innerHTML = `<div class="wrap ed-bar-in"><b>화면 편집 중</b><span class="ed-tip">⠿ 를 끌어 옮기고 · 켜기/끄기 · 줄 수를 고르세요</span>
-  <span class="ed-err" role="alert"></span><span class="ed-gap"></span>
-  <button class="btn-l" type="button" data-act="reset">기본값</button><button class="btn-l" type="button" data-act="cancel">취소</button><button class="btn-l pri" type="button" data-act="save">저장</button></div>`;
+bar.innerHTML = `<div class="wrap ed-bar-in"><b>화면 편집 중</b><span class="ed-tip">⠿ 를 끌어 옮기고 · 켜기/끄기 · 줄 수를 고르세요 — 바꾸면 바로 저장돼요</span>
+  <span class="ed-st" role="status"></span><span class="ed-gap"></span>
+  <button class="btn-l" type="button" data-act="reset">기본값</button><button class="btn-l" type="button" data-act="undo">처음대로</button><button class="btn-l pri" type="button" data-act="done">완료</button></div>`;
 document.body.appendChild(bar);
-const err = bar.querySelector('.ed-err');
+const st = bar.querySelector('.ed-st');
+const status = (t, bad) => { st.textContent = t; st.classList.toggle('bad', !!bad); };
+
+// 바꿀 때마다 바로 저장 (0.5초 모아서 한 번)
+let saveTimer = 0;
+let saving = null;
+let startLayout = null; // 편집을 시작할 때 모습 (처음대로)
+async function saveNow() {
+  clearTimeout(saveTimer);
+  const l = readEdit();
+  if (JSON.stringify(l) === JSON.stringify(saved)) { status('저장됨 ✓'); return; }
+  const isDef = JSON.stringify(l) === JSON.stringify(clean(DEF));
+  status('저장 중…');
+  saving = (async () => {
+    try {
+      const r = await fetch('/api/prefs', {
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isDef ? { reset: true } : l),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 401 ? '회원 계정으로 로그인해야 저장돼요.' : d.error || '저장하지 못했어요.');
+      saved = l;
+      store.set(isDef ? null : l);
+      status('저장됨 ✓');
+    } catch (ex) {
+      status(ex.message, true);
+    } finally {
+      saving = null;
+    }
+  })();
+  return saving;
+}
+const queueSave = () => { clearTimeout(saveTimer); status('저장 중…'); saveTimer = setTimeout(saveNow, 500); };
 
 // 편집 중 모습: 꺼진 블록도 흐리게 보이고, 빈 칸도 놓을 자리로 보인다
 function applyEdit(l) {
@@ -137,7 +173,8 @@ function readEdit() {
 function startEdit() {
   if (editing) return;
   editing = true;
-  err.textContent = '';
+  status('');
+  startLayout = copy(saved);
   document.body.classList.add('editing');
   $('top-edit').classList.add('on');
   bar.hidden = false;
@@ -151,8 +188,9 @@ function stopEdit(l) {
   Object.keys(BLOCKS).forEach((id) => sec(id).classList.remove('ed-off'));
   apply(l);
 }
-$('top-edit').addEventListener('click', () => (editing ? stopEdit(saved) : startEdit()));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editing) stopEdit(saved); });
+async function finish() { await saveNow(); if (saving) await saving; stopEdit(saved); }
+$('top-edit').addEventListener('click', () => (editing ? finish() : startEdit()));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editing) finish(); });
 
 dash.addEventListener('change', (e) => {
   if (!editing) return;
@@ -163,35 +201,18 @@ dash.addEventListener('change', (e) => {
     s.querySelector('.ed-sw span').textContent = box.checked ? '켜짐' : '꺼짐';
   }
   if (e.target.closest('.ed-cnt')) applyEdit(readEdit());
+  queueSave();
 });
 // 편집 중에는 칸을 눌러도 차트가 열리지 않게
 dash.addEventListener('click', (e) => { if (editing && !e.target.closest('.ed-tools')) { e.preventDefault(); e.stopPropagation(); } }, true);
 
-bar.addEventListener('click', async (e) => {
+bar.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]');
   if (!act) return;
   const a = act.dataset.act;
-  if (a === 'cancel') { stopEdit(saved); return; }
-  if (a === 'reset') { applyEdit(copy(DEF)); return; }
-  const l = readEdit();
-  const isDef = JSON.stringify(l) === JSON.stringify(clean(DEF));
-  act.disabled = true;
-  err.textContent = '';
-  try {
-    const r = await fetch('/api/prefs', {
-      method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(isDef ? { reset: true } : l),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(r.status === 401 ? '회원 계정으로 로그인해야 저장돼요.' : d.error || '저장하지 못했어요.');
-    saved = l;
-    store.set(isDef ? null : l);
-    stopEdit(saved);
-  } catch (ex) {
-    err.textContent = ex.message;
-  } finally {
-    act.disabled = false;
-  }
+  if (a === 'done') { finish(); return; }
+  applyEdit(a === 'reset' ? copy(DEF) : startLayout);
+  queueSave();
 });
 
 // 끌어서 옮기기 — 칸 안 위아래 + 다른 칸으로. 끄는 블록은 손가락을 따라오고, 나머지는 미끄러지듯 비켜난다(FLIP)
@@ -285,6 +306,7 @@ dash.addEventListener('pointerdown', (e) => {
       el.style.transition = '';
       others().forEach((b) => { b.style.transition = ''; });
       window.dispatchEvent(new Event('resize'));
+      queueSave();
     }, reduced() ? 0 : 240);
   };
   document.addEventListener('pointermove', onMove);

@@ -22,12 +22,17 @@
   <header class="top">
     <div class="wrap top-in">
       <h1 class="logo"><a href="/" aria-label="xip 처음으로"><img src="/img/icon-64.png" alt="" width="32" height="32"><span class="logo-name">xip</span><span class="logo-sub">실시간 시세</span></a></h1>
+      <div class="seg seg-sm top-tabs" id="top-tabs" role="navigation" aria-label="페이지">
+        <span class="seg-ind" aria-hidden="true"></span>
+        <a href="/" class="on" aria-current="page">시세</a>
+        <a href="/crypto">크립토</a>
+      </div>
       <div class="top-meta">
         <span class="snap-note" id="snap-note" hidden></span>
         <span class="fx" id="fx">원/달러 —</span>
         <span class="conn" id="conn" data-state="wait"><i></i><b>연결 중</b></span>
       </div>
-      <a class="top-flow" id="top-flow" href="/member/signup" hidden><span class="flow-in"><span>✨ 회원가입하면 내 화면으로 편집할 수 있어요 — 블록 보이기·숨기기 · 순서 · 칸 바꾸기 · 목록 개수(5~20개)</span><span aria-hidden="true">✨ 회원가입하면 내 화면으로 편집할 수 있어요 — 블록 보이기·숨기기 · 순서 · 칸 바꾸기 · 목록 개수(5~20개)</span></span></a>
+      <a class="top-flow" id="top-flow" href="/member/signup" hidden><span class="flow-in"><span>✨ 회원가입하면 크립토 탭(ETF 유입 · 김프 · 공포탐욕 …)을 보고, 내 화면으로 편집할 수 있어요 — 블록 켜기·끄기 · 순서 · 칸 바꾸기 · 목록 개수</span><span aria-hidden="true">✨ 회원가입하면 크립토 탭(ETF 유입 · 김프 · 공포탐욕 …)을 보고, 내 화면으로 편집할 수 있어요 — 블록 켜기·끄기 · 순서 · 칸 바꾸기 · 목록 개수</span></span></a>
       <button class="top-edit" id="top-edit" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>화면 편집</span></button>
       <span class="top-acc" data-xms-account></span>
     </div>
@@ -67,7 +72,7 @@
       </div>
     </section>
 
-    <section class="sec sec-tiles" data-block="fx" style="--rows: 4">
+    <section class="sec sec-tiles" data-block="fx" style="--rows: 5">
       <div class="sec-head">
         <h2 class="sec-title">환율</h2>
         <span class="sec-note">네이버 증권 · 하나은행 고시 기준</span>
@@ -77,7 +82,7 @@
       </div>
     </section>
 
-    <section class="sec sec-tiles" data-block="cmdty" style="--rows: 6">
+    <section class="sec sec-tiles" data-block="cmdty" style="--rows: 7">
       <div class="sec-head">
         <h2 class="sec-title">원자재</h2>
         <span class="sec-note">네이버 증권 기준 · 선물 · 약 10분 지연</span>
@@ -138,7 +143,7 @@
         <h2 class="sec-title">미국채 금리</h2>
         <span class="sec-note">네이버 증권 · 연 % · 실시간</span>
       </div>
-      <div class="tile-grid fx-grid" id="bonds">
+      <div class="tile-grid bd-grid" id="bonds">
         <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
       </div>
     </section>

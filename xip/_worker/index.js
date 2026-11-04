@@ -7,12 +7,14 @@
 //   /api/chart   : 지수·환율·원자재·미국채·종목 차트 (?kind=index|fx|cmdty|bond|stock&code=…&range=1d|1w|1m|1y|10y|all)
 //   /api/all     : 위 지수·거래대금·휴장/서킷브레이커를 한 번에 (?top=kr|us) — 웹소켓이 안 될 때 쓰는 예비
 //   /api/prefs   : 회원별 화면 구성(블록 보이기 · 순서 · 칸 · 목록 개수) GET/PUT — xms 로그인(같은 xms_sess 쿠키) 회원만, Prefs(Durable Object)에 저장
+//   /api/crypto  : 크립토 탭(ETF 유입 · 도미넌스 · 해시레이트 · 공포탐욕 · MVRV-Z · M2 · 김프) — 회원만 (crypto.js)
 //   /ws          : 웹소켓. Hub(Durable Object) 하나가 값을 받아 바뀔 때만 모든 화면에 밀어준다
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
 //   그 밖(페이지 · /member 회원가입 · 로그인 · /xms 관리)은 xim 공통 사이트 Worker 가 맡는다 → 오른쪽 위 계정 버튼 · 회원
 import { DurableObject } from 'cloudflare:workers';
 import site from '../../xim/_worker/site-worker.js';
+import { cryptoAll } from './crypto.js';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
@@ -33,6 +35,7 @@ const CMDTY = {
   GCcv1: ['metals', '금'],
   SIcv1: ['metals', '은'],
   PLcv1: ['metals', '플래티넘'],
+  PAcv1: ['metals', '팔라듐'],
   HGcv1: ['metals', '구리'],
   CLcv1: ['energy', 'WTI 원유'],
   LCOcv1: ['energy', '브렌트유'],
@@ -43,6 +46,7 @@ const FXS = {
   FX_JPYKRW: ['일본 엔', '원 / 100엔'],
   FX_CNYKRW: ['중국 위안', '원 / 1위안'],
   FX_EURKRW: ['유로', '원 / 1유로'],
+  '.DXY': ['달러 인덱스 (DXY)', '주요 6개 통화 대비 달러 가치'],
 };
 // 미국 국채 금리(%): 네이버 로이터 코드 → 표시 이름
 const BONDS = {
@@ -301,7 +305,7 @@ async function cmdtyChart(code, range) {
   const fx = !!FXS[code];
   const bond = !!BONDS[code];
   const cat = fx ? 'exchange' : bond ? 'bond' : CMDTY[code][0];
-  const info = fx ? 'marketindex' : bond ? 'governmentBond' : 'futures';
+  const info = code === '.DXY' ? 'index' : fx ? 'marketindex' : bond ? 'governmentBond' : 'futures'; // 달러 인덱스는 지수형 차트
   // 네이버는 환율·원자재를 10년(주 단위)까지만 준다 → '전체'도 10년
   const type = { '1d': 'day', '1w': 'areaMonth', '1m': 'areaMonth', '1y': 'areaYear', '10y': 'areaYearTen', all: 'areaYearTen' }[range];
   const j = await getJSON(
@@ -805,6 +809,16 @@ export default {
     const url = new URL(request.url);
     const { pathname } = url;
     if (pathname === '/api/prefs' && env.PREFS) return prefsApi(request, env);
+    if (pathname === '/api/crypto') {
+      if (!(await memberId(request, env))) return json({ error: '회원 로그인이 필요합니다.' }, 401);
+      // 원/달러: 시세 화면과 같은 환율 저장본(30초)
+      const usdkrw = () => cached('part:fx', 30000, loadFxAll).then((r) => (r.data.find((f) => f.code === 'FX_USDKRW') || {}).price).catch(() => null);
+      try {
+        return json({ ...(await cryptoAll(ctx, swr, usdkrw)), fetchedAt: Date.now() });
+      } catch (err) {
+        return json({ error: String(err.message || err) }, 502);
+      }
+    }
     if (pathname === '/ws' && env.HUB) {
       return env.HUB.get(env.HUB.idFromName('main')).fetch(request);
     }
@@ -859,6 +873,10 @@ export default {
           probe('네이버 m.stock(거래대금)', 'https://m.stock.naver.com/api/stocks/priceTop/all?page=1&pageSize=1'),
           probe('코인게코', 'https://api.coingecko.com/api/v3/ping'),
           probe('SEC', 'https://data.sec.gov/submissions/CIK0001067983.json'),
+          probe('Farside(ETF 유입)', 'https://farside.co.uk/btc/'),
+          probe('FRED(M2)', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=M2SL'),
+          probe('bitcoin-data(MVRV)', 'https://bitcoin-data.com/v1/mvrv-zscore/last'),
+          probe('OKX(김프)', 'https://www.okx.com/api/v5/public/time'),
         ]);
         const cf = request.cf || {};
         return json({ colo: cf.colo, country: cf.country, city: cf.city, at: new Date().toISOString(), upstream: list });
