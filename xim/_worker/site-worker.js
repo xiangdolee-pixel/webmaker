@@ -191,7 +191,7 @@ async function embedPage(request, env) {
         // 틀 페이지의 상대 주소(css/style.css 등)가 게시판 주소 밑에서도 사이트 기준으로 풀리도록
         el.prepend('<base href="/">', { html: true });
         el.append(`<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="/xms/css/embed.css${vq(data)}">\n<script type="module" src="/xms/js/public.js${vq(data)}"></script>${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
+<link rel="stylesheet" href="/xms/css/embed.css${vq(data)}">\n<script type="module" src="/xms/js/public.js${vq(data)}"></script>${['common', 'editor', 'blocks', 'crop'].map((m) => `<link rel="modulepreload" href="/xms/js/${m}.js${vq(data)}">`).join('')}${d.noindex ? '\n<meta name="robots" content="noindex">' : ''}`, { html: true });
       },
     })
     .transform(new Response(shell.body, { status: d.status || 200, headers }));
@@ -292,6 +292,8 @@ async function withXms(res, request, env, data) {
       // 계정 버튼 스타일은 파일로 따로 받지 않고 바로 넣는다
       if (data?.account_css) tags.push(`<style id="xa-style">${data.account_css}</style>`);
       tags.push(`<script src="/xms/js/account.js${vq(data)}" defer></script>`);
+      // 내 정보 · 관리 · 로그인 · 게시판 링크에 손가락(마우스)이 닿으면 그 화면을 미리 준비해 둔다 → 누르면 바로 뜬다 (크롬 · 엣지 · 안드로이드)
+      tags.push('<script type="speculationrules">{"prerender":[{"where":{"or":[{"href_matches":"/member/*"},{"href_matches":"/board/*"},{"href_matches":"/xms/"}]},"eagerness":"moderate"}]}</script>');
       tags.push('<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml">');
       for (const v of h.verify || []) tags.push(`<meta name="${attr(v.name)}" content="${attr(v.content)}">`);
       if (h.favicon) {

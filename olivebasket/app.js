@@ -13,24 +13,33 @@ try { seen = JSON.parse(localStorage.getItem('ob_seen') || '[]'); } catch {}
 let busy = false;
 // 로그인 = 사이트 회원(xms, 같은 xms_sess 쿠키) — 2026-11-04 자체 로그인에서 옮김
 // 빨리 뜨게(사용자 지시 2026-11-04 "너무 느려"): 지난번 로그인 상태로 바로 시작하고, 서버 확인은 뒤에서 한다
-let token = ''; // '1' = 로그인함 (이름만 남김: 아래 코드가 그대로 쓰게)
+let token = ''; // '1' = 로그인함
 try { token = localStorage.getItem('ob_authed') || ''; } catch {}
 
 // 로그인 안 했으면 소개 문구만, 하단에 로그인·가입
 const INTRO = { id: 0, text: '가입하고,\n올리브를 모으듯\n나만의 영감을 담아보세요.', source: '올리브바스켓', stars: 1 };
 function setAuthed() { /* 담기 버튼은 늘 보인다 — 로그인 전이면 /basket 이 로그인 화면으로 보낸다 */ }
-// 로그인 여부: 서버에 묻는다. 인터넷이 없으면 지난번 상태로 (마지막 구절을 보여 주게)
-const authReady = fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' })
-  .then(r => (r.ok ? r.json() : {}))
-  .then(me => {
-    const was = token;
-    token = me.email ? '1' : '';
-    try { localStorage.setItem('ob_authed', token); if (me.email) localStorage.setItem('ob_email', me.email); else localStorage.removeItem('ob_ahead'); } catch {}
-    setAuthed(!!token);
-    if (was !== token && idx === 0) { ahead.length = 0; hist.length = 0; idx = -1; next(); } // 로그인 상태가 바뀌었으면 첫 화면을 다시
-    else fillAhead();
-  })
-  .catch(() => {});
+// 구절을 글마다 서버에 묻지 않는다 (사용자 지시 2026-11-04 "다음 글이 3초씩"): 내 구절 전체 + 보기 방식을 한 번 받아
+// 폰에 두고 그 안에서 고른다 → 넘기면 바로. 열 때마다 뒤에서 최신으로 다시 받는다(담기에서 고친 것도 반영). 인터넷이 없어도 넘겨진다.
+const EMPTY = { id: 0, text: '첫 올리브가 될\n영감의 문구를 담아보세요.', source: '', stars: 1 };
+let items = [];
+let mode = 'random';
+try { items = JSON.parse(localStorage.getItem('ob_items') || '[]') || []; mode = localStorage.getItem('ob_mode') || 'random'; localStorage.removeItem('ob_ahead'); } catch {}
+async function loadItems() {
+  const opt = { credentials: 'same-origin', cache: 'no-store' };
+  const [ri, rs] = await Promise.all([fetch('/api/items', opt), fetch('/api/settings', opt)]);
+  if (ri.status === 401) {
+    token = ''; items = [];
+    try { localStorage.removeItem('ob_authed'); localStorage.removeItem('ob_items'); } catch {}
+    return;
+  }
+  if (!ri.ok) throw new Error('items ' + ri.status);
+  items = (await ri.json()).map(({ id, text, source, stars }) => ({ id, text, source, stars }));
+  if (rs.ok) mode = (await rs.json()).weight_mode || 'random';
+  token = '1';
+  try { localStorage.setItem('ob_items', JSON.stringify(items)); localStorage.setItem('ob_mode', mode); localStorage.setItem('ob_authed', '1'); } catch {}
+}
+const ready = loadItems().catch(() => {}); // 오프라인이면 폰에 둔 목록으로
 setAuthed(!!token);
 
 // 배경 장면 6가지를 두 겹으로 교차 페이드 (직전 장면은 피함)
@@ -101,57 +110,35 @@ async function transition(getItem, dir) {
   busy = false;
 }
 
-async function fetchRandom() {
-  if (!token) return INTRO;
-  try {
-    // 미리 받아 둔 게 있으면 그 마지막 구절 다음으로 이어지게
-    const last = ahead.length ? ahead[ahead.length - 1].id : lastId;
-    const res = await fetch('/api/random?not=' + seen.join(',') + '&last=' + last, { credentials: 'same-origin' });
-    if (res.status === 401) {
-      token = '';
-      try { localStorage.removeItem('ob_authed'); } catch {}
-      setAuthed(false);
-      return INTRO;
-    }
-    const data = await res.json();
-    if (!data.empty) {
-      if (data.cycled) seen = [];
-      seen.push(data.id);
-      // 가중 모드는 최근 본 것만 피하면 되니 목록을 짧게 유지
-      if (data.mode && data.mode !== 'random' && seen.length > 30) seen = seen.slice(-30);
-      try { localStorage.setItem('ob_seen', JSON.stringify(seen)); } catch {}
-    }
-    if (data.empty) {
-      return { id: 0, text: '첫 올리브가 될\n영감의 문구를 담아보세요.', source: '', stars: 1 };
-    }
-    return data;
-  } catch {
-    // 오프라인: 마지막으로 본 구절
-    try {
-      const saved = JSON.parse(localStorage.getItem('ob_last') || 'null');
-      if (saved) return saved;
-    } catch {}
-    return { id: 0, text: '연결이 필요합니다.', source: '', stars: 1 };
+// 보기 방식별 무게 (가장 낮은 것도 가끔 나오게 1 ~ 10) — 서버 /api/random 과 같은 규칙
+function weighted(rows) {
+  if (mode === 'random' || rows.length < 2) return rows[Math.floor(Math.random() * rows.length)];
+  let w;
+  if (mode === 'stars') w = rows.map(r => r.stars || 1);
+  else {
+    const vals = rows.map(mode === 'recent' ? r => r.id : r => r.text.length);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    w = vals.map(v => { const t = hi > lo ? (v - lo) / (hi - lo) : 0.5; return 1 + 9 * (mode === 'short' ? 1 - t : t); });
   }
+  let n = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < rows.length; i++) { n -= w[i]; if (n <= 0) return rows[i]; }
+  return rows[rows.length - 1];
 }
-
-// 다음 구절을 2개까지 미리 받아 둠 → 넘길 때 서버를 기다리지 않음
-const AHEAD = 2;
-const ahead = [];
-try { (JSON.parse(localStorage.getItem('ob_ahead') || '[]') || []).forEach(x => x && x.id && ahead.push(x)); } catch {}
-const saveAhead = () => { try { localStorage.setItem('ob_ahead', JSON.stringify(ahead)); } catch {} };
-let filling = null; // 받는 중인 Promise (동시에 두 번 받아 같은 구절이 겹치지 않게)
-function fillAhead() {
-  if (filling || !token) return filling;
-  filling = (async () => {
-    while (ahead.length < AHEAD && token) {
-      const item = await fetchRandom();
-      if (!item || !item.id) break; // 빈 바구니·오프라인 안내문은 쌓아 두지 않음
-      ahead.push(item);
-      saveAhead();
-    }
-  })().finally(() => { filling = null; });
-  return filling;
+// 다음 구절: 이번 바퀴에 아직 안 본 것 중에서 (방금 본 것은 빼고). 다 봤으면 새 바퀴
+function pick() {
+  if (!token) return INTRO;
+  if (!items.length) return EMPTY;
+  const not = new Set(seen);
+  let pool = items.filter(r => !not.has(r.id) && r.id !== lastId);
+  if (!pool.length) {
+    seen = [];
+    pool = items.length > 1 ? items.filter(r => r.id !== lastId) : items;
+  }
+  const it = weighted(pool);
+  seen.push(it.id);
+  if (mode !== 'random' && seen.length > 30) seen = seen.slice(-30); // 가중 모드는 최근 본 것만 피하면 된다
+  try { localStorage.setItem('ob_seen', JSON.stringify(seen)); } catch {}
+  return it;
 }
 
 function next() {
@@ -160,10 +147,7 @@ function next() {
     transition(() => hist[++idx], 1);
   } else {
     transition(async () => {
-      if (!ahead.length && filling) await filling;
-      const item = ahead.length ? ahead.shift() : await fetchRandom();
-      saveAhead();
-      setTimeout(fillAhead, 0);
+      const item = pick();
       hist.push(item);
       if (hist.length > 100) { hist.shift(); }
       idx = hist.length - 1;
@@ -230,8 +214,11 @@ $stage.addEventListener('click', e => {
   else next();
 });
 
-// 첫 구절: 미리 받아 둔 게 있으면 바로, 없으면 받아서
-if (token && ahead.length) next(); else authReady.then(next);
+// 첫 구절: 폰에 둔 목록이 있으면 바로, 없으면 받아서. 받고 보니 로그인이 풀려 있었으면 첫 화면을 다시
+if (token && items.length) {
+  next();
+  ready.then(() => { if (!token && idx === 0) { hist.length = 0; idx = -1; next(); } });
+} else ready.then(next);
 
 // 시작 화면은 앱을 열 때 한 번만 (당겨서 새로고침 때는 생략)
 const $splash = document.getElementById('splash');

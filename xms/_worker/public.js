@@ -67,6 +67,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ''}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="/xms/css/style.css?v=${verOf(env)}">
 <script type="module" src="/xms/js/public.js?v=${verOf(env)}"></script>
+${['common', 'editor', 'blocks', 'crop'].map((m) => `<link rel="modulepreload" href="/xms/js/${m}.js?v=${verOf(env)}">`).join('')}
 <script src="/xms/js/account.js?v=${verOf(env)}" defer></script>
 </head><body class="pub">
 <header class="pub-top"><div class="pub-in">
