@@ -91,20 +91,40 @@ async function readSite(env, ctx, slug, origin) {
   } catch { /* 못 읽으면 index.html 에 적힌 그대로 */ }
   return out;
 }
-// 카드(a.card data-xim=사이트 이름표)마다 xms 값으로 사이트명 · 설명 · 이미지를 바꿔 끼운다
+// 카드 목록 = xim 에서 "포트폴리오" 를 켜 둔 사이트 (만든 차례).
+//   글 · 그림은 그 사이트 xms 값, 비어 있으면 index.html 에 미리 적어 둔 같은 사이트 카드(data-xim) 값, 그것도 없으면 xim 사이트 이름.
+//   xim 에 못 물으면 index.html 목록 그대로.
+const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+function staticCards(html) {
+  const out = {};
+  for (const m of html.matchAll(/<li>\s*<a class="card" href="[^"]+" data-xim="([^"]+)"[\s\S]*?<\/li>/g)) {
+    const pick = (re) => (m[0].match(re) || [])[1] || '';
+    out[m[1]] = { tag: pick(/<span class="tag">([^<]*)</), name: pick(/<strong class="name">([^<]*)</), desc: pick(/<span class="desc">([^<]*)</), image: pick(/<img src="([^"]+)"/) };
+  }
+  return out; // 값은 html 그대로(이미 이스케이프됨)
+}
+function cardHtml(site, d, st) {
+  const name = d.name ? escHtml(d.name) : st.name || escHtml(site.name);
+  const desc = d.desc ? escHtml(d.desc) : st.desc || '';
+  const img = d.image || st.image || '';
+  const plain = name.replace(/&#\d+;/g, '');
+  const thumb = img
+    ? `<span class="thumb is-og"><img src="${escHtml(img)}" alt="${name} 공유 이미지" width="1200" height="630" loading="lazy"></span>`
+    : `<span class="thumb is-empty"><b>${escHtml([...plain][0] || '')}</b></span>`;
+  return `<li><a class="card" href="${escHtml(site.url)}" data-xim="${escHtml(site.slug)}" target="_blank" rel="noopener">${thumb}
+<span class="body">${st.tag ? `<span class="tag">${st.tag}</span>` : ''}<strong class="name">${name}</strong><span class="desc">${desc}</span><span class="go">바로가기</span></span></a></li>`;
+}
 async function fillCards(res, env, ctx) {
   const html = await res.text();
-  const cards = [...html.matchAll(/<a class="card" href="([^"]+)" data-xim="([^"]+)"/g)].map((m) => ({ href: m[1], slug: m[2] }));
-  const info = env.XMS ? await Promise.all(cards.map((c) => readSite(env, ctx, c.slug, new URL(c.href).origin))) : [];
-  let rw = new HTMLRewriter();
-  cards.forEach((c, i) => {
-    const d = info[i] || {}, sel = `a.card[data-xim="${c.slug}"]`;
-    if (d.name) rw = rw.on(`${sel} .name`, { element(e) { e.setInnerContent(d.name); } })
-      .on(`${sel} .thumb img`, { element(e) { e.setAttribute('alt', `${d.name} 공유 이미지`); } });
-    if (d.desc) rw = rw.on(`${sel} .desc`, { element(e) { e.setInnerContent(d.desc); } });
-    if (d.image) rw = rw.on(`${sel} .thumb img`, { element(e) { e.setAttribute('src', d.image); } });
-  });
-  return rw.transform(new Response(html, res));
+  let sites = null;
+  try { if (env.XIM) sites = await env.XIM.portfolio(); } catch { sites = null; }
+  if (!sites || !env.XMS) return new Response(html, res);
+  const st = staticCards(html);
+  const info = await Promise.all(sites.map((s) => readSite(env, ctx, s.slug, new URL(s.url).origin)));
+  const list = sites.map((s, i) => cardHtml(s, info[i] || {}, st[s.slug] || {})).join('\n');
+  return new HTMLRewriter()
+    .on('ul.grid', { element(e) { e.setInnerContent(list || '<li class="none">아직 올린 사이트가 없습니다.</li>', { html: true }); } })
+    .transform(new Response(html, res));
 }
 
 export default {

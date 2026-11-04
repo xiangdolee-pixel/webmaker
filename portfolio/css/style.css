@@ -50,6 +50,11 @@ a { color: inherit; text-decoration: none; }
 .thumb { display: block; aspect-ratio: 1200 / 630; background: var(--thumb); overflow: hidden; border-bottom: 1px solid var(--line); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform .5s var(--ease); }
 .card:hover .thumb img { transform: scale(1.03); }
+/* 카톡 미리보기 그림이 아직 없는 사이트: 이름 첫 글자 */
+.thumb.is-empty { display: flex; align-items: center; justify-content: center; }
+.thumb.is-empty b { color: var(--sub); font-size: 44px; font-weight: 800; transition: color .3s; }
+.card:hover .thumb.is-empty b { color: var(--brand); }
+.grid > .none { grid-column: 1 / -1; padding: 48px 0; color: var(--sub); text-align: center; }
 
 .body { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; flex: 1; }
 .tag { align-self: flex-start; margin-bottom: 2px; padding: 1px 8px; border-radius: 999px; background: var(--thumb); color: var(--sub); font-size: 12px; font-weight: 600; transition: background-color .3s, color .3s; }

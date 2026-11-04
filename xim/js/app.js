@@ -183,6 +183,16 @@ async function renderSites() {
       if (w) w.location = r.url; else location.href = r.url;
     });
     el.querySelector('[data-act="toggle"]').onclick = (e) => toggleSite(site, e.currentTarget);
+    // 포트폴리오 켜기 · 끄기 — 누르는 즉시 저장, 실패하면 되돌린다
+    const pf = el.querySelector('[data-pf]');
+    pf.onchange = () => {
+      const on = pf.checked;
+      pf.disabled = true;
+      api(`/sites/${site.id}/portfolio`, { method: 'POST', data: { on } })
+        .then(() => { site.portfolio = on ? 1 : 0; toast(on ? `"${site.name}" 을(를) 포트폴리오에 올렸습니다. 5분 안에 반영됩니다.` : `"${site.name}" 을(를) 포트폴리오에서 내렸습니다. 5분 안에 반영됩니다.`); })
+        .catch((e) => { pf.checked = !on; toast(e.message); })
+        .finally(() => { pf.disabled = false; });
+    };
   });
 }
 
@@ -294,6 +304,7 @@ function siteRow(s) {
       <span>DB ${mb(u.db)}</span><span>파일 ${mb(u.files)} / ${s.quota_mb}MB</span><span>홈 ${s.static_mb ? `${s.static_mb}MB` : '—'}</span>
       <div class="quota" aria-hidden="true"><i style="width:${pct}%"></i></div></div>
     <div class="sr-act">
+      <label class="pf-sw" title="켜면 포트폴리오(portfolio.plators.com)에 나옵니다"><input type="checkbox" data-pf${s.portfolio ? ' checked' : ''}><i aria-hidden="true"></i>포트폴리오</label>
       <a class="btn sm" href="${esc(s.url)}" target="_blank" rel="noopener">홈</a>
       <button class="btn sm primary" type="button" data-act="cms">xms</button>
       <button class="btn sm" type="button" data-act="edit">수정</button>

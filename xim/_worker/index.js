@@ -3,6 +3,7 @@
 //   기본 export (xim.….workers.dev)   운영자 관리 화면(/) + 운영자 API(/api/*)
 //   Engine (서비스 바인딩 전용)          각 고객 사이트 Worker 가 부른다. 공개 주소로는 닿지 않는다.
 //     status(slug)                      사이트 상태(active | suspended | unknown)
+//     portfolio()                       포트폴리오에 켜 둔 사이트 [{ slug, name, url }] (portfolio 폴더가 쓴다)
 //     fetch(request)                    /__suspended (정지 화면). 업체 관리 화면 · 회원 · 게시판은 xms 가 맡는다.
 //
 //   바인딩: DB(D1 xim), XMS_DB(D1 xms: 업체 관리자 계정 · 입장권), ASSETS(정적 파일)   비밀값: XIM_ADMIN_PASSWORD (wrangler secret, 리포에 없음)
@@ -382,6 +383,16 @@ async function ximApi(request, env, url) {
     await db.prepare('UPDATE sites SET status = ? WHERE id = ?').bind(status, +m[1]).run();
     const s = await db.prepare('SELECT slug, name FROM sites WHERE id = ?').bind(+m[1]).first();
     await audit(db, request, status === 'suspended' ? 'SITE_SUSPEND' : 'SITE_RESUME', s ? `${s.name} (${s.slug})` : `#${m[1]}`);
+    return json({ ok: true });
+  }
+
+  // 포트폴리오(portfolio.plators.com)에 보이기 켜기 · 끄기
+  m = path.match(/^\/api\/sites\/(\d+)\/portfolio$/);
+  if (m && method === 'POST') {
+    const on = (await body(request)).on ? 1 : 0;
+    await db.prepare('UPDATE sites SET portfolio = ? WHERE id = ?').bind(on, +m[1]).run();
+    const s = await db.prepare('SELECT slug, name FROM sites WHERE id = ?').bind(+m[1]).first();
+    await audit(db, request, on ? 'SITE_PORTFOLIO_ON' : 'SITE_PORTFOLIO_OFF', s ? `${s.name} (${s.slug})` : `#${m[1]}`);
     return json({ ok: true });
   }
 
@@ -784,6 +795,12 @@ export class Engine extends WorkerEntrypoint {
   async status(slug) {
     const site = await getSite(this.env, slug);
     return site ? site.status : 'unknown';
+  }
+
+  // 포트폴리오 사이트가 묻는다: 포트폴리오에 켜 둔 운영 중 사이트 [{ slug, name, url }] (만든 차례)
+  async portfolio() {
+    const { results } = await this.env.DB.prepare("SELECT slug, name, domain FROM sites WHERE portfolio = 1 AND status = 'active' ORDER BY id").all();
+    return results.map((s) => ({ slug: s.slug, name: s.name, url: `${siteUrl(s)}/` }));
   }
 
   // 보안 감시: 이 IP 가 지금 막혀 있나 (사이트 Worker 가 IP 마다 60초 캐시)
