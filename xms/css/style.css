@@ -159,8 +159,7 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 6px; height: 54px; padding: 0 12px 0 8px;
   background: var(--top-grad); color: #fff;
 }
-.adm-top .logo { display: inline-flex; align-items: center; gap: 9px; margin-right: auto; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: -.03em; }
-.adm-top .logo i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--top); font-style: normal; font-size: 18px; font-weight: 900; box-shadow: 0 4px 12px -4px rgba(10, 6, 40, .5); }
+.adm-top .logo { margin-right: auto; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: -.03em; }
 /* 오른쪽 위: 알약 버튼 · 이름표 — 같은 높이(36px) · 같은 반투명 흰색 */
 .top-act { display: flex; align-items: center; gap: 8px; }
 .top-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, .22); border-radius: 99px; background: rgba(255, 255, 255, .12);
