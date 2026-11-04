@@ -833,3 +833,13 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
   .st-bar .tabs > button { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { #st-body, .st-col i { transition: none; } }
+
+/* 가입 · 로그인 중 덮개 (다음 화면이 뜰 때까지 버튼을 다시 누르지 않게) */
+.wait-cover { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(255, 255, 255, .72); backdrop-filter: blur(3px); animation: rise .2s var(--ease) both; }
+.wait-cover[hidden] { display: none; }
+.wait-box { display: grid; justify-items: center; gap: 8px; min-width: 220px; padding: 26px 30px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
+.wait-box b { font-size: 17px; }
+.wait-box small { color: var(--sub); font-size: 13px; }
+.wait-spin { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: wait-spin .8s linear infinite; }
+@keyframes wait-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wait-spin { animation-duration: 2.4s; } .wait-cover { animation: none; } }

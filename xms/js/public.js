@@ -48,7 +48,8 @@ function checkGroups(form) {
 }
 
 onForm('login', async (form, data) => {
-  const r = await api('/login', { method: 'POST', data });
+  const w = waiting(form, '로그인 중입니다…');
+  try { await api('/login', { method: 'POST', data }); } catch (e) { w.done(); throw e; }
   const next = form.dataset.next || '/';
   location.href = next;
 });
@@ -109,14 +110,38 @@ $('form[data-form=signup-verify] [name=code]')?.addEventListener('input', (e) =>
   e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
   if (e.target.value.length === 6) e.target.form.requestSubmit();
 });
+// 시간이 걸리는 일(가입 · 로그인): 화면을 덮고 "…중입니다" — 다음 화면이 뜰 때까지 버튼을 다시 못 누르게
+function waiting(form, text) {
+  const host = form.closest('.xms-c') || document.body;
+  let el = host.querySelector(':scope > .wait-cover');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'wait-cover';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<div class="wait-box"><span class="wait-spin" aria-hidden="true"></span><b></b><small>잠시만 기다려 주세요</small></div>';
+    host.append(el);
+  }
+  el.querySelector('b').textContent = text;
+  el.hidden = false;
+  form.querySelectorAll('button, input, select').forEach((x) => { x.dataset.waitOff = x.disabled ? '1' : ''; x.disabled = true; });
+  return {
+    say: (t) => { el.querySelector('b').textContent = t; },
+    done: () => { el.hidden = true; form.querySelectorAll('button, input, select').forEach((x) => { x.disabled = x.dataset.waitOff === '1'; }); },
+  };
+}
 onForm('signup', async (form, data) => {
   if (data.password !== data.password2) throw new Error('비밀번호 확인이 서로 다릅니다.');
   checkGroups(form);
   delete data.password2;
-  await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
+  const w = waiting(form, '가입 중입니다…');
+  try {
+    await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
+  } catch (e) { w.done(); throw e; }
   // 가입하면 바로 로그인돼 있다 → 고른 프로필 사진을 이어서 올린다 (실패해도 가입은 끝났으니 넘어간다)
-  if (avatar.pending) { try { await uploadAvatar(avatar.pending); } catch (e) { /* 마이페이지에서 다시 */ } }
-  location.href = '/member/welcome';
+  if (avatar.pending) { w.say('프로필 사진 올리는 중…'); try { await uploadAvatar(avatar.pending); } catch (e) { /* 마이페이지에서 다시 */ } }
+  w.say('가입 완료! 이동하는 중…');
+  location.href = '/member/welcome'; // 덮개는 그대로 — 다음 화면이 뜰 때까지
 });
 
 onForm('profile', async (form, data) => {
@@ -337,3 +362,6 @@ if (pick) {
     try { await api('/avatar', { method: 'DELETE' }); showAvatar(''); toast('프로필 사진을 뺐습니다.'); } catch (e) { toast(e.message); }
   }));
 }
+
+// 뒤로 가기로 돌아왔을 때 덮개가 남아 있지 않게
+addEventListener('pageshow', (e) => { if (e.persisted) document.querySelectorAll('.wait-cover').forEach((el) => { el.hidden = true; }); });
