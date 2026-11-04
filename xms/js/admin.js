@@ -1225,9 +1225,8 @@ async function sharePage() {
             : '<p class="meta">아직 없습니다. 없으면 홈페이지에 원래 넣어 둔 그림이 나갑니다.</p>'}
           <h2 class="gap">그림 바꾸기 <small class="meta">어떤 사진 · 그림이든 올려도 됩니다</small></h2>
           <div data-pick></div>
-          <p class="meta gap">고르면 대화방에 보일 부분(가로로 긴 1200×630)을 직접 맞추는 창이 뜹니다. 끌어서 옮기고 크기를 맞춘 뒤, 오른쪽 미리보기를 보고 <b>이 그림으로 바꾸기</b>를 누르면 됩니다.<br>바꿔도 카카오톡은 한동안 옛 그림을 보여 줍니다 — 급하면 <a href="https://developers.kakao.com/tool" target="_blank" rel="noopener">카카오 개발자도구</a>에서 캐시를 지웁니다.</p>
+          <p class="meta gap">고르면 대화방에 보일 부분(가로로 긴 1200×630)을 직접 맞추는 창이 뜹니다. 끌어서 옮기고 크기를 맞춘 뒤 <b>이 사진 쓰기</b>를 누르면 <b>바로 저장</b>됩니다.<br>바꿔도 카카오톡은 한동안 옛 그림을 보여 줍니다 — 급하면 <a href="https://developers.kakao.com/tool" target="_blank" rel="noopener">카카오 개발자도구</a>에서 캐시를 지웁니다.</p>
           <p class="err" role="alert"></p>
-          <div class="actions"><button class="btn primary" type="button" data-save disabled>이 그림으로 바꾸기</button></div>
         </section>
       </div>
       <aside class="panel pad share-pv-box"><h2>미리보기</h2>
@@ -1250,21 +1249,18 @@ async function sharePage() {
       await api('/settings/share', { method: 'PUT', data: { share_description: v } }); dirty = false; toast('미리보기 설명을 저장했습니다.'); route();
     });
   });
-  let image = null;
-  imagePicker($('[data-pick]'), async (file) => {
-    try {
-      if (!/^image\//.test(file.type)) throw new Error('그림 파일을 골라 주세요.');
-      // 대화방에 보일 부분을 직접 맞춘다 (1200×630, 카카오톡이 잘 읽는 JPEG)
-      const cut = await cropImage(file, { w: 1200, h: 630, type: 'image/jpeg', title: '카톡 미리보기 그림 맞추기', help: '이 틀 안이 대화방에 보입니다 · 끌어서 옮기고, 벌리거나 아래 막대로 크게 · 작게' });
-      if (!cut) return;
-      image = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(cut); });
-      $('[data-pv-img]').innerHTML = `<img src="${image}" alt="">`;
-      $('[data-save]').disabled = false;
-    } catch (e) { toast(e.message); }
-  });
-  $('[data-save]').onclick = (e) => busy(e.currentTarget, $('.share-grid .err'), async () => {
+  // 그림을 고르고 맞추는 창에서 '이 사진 쓰기'를 누르면 바로 저장한다
+  //   (따로 저장 버튼을 두었더니, 맞춘 뒤에도 '아직 없습니다'가 남아 안 올라간 줄 알았다 — 2026-11-04)
+  imagePicker($('[data-pick]'), (file) => busy(null, $('.share-grid .err'), async () => {
+    if (!/^image\//.test(file.type)) throw new Error('그림 파일을 골라 주세요.');
+    // 대화방에 보일 부분을 직접 맞춘다 (1200×630, 카카오톡이 잘 읽는 JPEG)
+    const cut = await cropImage(file, { w: 1200, h: 630, type: 'image/jpeg', title: '카톡 미리보기 그림 맞추기', help: '이 틀 안이 대화방에 보입니다 · 끌어서 옮기고, 벌리거나 아래 막대로 크게 · 작게' });
+    if (!cut) return;
+    const image = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(cut); });
+    $('[data-pv-img]').innerHTML = `<img src="${image}" alt="">`;
+    const pick = $('[data-pick] .drop b'); if (pick) pick.textContent = '저장하는 중…';
     await api('/settings/share/image', { method: 'PUT', data: { image } }); toast('미리보기 그림을 바꿨습니다.'); route();
-  });
+  }));
   $('[data-off]')?.addEventListener('click', (e) => confirmInline(e.currentTarget, '대화방 미리보기에 홈페이지에 원래 넣어 둔 그림이 대신 나갑니다.', '그림을 내립니다', async () => {
     await api('/settings/share/image', { method: 'DELETE' }); toast('그림을 내렸습니다.'); route();
   }));

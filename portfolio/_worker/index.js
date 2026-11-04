@@ -4,6 +4,8 @@
 //   접속할 때마다(새로고침 포함) 비밀번호를 묻는다:
 //     맞게 넣으면 한 번 쓰는 표(pf_once, 30초)로 페이지를 딱 한 번 열고, 그 응답에서 표를 지운다.
 //     이미지 · 그 밖의 파일은 따로 짧은 표(pf_ok, 10분)로 통과. 표는 비밀번호로 서명 → 비밀번호를 바꾸면 무효.
+//   카드의 사이트명 · 설명 · 이미지는 각 사이트 xms 설정을 읽어 채운다(5분 캐시):
+//     사이트명 = 검색엔진 제목, 설명 = 카톡 미리보기 설명, 이미지 = 카톡 미리보기 그림. 비어 있으면 index.html 에 적힌 그대로.
 //   그 밖(페이지 · /xms 관리 · /member)은 xim 공통 사이트 Worker 가 맡는다.
 import site from '../../xim/_worker/site-worker.js';
 
@@ -70,6 +72,41 @@ function lockPage(error, next) {
   });
 }
 
+// ── 각 사이트의 xms 설정 읽기 ──
+//   사이트 주소로 직접 가져오면 같은 계정 Worker 끼리는 Cloudflare 가 막는 곳이 있어(오류 1014, 올리브바스켓)
+//   xms 에 서비스 바인딩으로 바로 묻는다 — 사이트 Worker 가 html 머리를 채울 때 쓰는 그 값(/xms-api/site-head).
+const OG_TTL = 300;
+async function readSite(env, ctx, slug, origin) {
+  const key = new Request(`https://portfolio-og.cache/${encodeURIComponent(slug)}`);
+  const hit = await caches.default.match(key).catch(() => null);
+  if (hit) return hit.json();
+  let out = {};
+  try {
+    const r = await env.XMS.fetch(new Request(`${origin}/xms-api/site-head`, { headers: { 'X-Xim-Site': slug } }));
+    if (r.ok) {
+      const h = (await r.json()).head || {};
+      out = { name: h.title || '', desc: h.share_description || '', image: h.og_image ? new URL(h.og_image, origin).href : '' };
+      ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(out), { headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${OG_TTL}` } })).catch(() => {}));
+    }
+  } catch { /* 못 읽으면 index.html 에 적힌 그대로 */ }
+  return out;
+}
+// 카드(a.card data-xim=사이트 이름표)마다 xms 값으로 사이트명 · 설명 · 이미지를 바꿔 끼운다
+async function fillCards(res, env, ctx) {
+  const html = await res.text();
+  const cards = [...html.matchAll(/<a class="card" href="([^"]+)" data-xim="([^"]+)"/g)].map((m) => ({ href: m[1], slug: m[2] }));
+  const info = env.XMS ? await Promise.all(cards.map((c) => readSite(env, ctx, c.slug, new URL(c.href).origin))) : [];
+  let rw = new HTMLRewriter();
+  cards.forEach((c, i) => {
+    const d = info[i] || {}, sel = `a.card[data-xim="${c.slug}"]`;
+    if (d.name) rw = rw.on(`${sel} .name`, { element(e) { e.setInnerContent(d.name); } })
+      .on(`${sel} .thumb img`, { element(e) { e.setAttribute('alt', `${d.name} 공유 이미지`); } });
+    if (d.desc) rw = rw.on(`${sel} .desc`, { element(e) { e.setInnerContent(d.desc); } });
+    if (d.image) rw = rw.on(`${sel} .thumb img`, { element(e) { e.setAttribute('src', d.image); } });
+  });
+  return rw.transform(new Response(html, res));
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -97,7 +134,8 @@ export default {
         if (isPage) return lockPage(false, url.pathname + url.search);
         return new Response('Unauthorized', { status: 401, headers: { 'Cache-Control': 'no-store' } });
       }
-      const res = await (env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request));
+      let res = await (env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request));
+      if (isPage && /^\/(index\.html)?$/.test(url.pathname) && (res.headers.get('Content-Type') || '').includes('text/html')) res = await fillCards(res, env, ctx);
       // 비밀번호 뒤의 내용은 브라우저 · 중간 캐시에 남기지 않는다
       const out = new Response(res.body, res);
       out.headers.set('Cache-Control', 'private, no-store');
