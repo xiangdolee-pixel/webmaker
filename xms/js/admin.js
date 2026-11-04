@@ -57,7 +57,9 @@ function showApp() {
   const s = INFO.site;
   document.title = `${s.name} 관리`;
   // xim 의 [xms] 버튼으로 들어오면 개인 계정 없이 '운영자' 로 들어온 것 (비밀번호가 없다)
-  $('#who').textContent = INFO.me.staff ? '운영자' : `${INFO.me.name} 님`;
+  const whoName = INFO.me.staff ? '운영자' : INFO.me.name;
+  $('#who').textContent = INFO.me.staff ? whoName : `${whoName} 님`;
+  $('#who-av').textContent = [...(whoName || '관')][0];
   renderSide();
   route();
 }
@@ -778,22 +780,61 @@ const refName = (r) => (r ? REF_NAMES[r] || (/(^|\.)google\./.test(r) ? '구글'
 const num = (n) => Number(n || 0).toLocaleString('ko-KR');
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
 let statsRange = '30';
+const RANGE_LABEL = { 7: '최근 7일', 30: '최근 1개월', 90: '최근 3개월', 180: '최근 6개월', 270: '최근 9개월', 365: '최근 12개월' };
+const TBL_SIZE = 10;
+// 목록 쪽 번호 (버튼) — 눌러도 주소는 그대로, 그 목록만 다시
+function btnPager(key, page, size, total) {
+  const pages = Math.ceil(total / size);
+  if (pages <= 1) return '';
+  const start = Math.floor((page - 1) / 5) * 5 + 1;
+  const nums = Array.from({ length: Math.min(5, pages - start + 1) }, (_, i) => start + i);
+  const btn = (n, label = n) => `<button type="button" data-pg="${key}:${n}"${n === page ? ' class="on" aria-current="page"' : ''}>${label}</button>`;
+  return `<nav class="pager">${start > 1 ? btn(start - 1, '‹') : ''}${nums.map((n) => btn(n)).join('')}${start + 5 <= pages ? btn(start + 5, '›') : ''}</nav>`;
+}
 async function statsPage() {
   main.innerHTML = `${head('사이트', '방문 통계', '홈페이지 방문자와 많이 본 페이지입니다. 최근 1년치만 남고 그보다 오래된 기록은 저절로 지워집니다.')}
     <div class="st-bar"><div class="tabs" id="st-tabs"></div></div>
     <div id="st-body"></div>`;
+  const pg = { pp: 1, rp: 1, tp: 1 }; // 많이 본 페이지 · 들어온 곳 · 표 쪽 번호
+  let d = null;
+  const body = $('#st-body');
   const load = async () => {
-    const body = $('#st-body');
     body.classList.add('loading');
-    const d = await api(`/stats?range=${statsRange}`);
+    const r = await api(`/stats?range=${statsRange}&pp=${pg.pp}&rp=${pg.rp}`);
     if (location.hash.split('?')[0] !== '#/stats') return;
+    d = r;
+    const open = body.querySelector('.st-table')?.open;
     body.classList.remove('loading');
     body.innerHTML = statsBody(d);
+    if (open) body.querySelector('.st-table').open = true;
+    statsTable(body, d, pg.tp);
     statsChart(body, d);
   };
+  // 쪽 번호: 표는 화면에서 바로, 순위 목록은 서버에서 그 쪽만 받아 온다
+  body.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pg]');
+    if (!b || b.classList.contains('on')) return;
+    const [k, n] = b.dataset.pg.split(':');
+    pg[k] = +n;
+    if (k === 'tp') statsTable(body, d, pg.tp);
+    else load().catch((err) => toast(err.message));
+  });
   // 탭은 한 번만 그리고, 누르면 배경부터 미끄러진 뒤 아래 내용만 다시 받는다
-  pillTabs($('#st-tabs'), [['7', '최근 7일'], ['30', '최근 30일'], ['365', '최근 12개월']], statsRange, (v) => { statsRange = v; load().catch((e) => toast(e.message)); });
+  pillTabs($('#st-tabs'), Object.entries(RANGE_LABEL).map(([v, l]) => [v, l.replace('최근 ', '')]), statsRange, (v) => {
+    statsRange = v; pg.pp = 1; pg.rp = 1; pg.tp = 1;
+    load().catch((e) => toast(e.message));
+  });
   await load();
+}
+// 표로 보기 (최근 것부터 10줄씩)
+function statsTable(body, d, page) {
+  const box = body.querySelector('#st-tbl');
+  if (!box) return;
+  const rows = statsSeries(d).reverse();
+  const pages = Math.max(1, Math.ceil(rows.length / TBL_SIZE));
+  const p = Math.min(page, pages);
+  box.innerHTML = `<table class="tbl"><thead><tr><th>${d.monthly ? '달' : '날짜'}</th><th>방문자</th><th>페이지뷰</th></tr></thead><tbody>
+    ${rows.slice((p - 1) * TBL_SIZE, p * TBL_SIZE).map((s) => `<tr><td>${s.full}</td><td>${num(s.visitors)}</td><td>${num(s.views)}</td></tr>`).join('')}</tbody></table>${btnPager('tp', p, TBL_SIZE, rows.length)}`;
 }
 // 날짜 칸 채우기 (기록이 없는 날 · 달은 0)
 function statsSeries(d) {
@@ -801,7 +842,7 @@ function statsSeries(d) {
   const out = [];
   if (d.monthly) {
     let [y, m] = d.from.split('-').map(Number);
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < d.months; i++) {
       const k = `${y}-${String(m).padStart(2, '0')}`;
       out.push({ key: k, label: `${m}월`, full: `${y}년 ${m}월`, ...(map[k] || { views: 0, visitors: 0 }) });
       if (++m > 12) { m = 1; y++; }
@@ -818,29 +859,26 @@ function statsSeries(d) {
 }
 function statsBody(d) {
   const t = d.total;
-  const label = { 7: '최근 7일', 30: '최근 30일', 365: '최근 12개월' }[d.range];
+  const label = RANGE_LABEL[d.range];
   const mobilePct = t.visitors ? Math.round((t.mobile / t.visitors) * 100) : 0;
   const series = statsSeries(d);
-  const maxPage = Math.max(1, ...d.pages.map((p) => p.views));
-  const refTotal = d.refs.reduce((s, r) => s + r.visitors, 0) || 1;
   const bar = (v, max) => `<i style="width:${Math.max(2, (v / max) * 100)}%"></i>`;
   return `<div class="st-tiles">
       <div class="panel st-tile"><span>오늘 방문자</span><b>${num(d.today_stat.visitors)}</b><small>페이지뷰 ${num(d.today_stat.views)}</small></div>
       <div class="panel st-tile"><span>어제 방문자</span><b>${num(d.yesterday.visitors)}</b><small>페이지뷰 ${num(d.yesterday.views)}</small></div>
-      <div class="panel st-tile"><span>${label} 방문자</span><b>${num(t.visitors)}</b><small>페이지뷰 ${num(t.views)}</small></div>
+      <div class="panel st-tile"><span>${label.replace('최근 ', '')} 방문자</span><b>${num(t.visitors)}</b><small>페이지뷰 ${num(t.views)}</small></div>
       <div class="panel st-tile"><span>폰으로 온 방문자</span><b>${mobilePct}%</b><small>PC ${t.visitors ? 100 - mobilePct : 0}%</small></div>
     </div>
     <div class="panel pad gap"><h2>${d.monthly ? '달마다' : '날마다'} 방문자</h2>
       ${t.visitors ? `<div class="st-chart" role="img" aria-label="${label} 방문자 막대 그래프"></div>` : `<p class="meta">아직 ${label} 동안 기록된 방문이 없습니다. 지금부터 홈페이지 방문을 셉니다.</p>`}
-      <details class="st-table"><summary>표로 보기</summary><table class="tbl"><thead><tr><th>${d.monthly ? '달' : '날짜'}</th><th>방문자</th><th>페이지뷰</th></tr></thead><tbody>
-        ${series.slice().reverse().map((s) => `<tr><td>${s.full}</td><td>${num(s.visitors)}</td><td>${num(s.views)}</td></tr>`).join('')}</tbody></table></details>
+      <details class="st-table"><summary>표로 보기</summary><div id="st-tbl"></div></details>
     </div>
     <div class="st-cols gap">
-      <div class="panel pad"><h2>많이 본 페이지 <small class="meta">페이지뷰</small></h2>
-        ${d.pages.length ? `<ol class="st-rank">${d.pages.map((p) => `<li><a href="${esc(p.path)}" target="_blank" rel="noopener"><b>${esc(p.name || p.path)}</b>${p.name ? `<small>${esc(p.path)}</small>` : ''}</a><span>${num(p.views)}</span>${bar(p.views, maxPage)}</li>`).join('')}</ol>` : '<p class="meta">아직 기록이 없습니다.</p>'}
+      <div class="panel pad"><h2>많이 본 페이지 <small class="meta">페이지뷰 · ${num(d.pages_total)}개 주소</small></h2>
+        ${d.pages.length ? `<ol class="st-rank">${d.pages.map((p) => `<li><a href="${esc(p.path)}" target="_blank" rel="noopener"><b>${esc(p.name || p.path)}</b>${p.name ? `<small>${esc(p.path)}</small>` : ''}</a><span>${num(p.views)}</span>${bar(p.views, d.pages_max)}</li>`).join('')}</ol>${btnPager('pp', d.pp, d.rank_size, d.pages_total)}` : '<p class="meta">아직 기록이 없습니다.</p>'}
       </div>
-      <div class="panel pad"><h2>들어온 곳 <small class="meta">방문자</small></h2>
-        ${d.refs.length ? `<ol class="st-rank">${d.refs.map((r) => `<li><span class="st-name"><b>${esc(refName(r.ref) || r.ref)}</b>${r.ref && refName(r.ref) ? `<small>${esc(r.ref)}</small>` : ''}</span><span>${num(r.visitors)} <small>${Math.round((r.visitors / refTotal) * 100)}%</small></span>${bar(r.visitors, refTotal)}</li>`).join('')}</ol>` : '<p class="meta">아직 기록이 없습니다.</p>'}
+      <div class="panel pad"><h2>들어온 곳 <small class="meta">방문자 · ${num(d.refs_total)}곳</small></h2>
+        ${d.refs.length ? `<ol class="st-rank">${d.refs.map((r) => `<li><span class="st-name"><b>${esc(refName(r.ref) || r.ref)}</b>${r.ref && refName(r.ref) ? `<small>${esc(r.ref)}</small>` : ''}</span><span>${num(r.visitors)} <small>${Math.round((r.visitors / d.refs_sum) * 100)}%</small></span>${bar(r.visitors, d.refs_sum)}</li>`).join('')}</ol>${btnPager('rp', d.rp, d.rank_size, d.refs_total)}` : '<p class="meta">아직 기록이 없습니다.</p>'}
       </div>
     </div>
     <p class="meta gap">방문자 = 그날 처음 들어온 브라우저 수(같은 사람이 하루에 여러 번 와도 1명), 페이지뷰 = 페이지를 연 횟수. 검색엔진 로봇과 관리 화면은 세지 않습니다.${d.first_day ? ` 기록 시작: ${esc(d.first_day)}` : ''}</p>`;
@@ -861,11 +899,11 @@ function statsChart(body, d) {
   const top = Math.ceil(max / step) * step;
   const ticks = [];
   for (let v = 0; v <= top; v += step) ticks.push(v);
-  const every = series.length > 14 ? Math.ceil(series.length / 7) : 1; // 아래 글자는 띄엄띄엄
+  const every = series.length > 7 ? Math.ceil(series.length / 7) : 1; // 아래 글자는 띄엄띄엄
   const nowKey = d.monthly ? d.today.slice(0, 7) : d.today;
   box.innerHTML = `<div class="st-y">${ticks.slice().reverse().map((v) => `<span>${num(v)}</span>`).join('')}</div>
     <div class="st-plot"><div class="st-grid">${ticks.map(() => '<i></i>').join('')}</div>
-      <div class="st-bars">${series.map((s, i) => `<button type="button" class="st-col${s.key === nowKey ? ' now' : ''}" data-i="${i}" aria-label="${s.full} 방문자 ${s.visitors}명, 페이지뷰 ${s.views}"><i style="height:${(s.visitors / top) * 100}%"></i><em>${(series.length - 1 - i) % every === 0 ? s.label : ''}</em></button>`).join('')}</div>
+      <div class="st-bars${series.length > 40 ? ' dense' : ''}">${series.map((s, i) => `<button type="button" class="st-col${s.key === nowKey ? ' now' : ''}" data-i="${i}" aria-label="${s.full} 방문자 ${s.visitors}명, 페이지뷰 ${s.views}"><i style="height:${(s.visitors / top) * 100}%"></i><em>${(series.length - 1 - i) % every === 0 ? s.label : ''}</em></button>`).join('')}</div>
       <div class="st-tip" hidden></div></div>`;
   const tip = box.querySelector('.st-tip');
   const plot = box.querySelector('.st-plot');

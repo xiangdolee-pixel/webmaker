@@ -33,26 +33,36 @@ export async function recordVisit(db, site, hit) {
   if (Math.random() < 0.002) await purge(db); // 가끔 모든 사이트의 1년 지난 기록을 지운다
 }
 
-// 관리 화면: GET /xms-api/admin/stats?range=7|30|365
+// 관리 화면: GET /xms-api/admin/stats?range=7|30|90|180|270|365&pp=1&rp=1
+//   7 · 30 · 90 일은 날마다, 180 · 270 · 365(6 · 9 · 12개월)는 달마다. 많이 본 페이지(pp) · 들어온 곳(rp)은 10개씩 쪽으로 나눈다
+export const RANGES = [7, 30, 90, 180, 270, 365];
+const RANK = 10;
 export async function statsApi(db, site, q) {
   await purge(db, site);
-  const range = [7, 30, 365].includes(Number(q.get('range'))) ? Number(q.get('range')) : 30;
+  const range = RANGES.includes(Number(q.get('range'))) ? Number(q.get('range')) : 30;
+  const pp = Math.max(1, parseInt(q.get('pp'), 10) || 1);
+  const rp = Math.max(1, parseInt(q.get('rp'), 10) || 1);
   const today = kstDay();
   const yesterday = kstDay(Date.now() - 86400000);
-  const monthly = range === 365;
-  // 12개월 = 11달 전 1일부터 (달 단위로 끊어 보이게)
-  const from = monthly ? (() => { const [y, m] = today.split('-').map(Number); const d = new Date(Date.UTC(y, m - 12, 1)); return d.toISOString().slice(0, 10); })()
+  const monthly = range >= 180;
+  const months = Math.round(range / 30.4); // 6 · 9 · 12
+  // n개월 = (n-1)달 전 1일부터 (달 단위로 끊어 보이게)
+  const from = monthly ? (() => { const [y, m] = today.split('-').map(Number); return new Date(Date.UTC(y, m - months, 1)).toISOString().slice(0, 10); })()
     : kstDay(Date.now() - (range - 1) * 86400000);
   const [days, sum, near, pages, refs, menus, boards] = await db.batch([
     monthly
       ? db.prepare(`SELECT substr(day, 1, 7) AS day, SUM(views) AS views, SUM(visitors) AS visitors FROM visit_days WHERE site = ? AND day >= ? GROUP BY 1 ORDER BY 1`).bind(site, from)
       : db.prepare('SELECT day, views, visitors FROM visit_days WHERE site = ? AND day >= ? ORDER BY day').bind(site, from),
     db.prepare(`SELECT COALESCE(SUM(views), 0) AS views, COALESCE(SUM(visitors), 0) AS visitors, COALESCE(SUM(mobile), 0) AS mobile,
-        (SELECT COUNT(*) FROM visit_days WHERE site = ?1) AS kept_days, (SELECT MIN(day) FROM visit_days WHERE site = ?1) AS first_day
+        (SELECT COUNT(*) FROM visit_days WHERE site = ?1) AS kept_days, (SELECT MIN(day) FROM visit_days WHERE site = ?1) AS first_day,
+        (SELECT COUNT(DISTINCT path) FROM visit_pages WHERE site = ?1 AND day >= ?2) AS pages_total,
+        (SELECT MAX(v) FROM (SELECT SUM(views) AS v FROM visit_pages WHERE site = ?1 AND day >= ?2 GROUP BY path)) AS pages_max,
+        (SELECT COUNT(DISTINCT ref) FROM visit_refs WHERE site = ?1 AND day >= ?2) AS refs_total,
+        (SELECT COALESCE(SUM(visitors), 0) FROM visit_refs WHERE site = ?1 AND day >= ?2) AS refs_sum
       FROM visit_days WHERE site = ?1 AND day >= ?2`).bind(site, from),
     db.prepare('SELECT day, views, visitors FROM visit_days WHERE site = ? AND day IN (?, ?)').bind(site, today, yesterday),
-    db.prepare('SELECT path, SUM(views) AS views FROM visit_pages WHERE site = ? AND day >= ? GROUP BY path ORDER BY views DESC LIMIT 20').bind(site, from),
-    db.prepare('SELECT ref, SUM(visitors) AS visitors FROM visit_refs WHERE site = ? AND day >= ? GROUP BY ref ORDER BY visitors DESC LIMIT 15').bind(site, from),
+    db.prepare('SELECT path, SUM(views) AS views FROM visit_pages WHERE site = ? AND day >= ? GROUP BY path ORDER BY views DESC, path LIMIT ? OFFSET ?').bind(site, from, RANK, (pp - 1) * RANK),
+    db.prepare('SELECT ref, SUM(visitors) AS visitors FROM visit_refs WHERE site = ? AND day >= ? GROUP BY ref ORDER BY visitors DESC, ref LIMIT ? OFFSET ?').bind(site, from, RANK, (rp - 1) * RANK),
     db.prepare("SELECT title, path FROM menus WHERE site = ? AND path != ''").bind(site),
     db.prepare('SELECT slug, name FROM boards WHERE site = ?').bind(site),
   ]);
@@ -63,10 +73,11 @@ export async function statsApi(db, site, q) {
   const s = sum.results[0];
   const pick = (d) => { const r = near.results.find((x) => x.day === d); return { views: r?.views || 0, visitors: r?.visitors || 0 }; };
   return json({
-    range, monthly, today, from,
+    range, monthly, months, today, from,
     today_stat: pick(today), yesterday: pick(yesterday),
     total: { views: s.views, visitors: s.visitors, mobile: s.mobile },
     kept_days: s.kept_days, first_day: s.first_day,
+    rank_size: RANK, pp, rp, pages_total: s.pages_total, pages_max: s.pages_max || 1, refs_total: s.refs_total, refs_sum: s.refs_sum || 1,
     days: days.results,
     pages: pages.results.map((p) => ({ ...p, name: names[p.path] || names[p.path.replace(/\/\d+$/, '')] || '' })),
     refs: refs.results,

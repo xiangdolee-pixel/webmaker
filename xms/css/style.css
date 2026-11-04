@@ -159,10 +159,27 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
   position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 6px; height: 54px; padding: 0 12px 0 8px;
   background: var(--top-grad); color: #fff;
 }
-.adm-top .logo { margin-right: auto; font-weight: 800; font-size: 26px; line-height: 1; letter-spacing: -.04em; }
-.adm-top a, .adm-top button.t { display: inline-flex; align-items: center; min-height: 40px; padding: 0 10px; border: 0; background: none; color: #d6dbe6; font-size: 14px; text-decoration: none; cursor: pointer; border-radius: 6px; }
-.adm-top a:hover, .adm-top button.t:hover { color: #fff; background: rgba(255, 255, 255, .08); }
-.adm-top .who { display: none; color: #aab2c2; font-size: 14px; padding: 0 6px; }
+.adm-top .logo { display: inline-flex; align-items: center; gap: 9px; margin-right: auto; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: -.03em; }
+.adm-top .logo i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--top); font-style: normal; font-size: 18px; font-weight: 900; box-shadow: 0 4px 12px -4px rgba(10, 6, 40, .5); }
+/* 오른쪽 위: 알약 버튼 · 이름표 — 같은 높이(36px) · 같은 반투명 흰색 */
+.top-act { display: flex; align-items: center; gap: 8px; }
+.top-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgba(255, 255, 255, .22); border-radius: 99px; background: rgba(255, 255, 255, .12);
+  color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .2s, border-color .2s; }
+.top-btn:hover { background: rgba(255, 255, 255, .22); border-color: rgba(255, 255, 255, .36); }
+.top-btn.ghost { border-color: transparent; background: none; color: rgba(255, 255, 255, .86); }
+.top-btn.ghost:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.top-btn svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.top-btn:focus-visible, .adm-top .menu-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.who-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 4px 0 12px; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.who-chip i { order: -1; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--top); font-style: normal; font-size: 13px; font-weight: 800; }
+.who-chip::before { content: ""; order: -2; width: 1px; height: 20px; margin-right: 4px; background: rgba(255, 255, 255, .25); }
+#who { display: none; }
+@media (max-width: 767px) {
+  .top-act { gap: 4px; }
+  .top-btn { width: 36px; padding: 0; justify-content: center; }
+  .top-btn span { display: none; }
+  .who-chip { padding: 0 2px 0 6px; }
+}
 .menu-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; background: none; cursor: pointer; }
 .menu-btn i, .nav-btn i { display: block; width: 20px; height: 2px; margin: 2px 0; border-radius: 2px; background: currentColor; transition: transform .3s var(--ease), opacity .2s; }
 .menu-btn { color: #fff; }
@@ -200,12 +217,13 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); }
 .side::-webkit-scrollbar { display: none; }
 
 .main { min-width: 0; padding: 18px 16px 90px; }
-.ph { margin: 0 0 18px; }
+.ph { margin: 0 0 22px; }
 .ph.has-act { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .ph-act { display: flex; gap: 8px; }
-.ph small { color: var(--mute); font-size: 13px; font-weight: 600; }
-.ph h1 { margin: 2px 0 4px; font-size: 24px; }
-.ph p { margin: 0; color: var(--sub); }
+.ph { padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.ph small { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px; background: rgba(74, 45, 150, .09); color: var(--top); font-size: 12.5px; font-weight: 700; letter-spacing: .01em; }
+.ph h1 { margin: 10px 0 6px; font-size: 26px; font-weight: 800; line-height: 1.25; letter-spacing: -.03em; }
+.ph p { max-width: 72ch; margin: 0; color: var(--sub); font-size: 15px; line-height: 1.6; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
 .panel.pad { padding: 18px 16px; }
 .panel + .panel, .panel + h2, .gap { margin-top: 18px; }
@@ -610,13 +628,14 @@ p.meta, small.meta { display: block; }
   .pub-box { padding: 32px; }
   .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .adm-top .who { display: inline; }
+  #who { display: inline; }
   .dlg { --dp: 26px; padding: 26px; }
 }
 
 /* 데스크톱: 왼쪽 메뉴 고정, 방문자 메뉴 가로 */
 @media (min-width: 1024px) {
   .menu-btn { display: none; }
+  .ph h1 { font-size: 28px; }
   .adm-top { padding-left: 24px; padding-right: 16px; }
   .side { position: sticky; top: 54px; height: calc(100vh - 54px); transform: none; flex: none; width: var(--side); }
   .side-dim { display: none; }
@@ -671,6 +690,8 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
 .st-col.hover i, .st-col:focus-visible i { opacity: 1; }
 .st-col.hover { background: rgba(47, 95, 208, .06); }
 .st-col em { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); color: var(--mute); font-size: 12px; font-style: normal; white-space: nowrap; line-height: 20px; }
+.st-bars.dense { gap: 1px; }
+.st-bars.dense .st-col i { border-radius: 2px 2px 0 0; }
 .st-tip { position: absolute; top: 0; transform: translate(-50%, -6px); display: grid; gap: 1px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--ink); color: #fff; font-size: 13px; white-space: nowrap; pointer-events: none; box-shadow: var(--shadow); z-index: 2; }
 .st-tip b { font-size: 13px; }
 .st-table { margin-top: 14px; }
@@ -694,5 +715,8 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
   .st-tile b { font-size: 24px; }
   .st-chart { height: 200px; }
   .st-bars { gap: 1px; }
+  .st-bars.dense { gap: 0; }
+  .st-bar .tabs { display: flex; width: 100%; }
+  .st-bar .tabs > button { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { #st-body, .st-col i { transition: none; } }

@@ -28,10 +28,12 @@
   <div id="app" hidden>
     <header class="adm-top">
       <button class="menu-btn" type="button" aria-label="메뉴 열기" id="menu-btn"><span><i></i><i></i><i></i></span></button>
-      <span class="logo">xms</span>
-      <a href="/" target="_blank" rel="noopener">홈페이지 보기</a>
-      <span class="who" id="who"></span>
-      <button class="t" type="button" id="logout">로그아웃</button>
+      <span class="logo"><i aria-hidden="true">x</i>xms</span>
+      <div class="top-act">
+        <a class="top-btn" href="/" target="_blank" rel="noopener" title="홈페이지 보기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg><span>홈페이지 보기</span></a>
+        <span class="who-chip"><i id="who-av" aria-hidden="true"></i><span id="who"></span></span>
+        <button class="top-btn ghost" type="button" id="logout" title="로그아웃"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4"/></svg><span>로그아웃</span></button>
+      </div>
     </header>
     <div class="adm" id="adm">
       <nav class="side" id="side" aria-label="관리 메뉴"></nav>
