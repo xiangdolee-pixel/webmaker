@@ -544,3 +544,20 @@ em { font-style: normal; }
 .top-acc .xa-login { height: 34px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center;
   border: 1px solid currentColor; color: inherit; font-size: 13.5px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .top-acc .xa-avatar { width: 34px; height: 34px; }
+
+/* ── 2026-11-04 다듬기 (사용자 지시: "이용하기" 버튼 크게, 첫 화면 배치 · 형광펜 색) ── */
+.top-btn { height: 42px; padding: 0 20px; border-radius: 8px; font-size: 15.5px; gap: 9px; }
+.top-btn::after { width: 7px; height: 7px; }
+.top-acc .xa-login { height: 42px; padding: 0 16px; border-radius: 8px; font-size: 15px; }
+.top-acc .xa-avatar { width: 40px; height: 40px; }
+@media (max-width: 380px) { .top-btn { padding: 0 14px; font-size: 14.5px; } .top-acc .xa-login { padding: 0 11px; font-size: 14px; } }
+/* 바뀌는 단어 형광펜: 글자 아래쪽에만 얇게, 글자 폭에 맞춰 (왼쪽으로 삐져나오지 않게) */
+.swap-wrap::before { left: 0; right: .02em; top: .58em; height: .3em; transform: skewX(-8deg); border-radius: .06em; opacity: .9; }
+@keyframes mark { from { transform: skewX(-8deg) scaleX(0); } }
+.slogan s::after { left: -2%; right: -2%; }
+@media (min-width: 900px) {
+  /* 넓고 높은 화면: 위에만 빈 곳이 몰리지 않게 내용을 가운데로, 너무 높은 화면에서는 첫 화면 높이를 막는다 */
+  .hero-in { min-height: min(100svh, 1080px); grid-template-rows: auto 1fr auto auto 1fr; padding-bottom: 64px; }
+  .hero-title { font-size: clamp(96px, min(9.4vw, 16.5vh), 200px); }
+  .hero-sub { margin-bottom: 32px; }
+}

@@ -29,6 +29,14 @@
     const el = host();
     let me = null;
     try { me = JSON.parse(el.dataset.xaMe || 'null'); } catch { me = null; }
+    // 서비스워커가 저장해 둔 화면(빨리 뜨게 — 올리브바스켓 등)은 저장할 때의 로그인 상태가 박혀 있다 → 지금 상태를 다시 묻는다
+    //   (2026-11-04 로그인했는데 '로그인' 버튼이 보임). 인터넷이 없으면 저장된 그대로
+    if (me && navigator.serviceWorker && navigator.serviceWorker.controller) {
+      try {
+        const r = await fetch('/xms-api/me', { credentials: 'same-origin', cache: 'no-store' });
+        if (r.ok) me = await r.json();
+      } catch { /* 그대로 */ }
+    }
     if (!me) {
       me = { guest: true };
       try {
