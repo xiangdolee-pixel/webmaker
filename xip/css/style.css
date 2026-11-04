@@ -704,17 +704,21 @@ body.editing { padding-bottom: 70px; }
   .dash[data-n="5"] > .col[data-col="3"] { grid-column: 4; grid-row: 2; }
 }
 
-/* 1200~1499: 세 칸 + 4열(미국채 · 13F 등)은 아래 줄 전체 폭 (아래로 스크롤해서 본다) */
+/* 1200~1499: 위 줄은 세 칸(한 화면), 4 · 5열의 블록은 아래 줄들에 "딱 맞게" 다시 놓는다 (아래로 스크롤해서 본다)
+   - 칸(미국채 · 경제지표 같은 작은 블록)은 한 줄에 나란히, 높이를 서로 맞춘다 (폭 나누기는 layout.js 가 정함)
+   - 표(13F 같은 목록)는 그 아래 전체 폭
+   편집 중에는 칸 모양 그대로 둔다 (끌어서 옮길 칸이 보여야 하니까) */
 @media (min-width: 1200px) and (max-width: 1499px) and (min-height: 680px) {
   body:not(.doc) { overflow: auto; }
   body:not(.doc) main.wrap { height: auto; }
-  .dash { grid-template-columns: repeat(var(--cols3, 3), minmax(0, 1fr)); grid-template-rows: calc(100vh - var(--topH) - 21px) auto; height: auto; }
-  .col[data-col="3"], .col[data-col="4"] { grid-column: 1 / -1; }
-  /* 4 · 5열이 둘 다 있으면 아래 줄에 나란히 (예: 미국채 · 13F 옆에 미국 경제지표) */
-  .col[data-col="3"]:has(+ .col[data-col="4"]:not([hidden])) { grid-column: 1 / 3; }
-  .col[data-col="3"] + .col[data-col="4"] { grid-column: 3 / 4; }
-  .col[data-col="3"][hidden] + .col[data-col="4"] { grid-column: 1 / -1; }
-  .col[data-col="3"] .sec-list:not(.lim), .col[data-col="4"] .sec-list:not(.lim) { min-height: 640px; }
+  .dash { grid-template-columns: repeat(var(--cols3, 3), minmax(0, 1fr)); grid-template-rows: calc(100vh - var(--topH) - 21px); grid-auto-rows: auto; height: auto; }
+  body:not(.editing) .col[data-col="3"], body:not(.editing) .col[data-col="4"] { display: contents; }
+  body:not(.editing) .col[data-col="3"] > .sec, body:not(.editing) .col[data-col="4"] > .sec { order: 1; min-width: 0; display: flex; flex-direction: column; }
+  body:not(.editing) .col[data-col="3"] > .sec > .card, body:not(.editing) .col[data-col="4"] > .sec > .card,
+  body:not(.editing) .col[data-col="3"] > .sec > .tile-grid, body:not(.editing) .col[data-col="4"] > .sec > .tile-grid { flex: 1; }
+  body:not(.editing) .col[data-col="3"] > .sec-list, body:not(.editing) .col[data-col="4"] > .sec-list { order: 2; grid-column: 1 / -1; }
+  body:not(.editing) .col[data-col="3"] .coin-list, body:not(.editing) .col[data-col="4"] .coin-list { grid-auto-rows: 52px; overflow: visible; }
+  body.editing .col[data-col="3"], body.editing .col[data-col="4"] { grid-column: 1 / -1; }
 }
 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }

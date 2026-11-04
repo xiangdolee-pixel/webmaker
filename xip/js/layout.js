@@ -79,8 +79,25 @@ function apply(l) {
   dash.style.setProperty('--cols3', cols.slice(0, 3).filter((c) => !c.hidden).length || 1);
   const cn = dash.querySelector('[data-coin-n]');
   if (cn) cn.textContent = l.counts.coins;
+  midSpans();
   window.dispatchEvent(new Event('resize')); // 알약 탭 배경 다시 재기
 }
+
+// 1200~1499 화면: 4 · 5열의 작은 블록(칸)은 아래 줄에 나란히 — 남는 폭 없이 딱 맞게 나눈다 (표는 CSS 가 전체 폭)
+const MID = matchMedia('(min-width: 1200px) and (max-width: 1499px) and (min-height: 680px)');
+function midSpans() {
+  const blocks = colsNow().slice(3).flatMap((c) => [...c.querySelectorAll(':scope > [data-block]')]);
+  blocks.forEach((b) => { b.style.gridColumn = ''; });
+  if (!MID.matches || document.body.classList.contains('editing')) return;
+  const small = blocks.filter((b) => !b.hidden && !b.classList.contains('sec-list'));
+  const tracks = Math.min(3, colsNow().slice(0, 3).filter((c) => !c.hidden).length || 1);
+  // 한 줄에 tracks 칸씩. 마지막 줄이 모자라면 그 줄 첫 블록을 넓혀 채운다
+  for (let i = 0; i < small.length; i += tracks) {
+    const row = small.slice(i, i + tracks);
+    if (row.length < tracks) row[0].style.gridColumn = `span ${tracks - row.length + 1}`;
+  }
+}
+MID.addEventListener('change', midSpans);
 
 let saved = copy(DEF);
 const store = {
@@ -93,6 +110,7 @@ let me = { guest: true };
 try { me = JSON.parse(document.querySelector('[data-xa-me]').getAttribute('data-xa-me')) || me; } catch (e) { /* xms 응답 없음 → 손님 */ }
 const member = !me.guest;
 
+midSpans(); // 손님(저장한 모습 없음)도
 if (member) {
   $('top-edit').hidden = false;
   const cached = store.get();
@@ -201,6 +219,7 @@ function startEdit() {
   $('top-edit').classList.add('on');
   bar.hidden = false;
   applyEdit(saved);
+  midSpans();
 }
 function stopEdit(l) {
   editing = false;
