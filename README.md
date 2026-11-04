@@ -11,6 +11,7 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 - olivebasket/ — 올리브바스켓 (olivebasket.plators.com) · xim 연결됨 · / = 소개 페이지(로그인하면 /app 으로), /app = 구절 앱, /basket = 담기 · 로그인 = 사이트 회원(xms), 구절은 예전 D1 `olivebasket` 그대로(users.email 로 회원과 이어 붙임)
 - sugarbreak/ — 슈가브레이크 (예전 Pages `blood` · `sugarbreak`, blood.plators.com) · xim 연결됨 · 관리자(레벨1)만 쓰는 건강 기록, 예전 D1 `sugarbreak` 그대로. 원본이던 E:wsblood 는 이제 안 씀
 - plators/ — plators.com (Worker plators, 사용자 도메인) 한 장짜리 페이지(가운데 master@plators.com) · xim 연결됨
+- portfolio/ — 포트폴리오 (portfolio.plators.com) · xim 연결됨 · 비밀번호를 넣어야 보임(Worker 비밀값 PORTFOLIO_PASSWORD, 리포에 없음) · xim 사이트 화면 캡처 · 이름 · 주소
 - xim/ — 고객 사이트 통합 관리(고객·사이트·정지·용량·수정요청). https://xim.xiangdolee.workers.dev , 자세한 건 xim/README.md
 - xms/ — 업체별 홈페이지 관리(회원·게시판·메뉴). 각 사이트주소/admin/ , 자세한 건 xms/README.md
 
