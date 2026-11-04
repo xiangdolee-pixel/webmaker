@@ -1,5 +1,5 @@
 // xms 방문자 화면: 메뉴 열기 · 로그인 · 가입 · 마이페이지 · 글쓰기 · 댓글
-import { $, $, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
+import { $, $$, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
 import { shrinkImage } from './editor.js';
 
 const api = makeApi('/xms-api');
@@ -57,7 +57,7 @@ onForm('login', async (form, data) => {
 const signup = { email: '', ticket: '', timer: 0 };
 const stepTo = (n) => {
   $$('form[data-step]').forEach((f) => { f.hidden = f.dataset.step !== String(n) || (n === 1 && f.dataset.form === 'signup-verify' && !signup.email); });
-  $('[data-step-dot]').forEach((d) => { d.classList.toggle('on', +d.dataset.stepDot <= n); d.classList.toggle('done', +d.dataset.stepDot < n); });
+  $$('[data-step-dot]').forEach((d) => { d.classList.toggle('on', +d.dataset.stepDot <= n); d.classList.toggle('done', +d.dataset.stepDot < n); });
 };
 function startTimer(sec) {
   clearInterval(signup.timer);
