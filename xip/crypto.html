@@ -39,53 +39,82 @@
       </div>
     </section>
 
-    <section class="sec">
+    <div class="cx-dash">
+    <section class="sec cx-kpis">
       <div class="sec-head">
         <h2 class="sec-title">비트코인 지표</h2>
-        <span class="sec-note" id="cx-time"></span>
+        <span class="sec-note" id="cx-time">누르면 차트</span>
       </div>
       <div class="kpi-grid" id="kpis">
-        <div class="card kpi wait" data-k="dom"><span class="kpi-name">BTC 도미넌스</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span></div>
-        <div class="card kpi wait" data-k="fng"><span class="kpi-name">공포 · 탐욕 지수</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><div class="kpi-bar"><i></i></div></div>
-        <div class="card kpi wait" data-k="hash"><span class="kpi-name">해시레이트</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span></div>
-        <div class="card kpi wait" data-k="mvrv"><span class="kpi-name">MVRV Z-Score</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><div class="kpi-bar mvrv"><i></i></div></div>
-        <div class="card kpi wait" data-k="kimp"><span class="kpi-name">김치 프리미엄 (BTC)</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span></div>
-        <div class="card kpi wait" data-k="m2"><span class="kpi-name">미국 M2 통화량</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span></div>
+        <div class="card kpi wait" data-k="dom"><span class="kpi-name">BTC 도미넌스</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><div class="kpi-dom"><i></i><i></i></div></div>
+        <button type="button" class="card kpi wait" data-k="fng" data-chart="fng"><span class="kpi-name">공포 · 탐욕 지수</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><div class="kpi-bar"><i></i></div><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></button>
+        <button type="button" class="card kpi wait" data-k="hash" data-chart="hash"><span class="kpi-name">해시레이트</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></button>
+        <button type="button" class="card kpi wait" data-k="mvrv" data-chart="mvrv"><span class="kpi-name">MVRV Z-Score</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><div class="kpi-bar mvrv"><i></i></div><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></button>
+        <button type="button" class="card kpi wait" data-k="kimp" data-chart="up" data-code="BTC"><span class="kpi-name">김치 프리미엄 (BTC)</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span></button>
+        <button type="button" class="card kpi wait" data-k="m2" data-chart="m2"><span class="kpi-name">미국 M2 통화량</span><b class="kpi-v">불러오는 중…</b><span class="kpi-s"></span><svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></button>
       </div>
     </section>
 
     <div class="cx-2">
-      <section class="sec">
+      <section class="sec cx-sec">
         <div class="sec-head">
           <h2 class="sec-title">비트코인 현물 ETF 일별 순유입</h2>
-          <span class="sec-note">최근 1주일 · 백만 달러 · Farside Investors</span>
+          <span class="sec-note">최근 1주일 · 백만 달러 · 종목 · 날짜를 누르면 차트</span>
         </div>
         <div class="card cx-table-card">
+          <div class="cx-scroll">
           <table class="cx-table etf" id="etf">
-            <thead><tr><th>날짜</th><th>합계</th><th>IBIT</th><th>FBTC</th><th class="hide-sm">BITB</th><th class="hide-sm">ARKB</th><th>GBTC</th><th class="hide-sm">BTC</th><th>기타</th></tr></thead>
+            <thead><tr><th>날짜</th><th><button type="button" data-chart="etf">합계</button></th><th><button type="button" data-chart="etf" data-code="IBIT">IBIT</button></th><th><button type="button" data-chart="etf" data-code="FBTC">FBTC</button></th><th class="hide-sm"><button type="button" data-chart="etf" data-code="BITB">BITB</button></th><th class="hide-sm"><button type="button" data-chart="etf" data-code="ARKB">ARKB</button></th><th><button type="button" data-chart="etf" data-code="GBTC">GBTC</button></th><th class="hide-sm"><button type="button" data-chart="etf" data-code="BTC">BTC</button></th><th>기타</th></tr></thead>
             <tbody><tr class="cx-loading"><td colspan="9"></td></tr></tbody>
           </table>
-          <p class="list-note" id="etf-note">+ 순유입 · − 순유출 · "집계 전" 은 그 운용사가 아직 발표하지 않은 날</p>
+          </div>
+          <p class="list-note" id="etf-note">+ 순유입 · − 순유출 · "집계 전" 은 운용사가 아직 발표하지 않은 날</p>
         </div>
       </section>
 
-      <section class="sec">
+      <section class="sec cx-sec">
         <div class="sec-head">
           <h2 class="sec-title">김치 프리미엄 상위 10</h2>
-          <span class="sec-note" id="kimp-note">업비트 ÷ (OKX × 원/달러)</span>
+          <span class="sec-note" id="kimp-note">업비트 ÷ (OKX × 원/달러) · 누르면 차트</span>
         </div>
         <div class="card cx-table-card">
+          <div class="cx-scroll">
           <table class="cx-table kimp" id="kimp">
             <thead><tr><th>#</th><th>코인</th><th>업비트</th><th class="hide-sm">해외 환산</th><th>김프</th></tr></thead>
             <tbody><tr class="cx-loading"><td colspan="5"></td></tr></tbody>
           </table>
+          </div>
           <p class="list-note">업비트 원화 거래대금 50억 원 이상 코인 · 해외 가격은 OKX USDT 시세 × 하나은행 원/달러</p>
         </div>
       </section>
     </div>
+    </div>
 
     <p class="foot">ETF 유입: Farside Investors · 도미넌스: CoinGecko · 해시레이트: mempool.space · 공포·탐욕: alternative.me · MVRV Z-Score: Coin Metrics 일별 시가총액 · MVRV 로 계산(하루 늦음) · M2: 미국 연준 H.6(계절 조정, 월 단위) · 김프: 업비트 · OKX · 하나은행 고시 환율<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
   </main>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-bg" data-close></div>
+    <div class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="ch-name">
+      <div class="ch-head">
+        <div class="ch-title"><h3 id="ch-name"></h3><span id="ch-sub"></span></div>
+        <button class="ch-close" type="button" data-close aria-label="닫기">×</button>
+      </div>
+      <div class="ch-price"><b id="ch-price"></b><span id="ch-chg"></span></div>
+      <div class="seg" id="ch-seg" role="tablist"><span class="seg-ind" aria-hidden="true"></span></div>
+      <div class="ch-plot" id="ch-plot">
+        <canvas id="ch-canvas"></canvas>
+        <div class="ch-tip" id="ch-tip" hidden><b></b><span></span></div>
+        <div class="ch-msg" id="ch-msg"></div>
+      </div>
+      <p class="ch-note" id="ch-note"></p>
+      <dl class="ch-stats">
+        <div><dt>기간 최고</dt><dd id="st-high">—</dd></div>
+        <div><dt>기간 최저</dt><dd id="st-low">—</dd></div>
+        <div><dt>기간 변화</dt><dd id="st-chg">—</dd></div>
+      </dl>
+    </div>
+  </div>
 
   <script type="module" src="js/crypto.js?v=__HASH__"></script>
 </body>

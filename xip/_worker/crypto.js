@@ -37,7 +37,7 @@ export function parseFarside(html, days = 7) {
 }
 const loadEtf = async () => parseFarside(await get('https://farside.co.uk/btc/', 'text', 15000));
 
-// 도미넌스: CoinGecko → (막히면) CoinPaprika
+// 도미넌스: CoinGecko → (막히면) CoinLore → CoinPaprika
 async function loadDom() {
   try {
     const d = (await get('https://api.coingecko.com/api/v3/global')).data;
@@ -46,11 +46,13 @@ async function loadDom() {
       total: num(d.total_market_cap.usd), change: num(d.market_cap_change_percentage_24h_usd), src: 'CoinGecko',
     };
   } catch (e) {
-    const [g, eth] = await Promise.all([get('https://api.coinpaprika.com/v1/global'), get('https://api.coinpaprika.com/v1/tickers/eth-ethereum').catch(() => null)]);
-    return {
-      btc: num(g.bitcoin_dominance_percentage), eth: eth ? (num(eth.quotes.USD.market_cap) / num(g.market_cap_usd)) * 100 : null,
-      total: num(g.market_cap_usd), change: num(g.market_cap_change_24h), src: 'CoinPaprika',
-    };
+    try {
+      const g = (await get('https://api.coinlore.net/api/global/'))[0];
+      return { btc: num(g.btc_d), eth: num(g.eth_d), total: num(g.total_mcap), change: num(g.mcap_change), src: 'CoinLore' };
+    } catch (e2) {
+      const g = await get('https://api.coinpaprika.com/v1/global');
+      return { btc: num(g.bitcoin_dominance_percentage), eth: null, total: num(g.market_cap_usd), change: num(g.market_cap_change_24h), src: 'CoinPaprika' };
+    }
   }
 }
 
@@ -166,4 +168,87 @@ export async function cryptoAll(ctx, swr, usdkrw) {
     part('kimp', 20e3, 10 * 60e3, async () => loadKimp(await usdkrw())),
   ]);
   return { etf, dom, hash, fng, mvrv, m2, kimp };
+}
+
+/* ---------- 크립토 차트 (/api/crypto/chart, 회원만) ----------
+   k = fng | hash | mvrv | m2 | etf(합계 · code=종목) | up(업비트 원화 코인, code=기호)   range = 1m | 3m | 1y | all (up 은 1d 도)
+   전체 기록은 묶음마다 길게 저장(swr)해 두고, 기간만 잘라서 준다 */
+const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, '');
+const lab = (k) => (k.length >= 12 ? `${k.slice(4, 6)}.${k.slice(6, 8)} ${k.slice(8, 10)}:${k.slice(10, 12)}` : `${k.slice(0, 4)}.${k.slice(4, 6)}.${k.slice(6, 8)}`);
+const pts = (list) => list.filter((p) => p.v != null && Number.isFinite(p.v)).map((p) => ({ k: p.k, t: lab(p.k), v: p.v }));
+
+async function fngAll() {
+  const d = (await get('https://api.alternative.me/fng/?limit=0', 'json', 20000)).data || [];
+  return pts(d.map((x) => ({ k: ymd(new Date(+x.timestamp * 1000)), v: +x.value })).reverse());
+}
+async function hashAll() {
+  const d = await get('https://mempool.space/api/v1/mining/hashrate/all', 'json', 20000);
+  return pts((d.hashrates || []).filter((h) => h.timestamp > 1262304000).map((h) => ({ k: ymd(new Date(h.timestamp * 1000)), v: Math.round(h.avgHashrate / 1e15) / 1000 })));
+}
+async function mvrvAll() {
+  const j = await get('https://community-api.coinmetrics.io/v4/timeseries/asset-metrics?assets=btc&metrics=CapMrktCurUSD,CapMVRVCur&frequency=1d&page_size=10000&start_time=2010-07-18', 'json', 25000);
+  const rows = (j.data || []).map((r) => ({ t: r.time.slice(0, 10).replace(/-/g, ''), mc: +r.CapMrktCurUSD, mv: +r.CapMVRVCur })).filter((r) => r.mc > 0 && r.mv > 0);
+  // 그날까지의 표준편차가 아니라 전체 기간 표준편차 (흔히 쓰는 정의, 오늘 값과 같게)
+  const mean = rows.reduce((a, r) => a + r.mc, 0) / rows.length;
+  const sd = Math.sqrt(rows.reduce((a, r) => a + (r.mc - mean) ** 2, 0) / rows.length);
+  return pts(rows.map((r) => ({ k: r.t, v: Math.round(((r.mc - r.mc / r.mv) / sd) * 1000) / 1000 })));
+}
+async function m2All() {
+  const csv = await get('https://www.federalreserve.gov/datadownload/Output.aspx?rel=H6&series=798e2796917702a5f8423426ba7e6b42&lastobs=500&from=&to=&filetype=csv&label=include&layout=seriescolumn', 'text', 25000);
+  const lines = csv.trim().split(/\r?\n/).map((l) => l.split(',').map((c) => c.replace(/"/g, '').trim()));
+  const head = lines.find((l) => l[0] === 'Time Period');
+  const ci = head ? head.indexOf('M2.M') : -1;
+  if (ci < 0) throw new Error('h6 no M2.M');
+  return pts(lines.filter((l) => /^\d{4}-\d{2}$/.test(l[0])).map((l) => ({ k: `${l[0].replace('-', '')}01`, v: num(l[ci]) })));
+}
+async function etfAll() {
+  const r = parseFarside(await get('https://farside.co.uk/bitcoin-etf-flow-all-data/', 'text', 25000), 100000);
+  return { tickers: r.tickers, days: r.days };
+}
+async function upbitChart(sym, range) {
+  const m = `KRW-${sym}`;
+  const url = range === '1d' ? `https://api.upbit.com/v1/candles/minutes/10?market=${m}&count=144`
+    : range === '1m' || range === '3m' ? `https://api.upbit.com/v1/candles/days?market=${m}&count=${range === '1m' ? 31 : 92}`
+      : range === '1y' ? `https://api.upbit.com/v1/candles/weeks?market=${m}&count=53`
+        : `https://api.upbit.com/v1/candles/months?market=${m}&count=200`;
+  const list = await get(url);
+  return pts(list.map((c) => ({ k: c.candle_date_time_kst.replace(/[-T:]/g, '').slice(0, range === '1d' ? 12 : 8), v: c.trade_price })).reverse());
+}
+
+const SPAN = { '1m': 31, '3m': 92, '1y': 366 };
+function cut(points, range) {
+  if (!SPAN[range] || !points.length) return points;
+  const from = ymd(new Date(Date.now() - SPAN[range] * 864e5));
+  return points.filter((p) => p.k.slice(0, 8) >= from);
+}
+// 너무 많은 점은 고르게 줄인다 (끝 점은 그대로)
+function thin(points, max = 900) {
+  if (points.length <= max) return points;
+  const step = points.length / max;
+  const out = [];
+  for (let i = 0; i < max - 1; i++) out.push(points[Math.floor(i * step)]);
+  out.push(points[points.length - 1]);
+  return out;
+}
+
+export async function cryptoChart(ctx, swr, k, code, range) {
+  const H = 3600e3;
+  const all = (key, ttl, f) => swr(ctx, `cc:${key}`, ttl, 7 * 24 * H, f).then((r) => r.data);
+  let points;
+  let note = '';
+  if (k === 'fng') points = await all('fng', 3 * H, fngAll);
+  else if (k === 'hash') { points = await all('hash', 3 * H, hashAll); note = 'EH/s · 하루 평균'; }
+  else if (k === 'mvrv') { points = await all('mvrv', 6 * H, mvrvAll); note = '0 아래 저평가 · 2~6 과열 주의 · 6 넘으면 과열'; }
+  else if (k === 'm2') { points = await all('m2', 12 * H, m2All); note = '10억 달러 · 월 단위 · 계절 조정'; }
+  else if (k === 'etf') {
+    const d = await all('etf', H, etfAll);
+    if (code && !d.tickers.includes(code)) throw new Error('bad ticker');
+    points = pts(d.days.map((r) => ({ k: r.date.replace(/-/g, ''), v: code ? r.by[code] : r.total })));
+    note = `${code || '전체 합계'} · 하루 순유입(백만 달러)`;
+  } else if (k === 'up') {
+    if (!/^[A-Z0-9]{1,12}$/.test(code || '')) throw new Error('bad coin');
+    points = await swr(ctx, `cc:up:${code}:${range}`, range === '1d' ? 60e3 : 30 * 60e3, 6 * H, () => upbitChart(code, range)).then((r) => r.data);
+    return { points, note: '업비트 원화 시세' };
+  } else throw new Error('bad kind');
+  return { points: thin(cut(points, range)), note };
 }
