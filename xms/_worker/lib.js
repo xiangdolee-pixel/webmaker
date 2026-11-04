@@ -124,11 +124,10 @@ export const DEFAULT_LEVEL_NAMES = { 1: '관리자', 9: '일반회원', 10: '제
 export const BUILTIN_FIELDS = [
   { key: 'name', label: '이름', type: 'TEXT', builtin: true },
   { key: 'mobile', label: '휴대전화', type: 'TEXT', builtin: true },
-  { key: 'phone', label: '전화', type: 'TEXT', builtin: true },
   { key: 'email', label: '이메일', type: 'TEXT', builtin: true },
   { key: 'nickname', label: '닉네임', type: 'TEXT', builtin: true },
 ];
-const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'OPTIONAL', phone: 'OPTIONAL', email: 'OPTIONAL', nickname: 'EXCLUDED' };
+const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'OPTIONAL', email: 'OPTIONAL', nickname: 'EXCLUDED' };
 export const MEMBER_COLUMNS = ['name', 'nickname', 'email', 'mobile', 'phone'];
 
 export async function siteSettings(db, site) {
@@ -140,7 +139,8 @@ export async function siteSettings(db, site) {
     fields = BUILTIN_FIELDS.map((f, i) => ({ key: f.key, label: f.label, type: 'TEXT', mode: DEFAULT_MODES[f.key], sort: i }));
   }
   // 예전 기본 제공이던 "교회"(church)는 뺐다 (사용자 지시 2026-11-03). 직접 추가한 항목(custom)은 남긴다.
-  fields = fields.filter((f) => !(f.key === 'church' && !f.custom));
+  // 기본 제공이던 "전화"(phone)도 뺐다 — 휴대전화만 둔다 (사용자 지시 2026-11-04). 이미 받은 값(members.phone)은 DB 에 그대로.
+  fields = fields.filter((f) => !((f.key === 'church' || f.key === 'phone') && !f.custom));
   fields = fields.map((f) => ({ ...f, builtin: BUILTIN_FIELDS.some((b) => b.key === f.key) }));
   fields.sort((a, b) => a.sort - b.sort);
   return { levelNames, fields };
@@ -234,4 +234,48 @@ export async function ensureDocs(env, site) {
   await env.DB.batch(missing.map((type) => env.DB.prepare(
     'INSERT OR IGNORE INTO documents (site, doc_type, version, content, published_at) VALUES (?, ?, 1, ?, ?)',
   ).bind(site, type, docTemplate(type, s?.name || site), t)));
+}
+
+// ───────── 가입 항목 값 검사 (홈페이지 회원가입 · 내 정보 · xim 관리자 계정 추가가 같이 쓴다) ─────────
+const RESERVED_NICK = ['관리자', '운영자', 'admin', 'administrator'];
+export async function uniqueProblem(db, site, { nickname = '', email = '' }, exceptId = 0) {
+  const nick = String(nickname).trim();
+  if (nick) {
+    if (RESERVED_NICK.includes(nick.toLowerCase())) return { field: 'nickname', message: '쓸 수 없는 닉네임입니다.' };
+    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND lower(trim(nickname)) = lower(?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, nick, exceptId).first();
+    if (d) return { field: 'nickname', message: '이미 쓰고 있는 닉네임입니다. 다른 닉네임을 넣어 주세요.' };
+  }
+  const em = String(email).trim().toLowerCase();
+  if (em) {
+    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(email) = ? OR lower(login_id) = ?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, em, em, exceptId).first();
+    if (d) return { field: 'email', message: '이미 쓰고 있는 이메일입니다.' };
+  }
+  return null;
+}
+
+export function memberValues(fields, raw, isSignup) {
+  const cols = { name: '', nickname: '', email: '', mobile: '', phone: '' };
+  const extra = {};
+  for (const f of fields) {
+    if (f.mode === 'EXCLUDED') continue;
+    let v = raw[f.key];
+    if (f.type === 'CHECKBOX') {
+      v = (Array.isArray(v) ? v : v ? [v] : []).map((x) => str(x, 50)).filter((x) => (f.options || []).includes(x));
+      if (f.mode === 'REQUIRED' && !v.length) throw bad(`${f.label}을(를) 골라 주세요.`);
+      extra[f.key] = v;
+      continue;
+    }
+    v = str(v, f.key === 'email' ? 120 : 100);
+    if (f.mode === 'REQUIRED' && !v) throw bad(`${f.label}을(를) 넣어 주세요.`);
+    if (v) {
+      if ((f.type === 'SELECT' || f.type === 'RADIO') && !(f.options || []).includes(v)) throw bad(`${f.label} 값이 잘못됐습니다.`);
+      if (f.type === 'NUMBER' && !/^-?\d+(\.\d+)?$/.test(v)) throw bad(`${f.label}은(는) 숫자로 넣어 주세요.`);
+      if (f.type === 'DATE' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw bad(`${f.label}은(는) 날짜로 넣어 주세요.`);
+      if (f.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw bad('이메일 주소를 확인해 주세요.');
+      if (f.key === 'mobile' || f.key === 'phone') v = v.replace(/\D/g, '').slice(0, 15);
+    }
+    if (MEMBER_COLUMNS.includes(f.key)) cols[f.key] = v; else extra[f.key] = v;
+  }
+  if (isSignup && !cols.name) throw bad('이름을 넣어 주세요.');
+  return { cols, extra };
 }

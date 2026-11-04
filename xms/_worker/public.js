@@ -2,6 +2,7 @@
 import {
   DAY, now, bad, forbidden, notFound, HttpError, json, html, esc, str, body, siteSettings, MEMBER_COLUMNS, canBy, levelBit,
   createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit, verOf,
+  memberValues, uniqueProblem,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
 import { postAttachments, syncPostFiles, removePostFiles } from './uploads.js';
@@ -559,7 +560,7 @@ export async function publicApi(ctx) {
     if (prob) throw bad(prob.message);
     const extra = { ...JSON.parse(me.member.extra || '{}'), ...vals.extra };
     await db.prepare('UPDATE members SET name = ?, nickname = ?, email = ?, mobile = ?, phone = ?, extra = ? WHERE id = ?')
-      .bind(vals.cols.name || me.member.name, vals.cols.nickname, vals.cols.email, vals.cols.mobile, vals.cols.phone, JSON.stringify(extra), me.member.id).run();
+      .bind(vals.cols.name || me.member.name, vals.cols.nickname, vals.cols.email, vals.cols.mobile, vals.cols.phone || me.member.phone || '', JSON.stringify(extra), me.member.id).run(); // 전화(phone) 항목은 없앴다 — 예전 값은 지우지 않는다
     return json({ ok: true });
   }
   if (path === '/password' && method === 'POST') {
@@ -646,49 +647,6 @@ export async function publicApi(ctx) {
 }
 
 // 가입 항목 값 검사 → member 컬럼 / extra 로 나눈다
-// 닉네임 · 이메일 중복 확인 (탈퇴하지 않은 회원끼리, 대소문자 · 앞뒤 빈칸 무시). exceptId = 자기 자신
-const RESERVED_NICK = ['관리자', '운영자', 'admin', 'administrator'];
-async function uniqueProblem(db, site, { nickname = '', email = '' }, exceptId = 0) {
-  const nick = String(nickname).trim();
-  if (nick) {
-    if (RESERVED_NICK.includes(nick.toLowerCase())) return { field: 'nickname', message: '쓸 수 없는 닉네임입니다.' };
-    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND lower(trim(nickname)) = lower(?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, nick, exceptId).first();
-    if (d) return { field: 'nickname', message: '이미 쓰고 있는 닉네임입니다. 다른 닉네임을 넣어 주세요.' };
-  }
-  const em = String(email).trim().toLowerCase();
-  if (em) {
-    const d = await db.prepare("SELECT id FROM members WHERE site = ? AND (lower(email) = ? OR lower(login_id) = ?) AND status != 'WITHDRAWN' AND id != ? LIMIT 1").bind(site, em, em, exceptId).first();
-    if (d) return { field: 'email', message: '이미 쓰고 있는 이메일입니다.' };
-  }
-  return null;
-}
-
-function memberValues(fields, raw, isSignup) {
-  const cols = { name: '', nickname: '', email: '', mobile: '', phone: '' };
-  const extra = {};
-  for (const f of fields) {
-    if (f.mode === 'EXCLUDED') continue;
-    let v = raw[f.key];
-    if (f.type === 'CHECKBOX') {
-      v = (Array.isArray(v) ? v : v ? [v] : []).map((x) => str(x, 50)).filter((x) => (f.options || []).includes(x));
-      if (f.mode === 'REQUIRED' && !v.length) throw bad(`${f.label}을(를) 골라 주세요.`);
-      extra[f.key] = v;
-      continue;
-    }
-    v = str(v, f.key === 'email' ? 120 : 100);
-    if (f.mode === 'REQUIRED' && !v) throw bad(`${f.label}을(를) 넣어 주세요.`);
-    if (v) {
-      if ((f.type === 'SELECT' || f.type === 'RADIO') && !(f.options || []).includes(v)) throw bad(`${f.label} 값이 잘못됐습니다.`);
-      if (f.type === 'NUMBER' && !/^-?\d+(\.\d+)?$/.test(v)) throw bad(`${f.label}은(는) 숫자로 넣어 주세요.`);
-      if (f.type === 'DATE' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw bad(`${f.label}은(는) 날짜로 넣어 주세요.`);
-      if (f.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw bad('이메일 주소를 확인해 주세요.');
-      if (f.key === 'mobile' || f.key === 'phone') v = v.replace(/\D/g, '').slice(0, 15);
-    }
-    if (MEMBER_COLUMNS.includes(f.key)) cols[f.key] = v; else extra[f.key] = v;
-  }
-  if (isSignup && !cols.name) throw bad('이름을 넣어 주세요.');
-  return { cols, extra };
-}
 
 // 간단입력 카드 정리 → { order, cards } (사진은 우리 업로드 주소만, 동영상은 유튜브 id 만)
 function cleanBlocks(v) {

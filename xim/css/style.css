@@ -47,6 +47,11 @@ a.btn { text-decoration: none; }
 .field { display: grid; gap: 6px; margin-bottom: 14px; }
 .field > span { font-size: 14px; font-weight: 600; color: var(--sub); }
 .field small { color: var(--mute); font-size: 13px; }
+.field .req { color: var(--danger); font-style: normal; }
+.choice-set { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+.choice-set legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--sub); }
+.choices { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.choices label { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
 .input {
   width: 100%; min-height: 46px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: #fbfbfd; transition: border-color .2s, background .2s;

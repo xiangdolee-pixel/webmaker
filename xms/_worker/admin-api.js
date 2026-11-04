@@ -146,7 +146,7 @@ export async function adminApi(ctx) {
     const { fields: cur } = await siteSettings(db, site);
     const key = str(raw.key, 30);
     if (!/^[A-Za-z][A-Za-z0-9_]{0,29}$/.test(key)) throw bad('항목 키는 영문으로 시작하고 영문·숫자·밑줄(_)만 쓸 수 있습니다.');
-    if (cur.some((f) => f.key === key) || BUILTIN_FIELDS.some((f) => f.key === key) || ['login_id', 'password', 'level'].includes(key)) throw bad('이미 있는 항목 키입니다.');
+    if (cur.some((f) => f.key === key) || BUILTIN_FIELDS.some((f) => f.key === key) || ['login_id', 'password', 'level', 'phone'].includes(key)) throw bad('이미 있는 항목 키입니다.');
     const f = normField({ key, label: raw.label, mode: raw.mode, type: raw.type, options: raw.options }, cur.length);
     await saveSettings(db, site, { fields: [...cur, f] });
     await audit(db, site, me, request, 'SIGNUP_FIELD_ADD', f.label);

@@ -9,6 +9,8 @@
 import { ensureMailDomain, ensureTurnstile } from './mail-domain.js';
 import { deleteRequest } from './request-files.js';
 import { WorkerEntrypoint } from 'cloudflare:workers';
+// 관리자 계정 추가도 그 사이트 홈페이지 회원가입과 같은 항목 · 같은 검사로 (xms 와 같은 코드)
+import { siteSettings, memberValues, uniqueProblem } from '../../xms/_worker/lib.js';
 
 const DAY = 86400000;
 const SEC_WINDOW = 10 * 60000; // 없는 주소: 10분 동안
@@ -389,24 +391,39 @@ async function ximApi(request, env, url) {
     const site = await db.prepare('SELECT * FROM sites WHERE id = ?').bind(+m[1]).first();
     if (!site) throw new HttpError(404, '사이트가 없습니다.');
     const xms = env.XMS_DB;
+    // 가입 항목: 그 사이트 xms 설정 그대로 (이메일 = 아이디라 따로 받지 않는다)
+    const signupFields = async () => (await siteSettings(xms, site.slug)).fields.filter((f) => f.mode !== 'EXCLUDED');
     if (method === 'GET') {
       const { results } = await xms.prepare("SELECT id, login_id AS username, name, created_at FROM members WHERE site = ? AND level = 1 AND status != 'WITHDRAWN' ORDER BY id")
         .bind(site.slug).all();
-      return json(results);
+      const fields = (await signupFields()).filter((f) => f.key !== 'email')
+        .map(({ key, label, type, mode, options }) => ({ key, label, type, mode, options }));
+      return json({ admins: results, fields });
     }
     if (method === 'POST') {
       const raw = await body(request);
-      const username = str(raw.username, 50);
+      const username = str(raw.username, 254).toLowerCase();
       const password = String(raw.password ?? '');
-      if (!/^[A-Za-z0-9_-]{4,50}$/.test(username)) throw bad('아이디는 영문·숫자·_·- 4~50자로 넣어 주세요.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) throw bad('아이디는 이메일 주소로 넣어 주세요 (홈페이지 회원가입과 같게).');
       if (password.length < 8 || password.length > 200) throw bad('비밀번호는 8자 이상으로 넣어 주세요.');
-      const dup = await xms.prepare('SELECT id, status FROM members WHERE site = ? AND login_id = ?').bind(site.slug, username).first();
-      if (dup) throw bad(dup.status === 'WITHDRAWN' ? '탈퇴한 회원이 쓰던 아이디입니다. 다른 아이디를 넣어 주세요.' : '이미 있는 아이디입니다. 그 회원을 관리자로 올리려면 사이트 관리 화면의 가입회원에서 등급을 바꾸세요.');
+      const dup = await xms.prepare('SELECT id, status FROM members WHERE site = ? AND lower(login_id) = ?').bind(site.slug, username).first();
+      if (dup) throw bad(dup.status === 'WITHDRAWN' ? '탈퇴한 회원이 쓰던 이메일입니다. 다른 이메일을 넣어 주세요.' : '이미 가입한 이메일입니다. 그 회원을 관리자로 올리려면 사이트 관리 화면의 가입회원에서 등급을 바꾸세요.');
+      let vals;
+      try {
+        vals = memberValues(await signupFields(), { ...raw, email: username }, true);
+        const prob = await uniqueProblem(xms, site.slug, { nickname: vals.cols.nickname, email: username });
+        if (prob) throw bad(prob.message);
+      } catch (e) {
+        if (e && e.status) throw new HttpError(e.status, e.message); // xms 쪽 오류 → xim 오류 응답
+        throw e;
+      }
       const salt = randomHex(16);
       const t = now();
-      await xms.prepare('INSERT INTO members (site, login_id, pw_hash, pw_salt, name, level, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)')
-        .bind(site.slug, username, await hashPassword(password, salt), salt, str(raw.name, 40) || username, t).run();
-      await audit(db, request, 'ADMIN_CREATE', site.slug, `${str(raw.name, 40) || username} (${username})`);
+      const c = vals.cols;
+      await xms.prepare(`INSERT INTO members (site, login_id, pw_hash, pw_salt, name, nickname, level, email, mobile, phone, extra, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, '', ?, ?)`)
+        .bind(site.slug, username, await hashPassword(password, salt), salt, c.name, c.nickname, username, c.mobile, JSON.stringify(vals.extra), t).run();
+      await audit(db, request, 'ADMIN_CREATE', site.slug, `${c.name} (${username})`);
       return json({ ok: true });
     }
   }

@@ -357,24 +357,43 @@ function toggleSite(site, btn) {
   btn.blur();
 }
 
+// 관리자 계정 추가 칸: 그 사이트 홈페이지 회원가입 항목 그대로 (이름 · 휴대전화 · 닉네임 · 직접 만든 항목 …)
+function signupFieldHtml(f) {
+  const req = f.mode === 'REQUIRED';
+  const label = `${esc(f.label)}${req ? ' <em class="req">*</em>' : ''}`;
+  const opts = f.options || [];
+  if (f.type === 'SELECT') {
+    return `<label class="field"><span>${label}</span><select class="input" name="${esc(f.key)}"${req ? ' required' : ''}><option value="">선택해 주세요</option>${opts.map((o) => `<option>${esc(o)}</option>`).join('')}</select></label>`;
+  }
+  if (f.type === 'RADIO' || f.type === 'CHECKBOX') {
+    const t = f.type === 'RADIO' ? 'radio' : 'checkbox';
+    return `<fieldset class="field choice-set" data-group="${esc(f.key)}"><legend>${label}</legend><div class="choices">${opts
+      .map((o) => `<label><input type="${t}" name="${esc(f.key)}" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div></fieldset>`;
+  }
+  const type = f.type === 'NUMBER' ? 'number' : f.type === 'DATE' ? 'date' : f.key === 'mobile' ? 'tel' : 'text';
+  return `<label class="field"><span>${label}</span><input class="input" type="${type}" name="${esc(f.key)}" autocomplete="off"${req ? ' required' : ''}${type === 'text' ? ' maxlength="100"' : ''}></label>`;
+}
+
 function adminsDialog(site) {
   openDialog(`
     <h2>${esc(site.name)} 관리자 계정</h2>
-    <p class="meta">업체 담당자가 <b>사이트 주소/xms/</b> 에서 이 계정으로 로그인해 회원·게시판·메뉴를 관리합니다 (xms 관리자 등급 회원).</p>
+    <p class="meta">업체 담당자가 <b>사이트 주소/xms/</b> 에서 이 계정으로 로그인해 회원·게시판·메뉴를 관리합니다 (xms 관리자 등급 회원). 홈페이지 로그인도 같은 계정입니다.</p>
     <div class="sub-list" data-list></div>
     <form>
-      <div class="row2">
-        <label class="field"><span>아이디</span><input class="input" name="username" required autocomplete="off" pattern="[A-Za-z0-9_\\-]{4,50}"></label>
-        <label class="field"><span>이름</span><input class="input" name="name" autocomplete="off" placeholder="홍길동"></label>
-      </div>
-      <label class="field"><span>비밀번호</span><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password">
+      <label class="field"><span>아이디(이메일) <em class="req">*</em></span><input class="input" name="username" type="email" required autocomplete="off" placeholder="name@example.com">
+        <small>홈페이지 회원가입처럼 이메일이 아이디가 됩니다.</small></label>
+      <div data-fields></div>
+      <label class="field"><span>비밀번호 <em class="req">*</em></span><input class="input" name="password" type="password" minlength="8" required autocomplete="new-password">
         <small>8자 이상. 업체 담당자에게 따로 알려 주세요.</small></label>
       <p class="err" role="alert"></p>
       <div class="dlg-foot"><button class="btn" type="button" data-close>닫기</button><button class="btn primary" type="submit">계정 추가</button></div>
     </form>`, (dlg) => {
     const listEl = dlg.querySelector('[data-list]');
+    const fieldsEl = dlg.querySelector('[data-fields]');
+    let drawn = false;
     const load = async () => {
-      const admins = await api(`/sites/${site.id}/admins`);
+      const { admins, fields } = await api(`/sites/${site.id}/admins`);
+      if (!drawn) { fieldsEl.innerHTML = fields.map(signupFieldHtml).join(''); drawn = true; }
       listEl.innerHTML = admins.map((a) => `<div class="sub-row"><span><b>${esc(a.username)}</b> ${esc(a.name)}</span>
         <button class="btn sm danger" type="button" data-del="${a.id}">삭제</button></div>`).join('')
         || '<div class="sub-row"><span>아직 계정이 없습니다.</span></div>';
@@ -392,7 +411,12 @@ function adminsDialog(site) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
-        await api(`/sites/${site.id}/admins`, { method: 'POST', data: formData(form) });
+        const data = formData(form);
+        form.querySelectorAll('[data-group]').forEach((g) => { // 여러 개 고르는 항목은 목록으로
+          const on = [...g.querySelectorAll('input:checked')].map((i) => i.value);
+          data[g.dataset.group] = g.querySelector('input[type=checkbox]') ? on : (on[0] || '');
+        });
+        await api(`/sites/${site.id}/admins`, { method: 'POST', data });
         form.reset();
         toast('계정을 추가했습니다.');
         await load();
