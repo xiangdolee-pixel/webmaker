@@ -127,7 +127,8 @@ export const BUILTIN_FIELDS = [
   { key: 'email', label: '이메일', type: 'TEXT', builtin: true },
   { key: 'nickname', label: '닉네임', type: 'TEXT', builtin: true },
 ];
-const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'OPTIONAL', email: 'OPTIONAL', nickname: 'EXCLUDED' };
+const DEFAULT_MODES = { name: 'REQUIRED', mobile: 'REQUIRED', email: 'OPTIONAL', nickname: 'EXCLUDED' };
+export const LOCKED_REQUIRED = ['name', 'mobile'];
 export const MEMBER_COLUMNS = ['name', 'nickname', 'email', 'mobile', 'phone'];
 
 export async function siteSettings(db, site) {
@@ -141,7 +142,8 @@ export async function siteSettings(db, site) {
   // 예전 기본 제공이던 "교회"(church)는 뺐다 (사용자 지시 2026-11-03). 직접 추가한 항목(custom)은 남긴다.
   // 기본 제공이던 "전화"(phone)도 뺐다 — 휴대전화만 둔다 (사용자 지시 2026-11-04). 이미 받은 값(members.phone)은 DB 에 그대로.
   fields = fields.filter((f) => !((f.key === 'church' || f.key === 'phone') && !f.custom));
-  fields = fields.map((f) => ({ ...f, builtin: BUILTIN_FIELDS.some((b) => b.key === f.key) }));
+  // 이름 · 휴대전화는 모든 사이트에서 늘 필수 (사용자 지시 2026-11-04 — 회원가입 · xim 관리자 등록 모두)
+  fields = fields.map((f) => ({ ...f, builtin: BUILTIN_FIELDS.some((b) => b.key === f.key), ...(LOCKED_REQUIRED.includes(f.key) ? { mode: 'REQUIRED' } : {}) }));
   fields.sort((a, b) => a.sort - b.sort);
   return { levelNames, fields };
 }
@@ -273,6 +275,7 @@ export function memberValues(fields, raw, isSignup) {
       if (f.type === 'DATE' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw bad(`${f.label}은(는) 날짜로 넣어 주세요.`);
       if (f.key === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw bad('이메일 주소를 확인해 주세요.');
       if (f.key === 'mobile' || f.key === 'phone') v = v.replace(/\D/g, '').slice(0, 15);
+      if (f.key === 'mobile' && v.length < 9) throw bad(`${f.label} 번호를 확인해 주세요.`);
     }
     if (MEMBER_COLUMNS.includes(f.key)) cols[f.key] = v; else extra[f.key] = v;
   }

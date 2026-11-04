@@ -3,7 +3,7 @@ import { removePostFiles, claimForRequest, uploadIdsIn } from './uploads.js';
 import { deleteRequest } from '../../xim/_worker/request-files.js'; // xim 과 같은 코드
 import {
   DAY, now, bad, forbidden, notFound, json, str, body, audit, isAdmin, siteSettings, saveSettings, BUILTIN_FIELDS,
-  MEMBER_COLUMNS, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
+  MEMBER_COLUMNS, LOCKED_REQUIRED, maskFrom, levelsOf, ALL_LEVELS, newPassword, hashPassword, sameText, sanitizeHtml, HttpError, ensureDocs,
 } from './lib.js';
 import { settingsApi } from './site-meta.js';
 import { usageOf } from './usage.js';
@@ -504,7 +504,7 @@ async function fieldUsage(db, site, fields) {
 function normField(f, sort) {
   const label = str(f.label, 30);
   if (!label) throw bad('이름표를 넣어 주세요.');
-  const mode = f.key === 'name' ? 'REQUIRED' : (MODES.includes(f.mode) ? f.mode : 'OPTIONAL');
+  const mode = LOCKED_REQUIRED.includes(f.key) ? 'REQUIRED' : (MODES.includes(f.mode) ? f.mode : 'OPTIONAL');
   const type = FIELD_TYPES.includes(f.type) ? f.type : 'TEXT';
   let options;
   if (['SELECT', 'RADIO', 'CHECKBOX'].includes(type)) {

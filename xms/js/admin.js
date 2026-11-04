@@ -330,7 +330,7 @@ async function fieldsPage() {
       <td><button type="button" class="handle" aria-label="끌어서 순서 바꾸기">⠿</button></td>
       <td><input class="input" name="label" value="${esc(f.label)}" maxlength="30" aria-label="이름표"><small>키 ${esc(f.key)} <span class="tag off-tag">안 받음 — 가입 화면에 안 나옴</span></small></td>
       <td data-l="종류">${f.builtin ? '<span class="tag blue">기본 제공</span>' : `<span class="tag">${TYPE_LABEL[f.type]}</span>`}${f.options ? `<small>${esc(f.options.join(' · '))}</small>` : ''}</td>
-      <td data-l="받기"><select class="input" name="mode"${f.key === 'name' ? ' disabled' : ''}>${Object.entries(MODE_LABEL).map(([k, v]) => `<option value="${k}"${k === f.mode ? ' selected' : ''}>${v}</option>`).join('')}</select>
+      <td data-l="받기"><select class="input" name="mode"${f.key === 'name' || f.key === 'mobile' ? ' disabled' : ''}>${Object.entries(MODE_LABEL).map(([k, v]) => `<option value="${k}"${k === f.mode ? ' selected' : ''}>${v}</option>`).join('')}</select>
         <small class="warn-txt" hidden></small></td>
       <td data-l="입력한 회원">${f.used}명 / ${d.total}명</td>
       <td><div class="mng">${f.options ? '<button type="button" class="btn sm" data-opts>보기 고치기</button>' : ''}${f.builtin ? '' : '<button type="button" class="btn sm danger" data-del>삭제</button>'}</div></td>
@@ -370,7 +370,7 @@ async function fieldsPage() {
     e.preventDefault();
     const list = $$('#frows tr').map((tr) => {
       const f = fields.find((x) => x.key === tr.dataset.id);
-      return { key: f.key, label: tr.querySelector('[name=label]').value, mode: f.key === 'name' ? 'REQUIRED' : tr.querySelector('select').value, options: f.options };
+      return { key: f.key, label: tr.querySelector('[name=label]').value, mode: f.key === 'name' || f.key === 'mobile' ? 'REQUIRED' : tr.querySelector('select').value, options: f.options };
     });
     busy(form.querySelector('[type=submit]'), null, async () => {
       await api('/fields', { method: 'PUT', data: { fields: list } });
