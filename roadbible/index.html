@@ -2790,7 +2790,19 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     if(!user){location.href="/member/login";return;}
     pop&&pop.classList.contains("open")?closePop():openPop();
   };
+  /* 로그아웃하면 이 기기의 내 기록을 비운다(서버에는 그대로 → 다시 로그인하면 돌아옴).
+     rb.owner = 지금 이 기기 기록의 주인(로그인 아이디). 다른 곳(계정 메뉴 · 다른 탭)에서 로그아웃했거나
+     다른 사람이 로그인하면, 다음에 열 때 이걸 보고 비운다. 설정 · 읽던 위치는 기기 것이라 남긴다. */
+  const DATA_KEYS=["marks","markt","markdel","hl","hlt","hldel","qthl","qthldel","stars","starat","stardel","reads","readt","plan","plant"];
+  function wipe(){
+    clearTimeout(timer);
+    marks=[];markt={};markdel={};hls={};hlt={};hldel={};qthl={};qthldel={};
+    stars=[];starAt={};starDel={};reads={};readt={};plan={};plant={};
+    for(const k of DATA_KEYS.concat("owner"))try{localStorage.removeItem("rb."+k)}catch(e){}
+    refreshPlanViews();applySettings();render(curPage);
+  }
   function setUser(u){
+    if(!u&&user)wipe();   // 로그인돼 있다가 풀림(로그아웃 · 다른 곳에서 로그아웃) → 비움
     user=u;
     acctBtn.classList.toggle("on",!!u);
     acctBtn.setAttribute("aria-label",u?"내 계정":"로그인");
@@ -2837,7 +2849,10 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     try{
       const r=await fetch("/xms-api/me",{credentials:"same-origin",cache:"no-store"});
       const me=r.ok?await r.json():{guest:true};
-      if(!me.login_id){setUser(null);return;}
+      const owner=store.get("owner");
+      if(!me.login_id){if(owner)wipe();setUser(null);return;}
+      if(owner&&owner!==me.login_id)wipe();   // 다른 사람 기록이 남아 있으면 비우고 내 것을 받는다
+      origSet("owner",me.login_id);
       setUser(me);
       /* 로그아웃을 누르기 전까지 로그인이 풀리지 않게: 열 때마다 로그인 기한을 다시 늘린다 */
       fetch("/xms-api/keep",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});
@@ -2849,7 +2864,9 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
 
   btn.onclick=()=>{ if(!user){location.href="/member/login";return;} logout(); };
   async function logout(){
-    if(!await askConfirm("로그아웃할까요?\n이 기기의 형광펜·가름끈은 그대로 남습니다."))return;
+    if(!await askConfirm("로그아웃할까요?\n이 기기에서는 형광펜·가름끈·별표·읽은 기록이 지워지고,\n다시 로그인하면 그대로 돌아옵니다."))return;
+    clearTimeout(timer);
+    try{await push();}catch(e){}   // 아직 안 올라간 변경을 먼저 서버에
     try{await fetch("/xms-api/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});}catch(e){}
     setUser(null);toast("로그아웃했습니다");
   }
