@@ -285,6 +285,17 @@ if ((!CONNECT || OWN_XIM) && fs.existsSync(WORKER)) {
     // assets 설정(run_worker_first 등)은 덮어쓰지 않고 합친다
     if (b.assets) { Object.assign(config.assets, b.assets); delete b.assets; }
     Object.assign(config, b);
+    // xim 연결 사이트: 'Worker 를 거치지 않는' 예외(!패턴)가 xms 주소까지 잡으면 파비콘 · 로그인 등이 404 가 된다
+    //   (예: "!/*.png" 의 * 는 / 도 넘어가 /xms/file/favicon-32.png 까지 잡았다 — 2026-11-04 슈가브레이크 파비콘이 xim 에 안 보임)
+    if (OWN_XIM) {
+      const glob = (g) => new RegExp('^' + g.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$');
+      const probes = ['/xms/file/favicon-32.png', '/xms/js/account.js', '/xms/css/account.css', '/member/login', '/board/x', '/xms-api/me'];
+      for (const pat of config.assets.run_worker_first || []) {
+        if (!String(pat).startsWith('!')) continue;
+        const hit = probes.find((u) => glob(String(pat).slice(1)).test(u));
+        if (hit) { console.error(`[build] run_worker_first 의 "${pat}" 이 xms 주소 ${hit} 까지 Worker 를 건너뛰게 합니다 — 파일 이름으로 좁혀 주세요.`); process.exit(1); }
+      }
+    }
   }
   console.log(`[build] ${slug}/_worker/index.js 를 Worker 로 함께 올립니다.`);
 }
