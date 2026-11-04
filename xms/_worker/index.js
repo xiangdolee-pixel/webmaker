@@ -15,7 +15,7 @@ import { adminApi } from './admin-api.js';
 import { publicApi, publicPage, visibleMenus } from './public.js';
 import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
-import { uploadApi, serveUpload } from './uploads.js';
+import { uploadApi, serveUpload, avatarOf } from './uploads.js';
 import { embedCss } from './css-scope.js';
 import { recordVisit } from './visits.js';
 
@@ -108,7 +108,7 @@ export class Cms extends WorkerEntrypoint {
           data = { at: Date.now(), menu, head, popups };
           if (me.level !== 1) headCache.set(key, data);
         }
-        const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1 };
+        const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1, avatar: avatarOf(me.member) };
         return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }

@@ -5,7 +5,7 @@ import {
   memberValues, uniqueProblem,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
-import { postAttachments, syncPostFiles, removePostFiles } from './uploads.js';
+import { postAttachments, syncPostFiles, removePostFiles, setAvatar, avatarOf } from './uploads.js';
 import { sendSignupCode, verifySignupCode, takeTicket, turnstileKeys } from './signup.js';
 
 const LOCK_AFTER = 5;
@@ -123,19 +123,41 @@ const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10
 const pwInput = (name, auto, extra = '') => `<span class="pw-wrap"><input class="input" type="password" name="${name}" autocomplete="${auto}"${extra}>
   <button type="button" class="pw-eye" data-pw-eye aria-label="비밀번호 보기" aria-pressed="false">${EYE}</button></span>`;
 
+// ───────── 회원 화면 (모든 사이트 공통 · 사이트 틀 안에 들어간다) ─────────
+//   카드 하나(.mb-card) 안에 머리(아이콘 · 제목 · 설명) → 입력 묶음 → 큰 버튼 → 아래 링크. 강조색은 사이트의 --brand.
+const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4" fill="currentColor"/><path d="M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7" fill="currentColor"/></svg>';
+const ICONS = {
+  lock: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>',
+  user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-3.8 3.8-6 7.5-6s6.7 2.2 7.5 6"/></svg>',
+  cam: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>',
+};
+const mbHead = (icon, title, sub) => `<header class="mb-head"><span class="mb-ico">${ICONS[icon]}</span><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</header>`;
+// 프로필 사진 동그라미 (사진이 없으면 사람 모양)
+const avatarHtml = (src, cls = '') => `<span class="mb-avatar ${cls}" data-avatar-view>${src ? `<img src="${esc(src)}" alt="">` : PERSON_SVG}</span>`;
+// 사진 고르기 (가입 2단계 · 마이페이지)
+const avatarPick = (src, note) => `<div class="mb-pick" data-avatar-pick>
+    <button type="button" class="mb-pick-btn" data-avatar-btn aria-label="프로필 사진 고르기">${avatarHtml(src, 'lg')}<span class="mb-cam">${ICONS.cam}</span></button>
+    <div class="mb-pick-txt"><b>프로필 사진</b><small>${note}</small>
+      <span class="mb-pick-acts"><button type="button" class="linkish" data-avatar-btn>${src ? '바꾸기' : '사진 고르기'}</button><button type="button" class="linkish danger" data-avatar-clear${src ? '' : ' hidden'}>빼기</button></span></div>
+    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-avatar-file hidden>
+  </div>`;
+
 async function loginPage(ctx) {
   if (ctx.me.kind === 'member') return Response.redirect(`${ctx.url.origin}/member/mypage`, 302);
   const next = safeNext(ctx.url.searchParams.get('next'));
-  return page(ctx, '로그인', `<section class="pub-box narrow">
-    <h1>로그인</h1>
-    <form data-form="login" data-next="${esc(next)}">
-      <label class="field"><span>이메일(아이디)</span><input class="input" name="login_id" autocomplete="username" required maxlength="254"></label>
-      <label class="field"><span>비밀번호</span>${pwInput('password', 'current-password', ' required')}</label>
+  return page(ctx, '로그인', `<section class="mb">
+  <div class="mb-card">
+    ${mbHead('lock', '로그인', '이메일과 비밀번호로 로그인하세요.')}
+    <form data-form="login" data-next="${esc(next)}" class="mb-form">
+      <label class="field"><span>이메일(아이디)</span><input class="input" name="login_id" type="email" autocomplete="username" required maxlength="254" placeholder="name@example.com"></label>
+      <label class="field"><span>비밀번호</span>${pwInput('password', 'current-password', ' required placeholder="비밀번호"')}</label>
       <p class="err" role="alert"></p>
-      <button class="btn primary wide" type="submit">로그인</button>
+      <button class="btn primary wide mb-go" type="submit">로그인</button>
     </form>
-    <p class="sub-links"><a href="/member/signup">회원가입</a><span>비밀번호를 잊으셨으면 관리자에게 새 비밀번호를 받으세요.</span></p>
-  </section>`, { noindex: true });
+    <div class="mb-foot"><span>아직 회원이 아니신가요?</span><a href="/member/signup">회원가입</a></div>
+  </div>
+  <p class="mb-note">비밀번호를 잊으셨으면 사이트 관리자에게 새 비밀번호를 받으세요.</p>
+</section>`, { noindex: true });
 }
 
 async function signupPage(ctx) {
@@ -144,42 +166,47 @@ async function signupPage(ctx) {
   const { fields } = await siteSettings(env.DB, site);
   const docs = await latestDocs(env.DB, site, env);
   const agree = (d, key, label) => (d ? `<div class="agree-row"><label class="check"><input type="checkbox" name="agree_${key}" required> ${label} 동의 <em class="req">(필수)</em></label>
-    <button type="button" class="linkish" data-doc="${key}">전문 보기</button><template id="doc-${key}">${d.content}</template></div>` : '');
+    <button type="button" class="linkish" data-doc="${key}">보기</button><template id="doc-${key}">${d.content}</template></div>` : '');
   const agreeBox = docs.TERMS || docs.PRIVACY ? `<div class="agree">
-      <label class="check all"><input type="checkbox" data-agree-all> 아래 내용에 모두 동의합니다</label>
+      <label class="check all"><input type="checkbox" data-agree-all> 모두 동의합니다</label>
       ${agree(docs.TERMS, 'terms', '이용약관')}${agree(docs.PRIVACY, 'privacy', '개인정보 처리방침')}</div>` : '';
   const tk = (await turnstileKeys(env, site)).sitekey;
-  // 1단계: 이메일 → 6자리 번호 / 2단계: 비밀번호 · 이름 · 닉네임 · 휴대전화 … (이메일 칸은 1단계에서 받았으니 뺀다)
-  return page(ctx, '회원가입', `<section class="pub-box narrow">
-    <h1>회원가입</h1>
-    <ol class="steps" aria-label="가입 단계"><li class="on" data-step-dot="1">이메일 인증</li><li data-step-dot="2">정보 입력</li></ol>
-    <form data-form="signup-code" data-step="1">
+  // 1단계: 이메일 → 6자리 번호 / 2단계: 사진(선택) · 비밀번호 · 이름 · 휴대전화 … (이메일 칸은 1단계에서 받았으니 뺀다)
+  return page(ctx, '회원가입', `<section class="mb">
+  <div class="mb-card">
+    ${mbHead('user', '회원가입', '이메일 인증 뒤 정보를 넣으면 가입이 끝나요.')}
+    <ol class="steps" aria-label="가입 단계"><li class="on" data-step-dot="1"><i></i><span>이메일 인증</span></li><li data-step-dot="2"><i></i><span>정보 입력</span></li></ol>
+    <form data-form="signup-code" data-step="1" class="mb-form">
       <label class="field"><span>이메일 <em class="req">*</em></span>
         <span class="row-input"><input class="input" type="email" name="email" autocomplete="email" required maxlength="254" placeholder="name@example.com">
-        <button class="btn" type="submit">인증번호 받기</button></span>
-        <small>이 이메일이 아이디가 됩니다. 메일로 온 6자리 번호를 넣어 주세요.</small></label>
+        <button class="btn primary" type="submit">인증번호 받기</button></span>
+        <small>이 이메일이 아이디가 됩니다.</small></label>
       ${tk ? `<div class="cf-turnstile" data-sitekey="${esc(tk)}" data-language="ko" data-size="flexible"></div>
       <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>` : ''}
       <p class="err" role="alert"></p>
     </form>
-    <form data-form="signup-verify" data-step="1" hidden>
+    <form data-form="signup-verify" data-step="1" class="mb-form" hidden>
       <label class="field"><span>인증번호 <em class="req">*</em> <b class="timer" data-timer></b></span>
         <span class="row-input"><input class="input code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="6자리 숫자">
         <button class="btn primary" type="submit">확인</button></span>
         <small>메일이 안 보이면 스팸함도 봐 주세요. <button type="button" class="linkish" data-resend>다시 받기</button></small></label>
       <p class="err" role="alert"></p>
     </form>
-    <form data-form="signup" data-step="2" hidden>
-      <div class="field"><span>이메일(아이디)</span><p class="done-email"><b data-email></b> <span class="tag green">인증됨</span></p></div>
-      <label class="field"><span>비밀번호 <em class="req">*</em></span>${pwInput('password', 'new-password', ' required minlength="8" maxlength="200"')}<small>8자 이상</small></label>
-      <label class="field"><span>비밀번호 확인 <em class="req">*</em></span>${pwInput('password2', 'new-password', ' required')}<small data-pw-match></small></label>
-      ${fields.filter((f) => f.mode !== 'EXCLUDED' && f.key !== 'email').map((f) => fieldInput(f)).join('')}
+    <form data-form="signup" data-step="2" class="mb-form" hidden>
+      <div class="mb-verified"><span class="tag green">인증됨</span><b data-email></b></div>
+      ${avatarPick('', '선택 · 나중에 마이페이지에서 바꿀 수 있어요')}
+      <div class="mb-group">
+        <label class="field"><span>비밀번호 <em class="req">*</em></span>${pwInput('password', 'new-password', ' required minlength="8" maxlength="200" placeholder="8자 이상"')}</label>
+        <label class="field"><span>비밀번호 확인 <em class="req">*</em></span>${pwInput('password2', 'new-password', ' required placeholder="한 번 더"')}<small data-pw-match></small></label>
+      </div>
+      <div class="mb-group">${fields.filter((f) => f.mode !== 'EXCLUDED' && f.key !== 'email').map((f) => fieldInput(f)).join('')}</div>
       ${agreeBox}
       <p class="err" role="alert"></p>
-      <button class="btn primary wide" type="submit">가입하기</button>
+      <button class="btn primary wide mb-go" type="submit">가입하기</button>
     </form>
-    <p class="sub-links"><span>이미 가입하셨나요?</span><a href="/member/login">로그인</a></p>
-  </section>`, { noindex: true });
+    <div class="mb-foot"><span>이미 가입하셨나요?</span><a href="/member/login">로그인</a></div>
+  </div>
+</section>`, { noindex: true });
 }
 
 // 가입 완료 (모든 xim 사이트 공통)
@@ -188,14 +215,16 @@ async function welcomePage(ctx) {
   if (me.kind !== 'member') return Response.redirect(`${ctx.url.origin}/member/login`, 302);
   const info = await siteInfo(env, site);
   const m = me.member;
-  return page(ctx, '가입 완료', `<section class="pub-box narrow welcome">
-    <div class="welcome-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-    <h1>가입을 환영합니다</h1>
-    <p class="lede"><b>${esc(m.nickname || m.name)}</b>님, ${esc(info.name)} 회원이 되셨습니다.</p>
-    <dl class="kv welcome-kv"><dt>아이디</dt><dd>${esc(m.login_id)}</dd><dt>이름</dt><dd>${esc(m.name)}</dd><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></dl>
-    <p class="meta-note">지금 로그인돼 있습니다. 다음부터는 이메일과 비밀번호로 로그인하세요.</p>
-    <div class="actions center"><a class="btn primary" href="/">홈으로</a><a class="btn" href="/member/mypage">내 정보 보기</a></div>
-  </section>`, { noindex: true });
+  return page(ctx, '가입 완료', `<section class="mb">
+  <div class="mb-card center">
+    <div class="mb-welcome">${avatarHtml(avatarOf(m), 'xl')}<span class="welcome-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></div>
+    <h1 class="mb-title">가입을 환영합니다</h1>
+    <p class="mb-lede"><b>${esc(m.nickname || m.name)}</b>님, ${esc(info.name)} 회원이 되셨어요.</p>
+    <dl class="mb-kv"><div><dt>아이디</dt><dd>${esc(m.login_id)}</dd></div><div><dt>이름</dt><dd>${esc(m.name)}</dd></div><div><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></div></dl>
+    <p class="mb-note">지금 로그인돼 있어요. 다음부터는 이메일과 비밀번호로 로그인하세요.</p>
+    <div class="mb-acts"><a class="btn primary" href="/">홈으로</a><a class="btn" href="/member/mypage">마이페이지</a></div>
+  </div>
+</section>`, { noindex: true });
 }
 
 async function mypage(ctx) {
@@ -205,30 +234,53 @@ async function mypage(ctx) {
   const m = me.member;
   const extra = JSON.parse(m.extra || '{}');
   const val = (f) => (MEMBER_COLUMNS.includes(f.key) ? m[f.key] : extra[f.key]);
-  return page(ctx, '마이페이지', `<section class="pub-box narrow">
-    <h1>마이페이지</h1>
-    <dl class="kv"><dt>${m.login_id.includes('@') ? '이메일(아이디)' : '아이디'}</dt><dd>${esc(m.login_id)}</dd><dt>등급</dt><dd>${esc(levelNames[m.level])}</dd><dt>가입일</dt><dd>${fmtDate(m.created_at)}</dd></dl>
-    <h2>내 정보</h2>
-    <form data-form="profile">
-      ${fields.filter((f) => f.mode !== 'EXCLUDED' && !(f.key === 'email' && m.login_id.includes('@'))).map((f) => fieldInput(f, val(f))).join('')}
+  const av = avatarOf(m);
+  return page(ctx, '마이페이지', `<section class="mb wide">
+  <div class="mb-card mb-profile">
+    <div class="mb-pick" data-avatar-pick data-avatar-live>
+      <button type="button" class="mb-pick-btn" data-avatar-btn aria-label="프로필 사진 바꾸기">${avatarHtml(av, 'xl')}<span class="mb-cam">${ICONS.cam}</span></button>
+      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-avatar-file hidden>
+    </div>
+    <div class="mb-who">
+      <h1>${esc(m.nickname || m.name)}<span class="mb-level">${esc(levelNames[m.level])}</span></h1>
+      <p>${esc(m.login_id)}</p>
+      <p class="mb-since">${fmtDate(m.created_at).slice(0, 10)} 가입</p>
+      <span class="mb-pick-acts"><button type="button" class="linkish" data-avatar-btn>${av ? '사진 바꾸기' : '사진 넣기'}</button><button type="button" class="linkish danger" data-avatar-clear${av ? '' : ' hidden'}>사진 빼기</button></span>
+    </div>
+  </div>
+
+  <div class="mb-card">
+    <h2 class="mb-sec">내 정보</h2>
+    <form data-form="profile" class="mb-form">
+      <div class="mb-grid">${fields.filter((f) => f.mode !== 'EXCLUDED' && !(f.key === 'email' && m.login_id.includes('@'))).map((f) => fieldInput(f, val(f))).join('')}</div>
       <p class="err" role="alert"></p>
-      <button class="btn primary" type="submit">저장</button>
+      <div class="mb-acts end"><button class="btn primary" type="submit">저장</button></div>
     </form>
-    <h2>비밀번호 변경</h2>
-    <form data-form="password">
+  </div>
+
+  <div class="mb-card">
+    <h2 class="mb-sec">비밀번호 변경</h2>
+    <form data-form="password" class="mb-form">
       <label class="field"><span>지금 비밀번호</span>${pwInput('current', 'current-password', ' required')}</label>
-      <label class="field"><span>새 비밀번호</span>${pwInput('next', 'new-password', ' minlength="8" required')}<small>8자 이상</small></label>
-      <label class="field"><span>새 비밀번호 확인</span>${pwInput('next2', 'new-password', ' required')}</label>
+      <div class="mb-grid">
+        <label class="field"><span>새 비밀번호</span>${pwInput('next', 'new-password', ' minlength="8" required placeholder="8자 이상"')}</label>
+        <label class="field"><span>새 비밀번호 확인</span>${pwInput('next2', 'new-password', ' required')}</label>
+      </div>
       <p class="err" role="alert"></p>
-      <button class="btn" type="submit">비밀번호 바꾸기</button>
+      <div class="mb-acts end"><button class="btn" type="submit">비밀번호 바꾸기</button></div>
     </form>
-    <h2>회원 탈퇴</h2>
-    <form data-form="withdraw">
+  </div>
+
+  <details class="mb-card mb-danger">
+    <summary>회원 탈퇴</summary>
+    <form data-form="withdraw" class="mb-form">
+      <p class="mb-note left">탈퇴하면 이 아이디로 다시 로그인할 수 없어요. 쓴 글과 댓글은 그대로 남습니다.</p>
       <label class="field"><span>탈퇴 사유 (선택)</span><input class="input" name="reason" maxlength="200"></label>
       <p class="err" role="alert"></p>
-      <button class="btn danger" type="submit" data-confirm="정말 탈퇴할까요? 탈퇴하면 이 아이디로 로그인할 수 없습니다. 쓴 글과 댓글은 그대로 남습니다.">탈퇴하기</button>
+      <div class="mb-acts end"><button class="btn danger" type="submit" data-confirm="정말 탈퇴할까요? 탈퇴하면 이 아이디로 로그인할 수 없습니다. 쓴 글과 댓글은 그대로 남습니다.">탈퇴하기</button></div>
     </form>
-  </section>`, { noindex: true });
+  </details>
+</section>`, { noindex: true });
 }
 
 async function docPage(ctx, type) {
@@ -479,7 +531,12 @@ export async function publicApi(ctx) {
   }
   if (path === '/me' && method === 'GET') {
     if (me.kind === 'guest') return json({ guest: true });
-    return json(me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, login_id: me.member.login_id, admin: isAdmin(me) });
+    return json(me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, login_id: me.member.login_id, admin: isAdmin(me), avatar: avatarOf(me.member) });
+  }
+  // 프로필 사진 빼기 (올리기는 POST /xms-api/uploads?for=avatar)
+  if (path === '/avatar' && method === 'DELETE') {
+    if (me.kind !== 'member') throw new HttpError(401, '로그인이 필요합니다.');
+    return setAvatar(env, site, me.member, '');
   }
 
   if (path === '/login' && method === 'POST') {

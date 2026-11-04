@@ -44,11 +44,17 @@
     }
     const admin = !!me.admin;
     if (!el.querySelector('.xa-avatar')) el.innerHTML = `<button type="button" class="xa-avatar" aria-haspopup="menu" aria-expanded="false" aria-label="내 계정 메뉴">${PERSON}</button>`;
+    // 프로필 사진이 있으면 사람 모양 대신 사진 (주소는 /xms/upload/<임의 id> 만 받는다)
+    if (me.avatar && /^\/xms\/upload\/[0-9a-f]{32}$/.test(me.avatar)) {
+      const b = el.querySelector('.xa-avatar');
+      b.innerHTML = '<img src="' + me.avatar + '" alt="">';
+      b.classList.add('has-img');
+    }
     const menu = document.createElement('div');
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
     // 운영자 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
-    menu.innerHTML = `${admin ? '<a role="menuitem" href="/xms/">관리</a><a role="menuitem" href="/xms/#/requests">유지보수 요청</a>' : ''}
+    menu.innerHTML = `${me.name ? `<div class="xa-me"><b>${String(me.name).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';')}</b> 님</div>` : ''}${admin ? '<a role="menuitem" href="/xms/">관리</a><a role="menuitem" href="/xms/#/requests">유지보수 요청</a>' : ''}
       ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
       <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
     document.body.append(menu);

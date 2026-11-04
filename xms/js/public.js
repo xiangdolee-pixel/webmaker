@@ -1,5 +1,6 @@
 // xms 방문자 화면: 메뉴 열기 · 로그인 · 가입 · 마이페이지 · 글쓰기 · 댓글
-import { $, $$, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
+import { $, $, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
+import { shrinkImage } from './editor.js';
 
 const api = makeApi('/xms-api');
 
@@ -56,7 +57,7 @@ onForm('login', async (form, data) => {
 const signup = { email: '', ticket: '', timer: 0 };
 const stepTo = (n) => {
   $$('form[data-step]').forEach((f) => { f.hidden = f.dataset.step !== String(n) || (n === 1 && f.dataset.form === 'signup-verify' && !signup.email); });
-  $$('[data-step-dot]').forEach((d) => d.classList.toggle('on', +d.dataset.stepDot <= n));
+  $('[data-step-dot]').forEach((d) => { d.classList.toggle('on', +d.dataset.stepDot <= n); d.classList.toggle('done', +d.dataset.stepDot < n); });
 };
 function startTimer(sec) {
   clearInterval(signup.timer);
@@ -113,6 +114,8 @@ onForm('signup', async (form, data) => {
   checkGroups(form);
   delete data.password2;
   await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
+  // 가입하면 바로 로그인돼 있다 → 고른 프로필 사진을 이어서 올린다 (실패해도 가입은 끝났으니 넘어간다)
+  if (avatar.pending) { try { await uploadAvatar(avatar.pending); } catch (e) { /* 마이페이지에서 다시 */ } }
   location.href = '/member/welcome';
 });
 
@@ -276,3 +279,61 @@ $$('form[data-form=signup] [name=nickname], form[data-form=profile] [name=nickna
     }, 350);
   });
 });
+
+// ───── 프로필 사진 ─────
+//   글 사진과 같이 WEBP 로 바꿔 올린다(긴 변 512px). 가입 화면은 골라 두었다가 가입 뒤에, 마이페이지는 고르자마자 올린다.
+const avatar = { pending: null, url: '' };
+async function uploadAvatar(file) {
+  const res = await fetch('/xms-api/uploads?for=avatar&kind=IMAGE', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': file.type || 'image/webp', 'X-File-Name': encodeURIComponent(file.name || 'avatar.webp') },
+    body: file,
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || '사진을 올리지 못했습니다.');
+  return d.avatar;
+}
+const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4" fill="currentColor"/><path d="M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7" fill="currentColor"/></svg>';
+// 화면 안 모든 동그라미(머리글 계정 버튼 포함)를 같은 사진으로
+function showAvatar(src) {
+  $$('[data-avatar-view], .xa-avatar').forEach((el) => {
+    el.innerHTML = src ? '<img src="' + src + '" alt="">' : PERSON;
+    el.classList.toggle('has-img', !!src);
+  });
+  $$('[data-avatar-clear]').forEach((b) => { b.hidden = !src; });
+  $$('.mb-pick-acts [data-avatar-btn]').forEach((b) => { b.textContent = src ? (b.closest('.mb-who') ? '사진 바꾸기' : '바꾸기') : (b.closest('.mb-who') ? '사진 넣기' : '사진 고르기'); });
+}
+const pick = $('[data-avatar-pick]');
+if (pick) {
+  const live = pick.hasAttribute('data-avatar-live');
+  const input = $('[data-avatar-file]', pick);
+  $$('[data-avatar-btn]').forEach((b) => b.addEventListener('click', () => input.click()));
+  input.addEventListener('change', async () => {
+    const f = input.files[0];
+    input.value = '';
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { toast('사진 파일을 골라 주세요.'); return; }
+    try {
+      const small = await shrinkImage(f, { max: 512, maxBytes: 160000 });
+      if (!live) { // 가입 화면: 미리 보기만
+        avatar.pending = small;
+        if (avatar.url) URL.revokeObjectURL(avatar.url);
+        avatar.url = URL.createObjectURL(small);
+        showAvatar(avatar.url);
+        return;
+      }
+      $$('[data-avatar-view]').forEach((el) => el.classList.add('busy'));
+      const url = await uploadAvatar(small);
+      showAvatar(url);
+      toast('프로필 사진을 바꿨습니다.');
+    } catch (e) {
+      toast(e.message || '사진을 올리지 못했습니다.');
+    } finally {
+      $$('[data-avatar-view]').forEach((el) => el.classList.remove('busy'));
+    }
+  });
+  $$('[data-avatar-clear]').forEach((b) => b.addEventListener('click', async () => {
+    if (!live) { avatar.pending = null; showAvatar(''); return; }
+    try { await api('/avatar', { method: 'DELETE' }); showAvatar(''); toast('프로필 사진을 뺐습니다.'); } catch (e) { toast(e.message); }
+  }));
+}

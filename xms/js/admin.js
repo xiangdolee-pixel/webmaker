@@ -264,7 +264,8 @@ async function membersPage(qs) {
 }
 function memberDetail(m, fields) {
   const val = (f) => { const v = ['name', 'nickname', 'email', 'mobile', 'phone'].includes(f.key) ? m[f.key] : m.extra[f.key]; return Array.isArray(v) ? v.join(', ') : (f.key === 'mobile' || f.key === 'phone' ? fmtPhone(v) : v); };
-  openDialog(`<h2>${esc(m.name)}</h2><dl class="kv"><dt>아이디</dt><dd>${esc(m.login_id)}</dd><dt>등급</dt><dd>${esc(LV(m.level))}</dd>
+  const av = /^\/xms\/upload\/[0-9a-f]{32}$/.test(m.extra?.avatar || '') ? m.extra.avatar : '';
+  openDialog(`<h2 class="mem-h">${av ? `<img class="mem-av" src="${av}" alt="">` : ''}${esc(m.name)}</h2><dl class="kv"><dt>아이디</dt><dd>${esc(m.login_id)}</dd><dt>등급</dt><dd>${esc(LV(m.level))}</dd>
     ${fields.map((f) => `<dt>${esc(f.label)}${f.mode === 'EXCLUDED' ? ' (안 받음)' : ''}</dt><dd>${esc(val(f)) || '<span class="dash">—</span>'}</dd>`).join('')}
     <dt>가입일</dt><dd>${fmtDate(m.created_at, true)}</dd><dt>최근 로그인</dt><dd>${m.last_login_at ? fmtDate(m.last_login_at, true) : '—'}</dd></dl>
     <div class="dlg-foot"><button class="btn primary" type="button" data-close>닫기</button></div>`);
@@ -570,7 +571,7 @@ async function menusPage() {
   });
   walk(null, 0, false, false);
   const where = (m) => (m.menu_type === 'BOARD' ? `/board/${m.board_slug || '?'}` : m.path || '대분류 (주소 없음)');
-  main.innerHTML = `${head('사이트', '메뉴', '홈페이지 위쪽 메뉴를 정리합니다. 이름과 순서는 언제든 바꿀 수 있고 배포가 필요 없습니다. ⠿ 를 위아래로 끌면 순서, 오른쪽으로 끌면 위 메뉴 아래로 들어갑니다.', '<a class="btn primary" href="#/menus/new">+ 메뉴 추가</a>')}
+  main.innerHTML = `${head('사이트', '메뉴', '홈페이지 위쪽 메뉴를 정리합니다. 이름과 순서는 언제든 바꿀 수 있고 배포가 필요 없습니다. ⠿ 를 위아래로 끌면 순서가 바뀌고, 끄는 채로 오른쪽으로 밀면 바로 위 메뉴 안(하위 메뉴)으로, 왼쪽으로 밀면 밖으로 나옵니다. 끄는 동안 놓일 자리에 안내선과 ‘어디로 들어가는지’가 보입니다.', '<a class="btn primary" href="#/menus/new">+ 메뉴 추가</a>')}
     <div class="panel" id="mtree">${rows.length ? rows.map(({ m, depth, hiddenAbove, foldedAbove, n }) => `
       <div class="tree-row${m.visible && !hiddenAbove ? '' : ' hid'}" data-id="${m.id}" data-depth="${depth}" data-type="${m.menu_type}" style="--d:${depth}"${foldedAbove ? ' hidden' : ''}>
         <button type="button" class="handle" aria-label="끌어서 옮기기">⠿</button>

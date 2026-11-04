@@ -4,12 +4,14 @@
 //   · nest 를 켜면 오른쪽으로 끌면 위 항목 아래로, 왼쪽으로 끌면 한 단계 밖으로(들여쓰기도 부드럽게).
 //   행: [data-id][data-depth]   손잡이: .handle
 //   onDrop([{ id, depth }...]) — 바뀐 전체 순서
+//   nest 일 때 끄는 동안: 놓일 자리에 들여쓴 안내선 + 글자(‘소개’ 안으로 · 맨 위 메뉴), 들어갈 위 메뉴는 색으로 표시
+//     guideLeft: 안내선 시작 x(0단계, 행 왼쪽에서 px)   labelOf(row): 안내 글자에 쓸 메뉴 이름
 const EASE = 'cubic-bezier(.22, .8, .24, 1)';
 const SLIDE_MS = 220;
 const SETTLE_MS = 240;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function sortable(box, { rowSel, nest = false, indent = 28, canParent = () => true, onDrop }) {
+export function sortable(box, { rowSel, nest = false, indent = 28, canParent = () => true, onDrop, guideLeft = 44, labelOf = (r) => (r.querySelector('b') || r).textContent.trim() }) {
   box.addEventListener('pointerdown', (e) => {
     const handle = e.target.closest('.handle');
     if (!handle || !box.contains(handle) || e.button > 0) return;
@@ -35,6 +37,33 @@ export function sortable(box, { rowSel, nest = false, indent = 28, canParent = (
     let originTop = block[0].getBoundingClientRect().top;
 
     document.body.classList.add('is-sorting');
+    // 안내선 (nest 일 때만)
+    let guide = null;
+    let parentRow = null;
+    if (nest) {
+      box.classList.add('sort-host');
+      guide = document.createElement('div');
+      guide.className = 'sort-guide';
+      guide.innerHTML = '<span></span>';
+      box.append(guide);
+    }
+    const showGuide = () => {
+      if (!guide) return;
+      const list = rows();
+      const at = list.indexOf(block[0]);
+      const d = +block[0].dataset.depth || 0;
+      let parent = null;
+      for (let k = at - 1; k >= 0 && d > 0; k--) if ((+list[k].dataset.depth || 0) === d - 1) { parent = list[k]; break; }
+      if (parentRow !== parent) { parentRow?.classList.remove('sort-parent'); parent?.classList.add('sort-parent'); parentRow = parent; }
+      const br = box.getBoundingClientRect();
+      const top = block[0].getBoundingClientRect().top - (parseFloat(block[0].dataset.ty) || 0) - br.top + box.scrollTop;
+      guide.style.transform = 'translateY(' + Math.round(top) + 'px)';
+      guide.style.left = (guideLeft + d * indent) + 'px';
+      const move = d > d0 ? '→ ' : d < d0 ? '← ' : '';
+      const name = parent ? labelOf(parent) : '';
+      guide.classList.toggle('in', d > 0);
+      guide.firstChild.textContent = d > 0 ? move + '‘' + (name.length > 16 ? name.slice(0, 15) + '…' : name) + '’ 안으로 (하위 메뉴)' : move + '맨 위 메뉴' + (d0 > 0 ? '로 꺼냄' : ' · 순서 바꾸기');
+    };
     block.forEach((r) => {
       r.classList.add('dragging');
       r.style.transition = reduced() ? 'none' : `padding-left 180ms ${EASE}`; // 위치는 바로 따라오고, 들여쓰기만 부드럽게
@@ -100,6 +129,7 @@ export function sortable(box, { rowSel, nest = false, indent = 28, canParent = (
       if (needMove) flip(() => block.forEach((r) => parent.insertBefore(r, target)));
       clampDepth();
       follow();
+      showGuide();
     };
 
     const up = () => {
@@ -107,6 +137,9 @@ export function sortable(box, { rowSel, nest = false, indent = 28, canParent = (
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
       document.body.classList.remove('is-sorting');
+      guide?.remove();
+      parentRow?.classList.remove('sort-parent');
+      box.classList.remove('sort-host');
       // 제자리로 부드럽게 내려앉기
       block.forEach((r) => {
         r.style.transition = reduced() ? 'none' : `transform ${SETTLE_MS}ms ${EASE}`;
@@ -125,6 +158,7 @@ export function sortable(box, { rowSel, nest = false, indent = 28, canParent = (
     document.addEventListener('pointerup', up);
     document.addEventListener('pointercancel', up);
     originTop = block[0].getBoundingClientRect().top;
+    showGuide();
   });
 }
 

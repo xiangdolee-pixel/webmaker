@@ -3,10 +3,13 @@
 //   주소: /xms/upload/<id>  (내려받기는 ?dl=1). id 는 추측할 수 없는 임의 값.
 //   용량: 사이트 전체 크기를 xim sites.used_mb 에 적고, quota_mb 를 넘으면 받지 않는다.
 //   주인: post_id > 0 = 그 글, post_id < 0 = 수정 요청(-요청번호), NULL = 아직 저장 안 한 글쓰기 중.
+//         프로필 사진 = AVATAR_BASE − 회원번호 (아주 작은 음수 — 수정 요청 번호와 겹치지 않고, 하루 지난 파일 정리에도 안 걸린다)
 //   지우기(저장 공간 아끼기, 사용자 지시 2026-11-03): 글에서 빼거나 글을 지우면 파일(R2)도 지운다. 저장 안 하고 하루 지난 것도 지운다.
 import { now, bad, forbidden, notFound, json, randomHex, HttpError, canBy } from './lib.js';
 
 const D1_MAX = 1400000;
+export const AVATAR_BASE = -2000000000;
+const AVATAR_MAX = 400000; // 프로필 사진은 화면에서 512px WEBP 로 줄여 올린다
 const R2_MAX = 20 * 1024 * 1024;
 const KINDS = ['IMAGE', 'FILE', 'INLINE'];
 const SAFE_INLINE = /^(image\/(png|jpeg|gif|webp)|application\/pdf)$/;
@@ -19,7 +22,11 @@ async function usage(env, site) {
 // POST /xms-api/uploads?board=<slug>&kind=IMAGE|FILE|INLINE  (본문 = 파일 그대로, 헤더 X-File-Name)
 export async function uploadApi(ctx) {
   const { request, env, site, me, url } = ctx;
-  if (url.searchParams.get('for') === 'request') {
+  const forAvatar = url.searchParams.get('for') === 'avatar';
+  if (forAvatar) {
+    // 프로필 사진 — 로그인한 회원 본인만
+    if (me.kind !== 'member') throw new HttpError(401, '로그인한 뒤 프로필 사진을 올릴 수 있습니다.');
+  } else if (url.searchParams.get('for') === 'request') {
     // 관리 화면 수정 요청에 붙이는 파일 — 관리자(레벨1) · 운영자만. 그 사이트 몫으로 저장돼 용량에 들어간다.
     if (me.level !== 1) throw forbidden('관리자만 올릴 수 있습니다.');
   } else {
@@ -34,8 +41,9 @@ export async function uploadApi(ctx) {
   try { name = decodeURIComponent(request.headers.get('X-File-Name') || ''); } catch { name = ''; }
   name = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').slice(0, 120) || 'file';
   if (kind !== 'FILE' && !SAFE_INLINE.test(mime)) throw bad('사진(PNG · JPG · GIF · WEBP) 이나 PDF 만 넣을 수 있습니다.');
+  if (forAvatar && !/^image\/(png|jpeg|gif|webp)$/.test(mime)) throw bad('프로필 사진은 PNG · JPG · GIF · WEBP 만 올릴 수 있습니다.');
   const buf = await request.arrayBuffer();
-  const max = env.FILES ? R2_MAX : D1_MAX;
+  const max = forAvatar ? AVATAR_MAX : env.FILES ? R2_MAX : D1_MAX;
   if (!buf.byteLength) throw bad('빈 파일입니다.');
   if (buf.byteLength > max) {
     throw bad(env.FILES ? '파일이 너무 큽니다 (20MB 까지).' : `파일이 너무 큽니다. 지금은 ${(D1_MAX / 1e6).toFixed(1)}MB 까지 올릴 수 있습니다.`);
@@ -59,8 +67,23 @@ export async function uploadApi(ctx) {
   await env.DB.prepare('INSERT INTO uploads (id, site, post_id, kind, name, mime, size, data, r2_key, created_by, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)')
     .bind(id, site, kind, name, mime, buf.byteLength, data, r2Key, me.kind === 'member' ? me.member.id : null, now()).run();
   await env.XIM_DB.prepare('UPDATE sites SET used_mb = ? WHERE slug = ?').bind(Math.round(((used + buf.byteLength) / 1048576) * 10) / 10, site).run();
+  if (forAvatar) return setAvatar(env, site, me.member, id);
   return json({ id, url: `/xms/upload/${id}`, name, size: buf.byteLength, mime, kind });
 }
+
+// 프로필 사진: 새 파일을 그 회원 몫으로 묶고(members.extra.avatar), 전에 쓰던 사진은 지운다. id 가 없으면 빼기.
+export async function setAvatar(env, site, member, id) {
+  const owner = AVATAR_BASE - member.id;
+  const extra = JSON.parse(member.extra || '{}');
+  if (id) {
+    await env.DB.prepare('UPDATE uploads SET post_id = ? WHERE id = ? AND site = ?').bind(owner, id, site).run();
+    extra.avatar = `/xms/upload/${id}`;
+  } else delete extra.avatar;
+  await env.DB.prepare('UPDATE members SET extra = ? WHERE id = ? AND site = ?').bind(JSON.stringify(extra), member.id, site).run();
+  await removeUploads(env, site, `post_id = ?${id ? ' AND id != ?' : ''}`, id ? [owner, id] : [owner]);
+  return json({ ok: true, avatar: extra.avatar || '' });
+}
+export const avatarOf = (member) => { try { return JSON.parse(member?.extra || '{}').avatar || ''; } catch { return ''; } };
 
 // 글 · 요청 본문에서 올린 파일 번호 찾기 (/xms/upload/<id>)
 export const uploadIdsIn = (...texts) => [...new Set(texts.join(' ').match(/\/xms\/upload\/([0-9a-f]{32})/g)?.map((x) => x.slice(-32)) || [])];
