@@ -376,7 +376,8 @@
       setFlash(c.price, tileFmt(kind, it.price), dir);
       c.last = it.price;
       c.chg.className = 'tile-chg ' + dirCls(it.change);
-      c.chg.textContent = it.change == null ? '' : arrow(it.change) + chgFmt(kind, Math.abs(it.change), it.price) + ' (' + fmtPct(it.ratio) + ')';
+      // 등락폭은 따로 감싸 둔다 — 칸이 좁으면 CSS 가 빼고 등락률만 보인다 (값은 숫자라 그대로 넣어도 안전)
+      c.chg.innerHTML = it.change == null ? '' : arrow(it.change) + '<span class="abs">' + chgFmt(kind, Math.abs(it.change), it.price) + ' </span><span class="pct">(' + fmtPct(it.ratio) + ')</span>';
       var t = it.tradedAt ? fmtTime(it.tradedAt) + ' 기준' : '';
       c.time.textContent = it.unit ? it.unit + (t ? ' · ' + t : '') : t;
     });

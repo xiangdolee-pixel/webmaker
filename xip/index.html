@@ -39,7 +39,7 @@
   </header>
 
   <main class="wrap">
-   <div class="dash">
+   <div class="dash" data-n="5">
    <div class="col" data-col="0">
     <section class="sec sec-hours" data-block="hours">
       <div class="hours" id="hours">
@@ -148,24 +148,6 @@
       </div>
     </section>
 
-    <section class="sec sec-macro" data-block="macro">
-      <div class="sec-head">
-        <h2 class="sec-title">미국 경제지표</h2>
-        <span class="sec-note">연준 · BLS · BEA · 예상치 Forex Factory</span>
-      </div>
-      <div class="card mc-card" id="macro">
-        <div class="mc-fed">
-          <div class="mc-rate"><span class="mc-k">연준 기준금리</span><b id="mc-rate">불러오는 중…</b><small id="mc-next"></small></div>
-          <div class="mc-fw" id="mc-fw"></div>
-        </div>
-        <table class="mc-table">
-          <thead><tr><th>지표</th><th>실제</th><th>예상</th><th>이전</th></tr></thead>
-          <tbody id="mc-rows"><tr class="mc-wait"><td colspan="4">불러오는 중…</td></tr></tbody>
-        </table>
-        <p class="list-note" id="mc-note">예상치는 발표 주에 Forex Factory 달력에서 받아 둔 값 · 본 적 없으면 —</p>
-      </div>
-    </section>
-
     <section class="sec sec-list" data-block="f13">
       <div class="sec-head">
         <h2 class="sec-title">13F 매수 종목</h2>
@@ -189,6 +171,25 @@
           <span class="f-wt">보유 비중</span>
         </div>
         <ol class="coin-list" id="f13"></ol>
+      </div>
+    </section>
+   </div>
+   <div class="col" data-col="4">
+    <section class="sec sec-macro" data-block="macro">
+      <div class="sec-head">
+        <h2 class="sec-title">미국 경제지표</h2>
+        <span class="sec-note">연준 · BLS · BEA · 예상치 Forex Factory</span>
+      </div>
+      <div class="card mc-card" id="macro">
+        <div class="mc-fed">
+          <div class="mc-rate"><span class="mc-k">연준 기준금리</span><b id="mc-rate">불러오는 중…</b><small id="mc-next"></small></div>
+          <div class="mc-fw" id="mc-fw"></div>
+        </div>
+        <table class="mc-table">
+          <thead><tr><th>지표</th><th>실제</th><th>예상</th><th>이전</th></tr></thead>
+          <tbody id="mc-rows"><tr class="mc-wait"><td colspan="4">불러오는 중…</td></tr></tbody>
+        </table>
+        <p class="list-note" id="mc-note">예상치는 발표 주에 Forex Factory 달력에서 받아 둔 값 · 본 적 없으면 —</p>
       </div>
     </section>
    </div>

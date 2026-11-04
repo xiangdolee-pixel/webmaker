@@ -12,7 +12,7 @@ const BLOCKS = {
 };
 const LISTS = ['top', 'coins', 'f13'];
 const COUNTS = [5, 10, 15, 20];
-const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'macro', 'f13']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
+const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'f13'], ['macro']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
 const KEY = 'xip:layout:v1';
 const MAXC = 5; // 칸은 1~5개 (칸 가장자리에 놓으면 새 칸)
 
@@ -74,6 +74,7 @@ function apply(l) {
     if (!c.hidden) shown++;
   });
   dash.style.setProperty('--cols', shown || 1);
+  dash.dataset.n = shown || 1;
   // 1200~1499 화면: 1~3열만 첫 줄에 (4열부터는 아래 줄 전체 폭)
   dash.style.setProperty('--cols3', cols.slice(0, 3).filter((c) => !c.hidden).length || 1);
   const cn = dash.querySelector('[data-coin-n]');
@@ -169,6 +170,7 @@ function applyEdit(l) {
   const cols = place(l);
   cols.forEach((c) => { c.hidden = false; });
   dash.style.setProperty('--cols', cols.length);
+  dash.dataset.n = cols.length;
   dash.style.setProperty('--cols3', Math.min(3, cols.length));
   Object.keys(BLOCKS).forEach((id) => {
     const s = sec(id);
