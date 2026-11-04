@@ -27,5 +27,3 @@ _src/
 .xim-connect.json
 
 # roadbible/bible-data.js(개역개정 본문)는 리포에 둔다 — 사용자가 대한성서공회에 무료 이용 문의, 라이선스 문제없다는 답을 받음(2026-11-04)
-# roadbible: 예전 구글(Firebase) 기록 옮겨오기용 설정 — 리포 밖
-roadbible/firebase-config.js

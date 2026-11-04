@@ -16,8 +16,7 @@
 <meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 본문 글꼴 후보(본명조·KoPub) — 보기설정에서 선택 시에만 실제 폰트 파일을 내려받음 -->
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200..900&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.2.5/index.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/css/batang.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/NanumMyeongjo/NanumMyeongjo.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/MaruBuri/MaruBuri.css">
@@ -111,14 +110,14 @@ header{
 .rh-in{max-width:640px;margin:0 auto;padding:5px var(--px) 0;position:relative}
 .rh-in>*{position:relative;z-index:1}   /* 시계·제목 줄이 진행 면 위에 오도록 */
 .runhead-btn{
-  display:inline-flex;align-items:baseline;gap:6px;max-width:calc(100% - 40px);min-width:0;   /* 우측 가름끈 자리 확보 */
-  overflow:hidden;padding:1px 0 2px;text-align:left;
+  display:inline-flex;align-items:baseline;gap:6px;max-width:calc(100% - 40px);min-width:0;   /* 왼쪽 가름끈 자리 확보 */
+  overflow:hidden;padding:1px 0 2px;text-align:right;
   position:relative;z-index:1;   /* 진행 면 위에 글자가 오도록 */
 }
 /* 이 장을 얼마나 읽었는지 — 러닝헤드 전체(시계 줄 포함) 뒤가 왼쪽부터 면으로 차오르고
    마지막 쪽에서 꽉 찬다(하단 메뉴 배경과 같은 방식). 장이 바뀌면 그 장의 첫 쪽 비율로 다시 시작.
    폭이 아니라 scaleX를 바꿔 부드럽게(리플로우 없이) 움직인다. */
-.rh-row{position:relative;padding:1px 0}
+.rh-row{position:relative;padding:1px 0;display:flex;justify-content:flex-end}
 .rh-fill{
   position:absolute;left:0;top:0;right:0;bottom:0;z-index:0;
   background:var(--gilt-soft);pointer-events:none;
@@ -138,7 +137,7 @@ header{
 .runhead-btn #rhPage{font-size:14px;font-weight:500} /* 제목과 같은 크기, 색은 회색 유지 */
 /* 인터넷 끊김 표시 — 러닝헤드 오른쪽(가름끈 자리 왼쪽)에 상시 배지, 연결되면 사라짐 */
 .net-badge{
-  position:absolute;right:44px;top:50%;transform:translateY(-50%);z-index:1;
+  position:absolute;left:36px;top:50%;transform:translateY(-50%);z-index:1;
   font-family:var(--ui);font-size:10px;font-weight:600;letter-spacing:.04em;
   color:var(--panel-soft);background:var(--paper);
   border:1px solid var(--gilt-soft);border-radius:9px;padding:1px 7px;white-space:nowrap;
@@ -182,8 +181,8 @@ header{
 .ribbon{
   position:fixed;z-index:29;
   top:env(safe-area-inset-top);   /* 화면 위 가장자리에서 드리워진 가름끈 */
-  /* 보기 설정("가") 버튼 바로 아래 (본문 폭 640px 기준 우측 정렬) */
-  right:max(19px,calc(50% - 301px));
+  /* 위 메뉴 왼쪽 끝 — 성경 이름은 오른쪽 (사용자 지시 2026-11-04: 성경 이름과 가름끈 자리 바꿈, 본문 폭 640px 기준) */
+  left:max(19px,calc(50% - 301px));
   width:21px;height:26px;
   background:#6E6C76; /* 책갈피 색: 회색 */
   clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 6px),0 100%);
@@ -796,11 +795,6 @@ main{
     <button id="authBtn">로그인</button>
   </div>
   <div id="authStatus" class="acct-note"></div>
-  <div class="acct-row" id="migRow" hidden>
-    <span class="lbl">예전 구글 기록</span>
-    <button id="migBtn">가져오기</button>
-  </div>
-  <div class="acct-note" id="migNote" hidden>예전에 구글로 로그인해 쌓은 형광펜·가름끈·읽음 기록을 이 계정으로 한 번 옮겨 옵니다.</div>
   <div class="acct-note">로그인하면 <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.</div>
   <span data-xms-account hidden></span>
   <div class="reset-row">
@@ -992,7 +986,7 @@ const SETTINGS={
       fmt:v=>["프리텐다드","본명조","KoPubWorld 바탕","나눔명조","마루부리"][v]||"프리텐다드",
       css:v=>[
         "var(--serif)",
-        "'Noto Serif KR','Source Han Serif KR',AppleMyungjo,'Nanum Myeongjo',Batang,serif",
+        "'Noto Serif KR Variable','Noto Serif KR','Source Han Serif KR',AppleMyungjo,'Nanum Myeongjo',Batang,serif",
         "'KoPubWorld Batang','Nanum Myeongjo',Batang,serif",
         "'Nanum Myeongjo',AppleMyungjo,Batang,serif",
         "'Maru Buri','Nanum Myeongjo',serif"
@@ -2664,12 +2658,12 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
 
 /* ── 계정 로그인 & 동기화 (이 사이트 회원 로그인 — xms) ─────────────
    로그인은 이 사이트 회원 로그인(/member/login, 로그인 유지). 형광펜·가름끈·읽음·별표·설정을 회원별로 서버(/api/sync)에 둔다.
-   합치는 규칙은 예전 그대로(mergeCloud — 항목별 최신 동작이 이김). 서버는 버전 번호로
+   (2026-11-04 구글 로그인 · Firestore 기록은 모두 옮겼고 연결을 끊었다.) 합치는 규칙은 예전 그대로(mergeCloud — 항목별 최신 동작이 이김). 서버는 버전 번호로
    '내가 받은 뒤 다른 기기가 먼저 올렸는지'만 가린다 → 그랬으면(409) 받은 걸 합쳐 다시 올린다.
    다른 기기 변경은 화면으로 돌아올 때 · 1분마다 받아 온다. 로그인 안 하면 이 브라우저에만 저장. */
 (function initSync(){
-  const st=$("authStatus"),btn=$("authBtn"),migRow=$("migRow"),migNote=$("migNote"),migBtn=$("migBtn");
-  let user=null,ver=0,timer=null,busy=false,again=false,first=true,migrated=true;
+  const st=$("authStatus"),btn=$("authBtn");
+  let user=null,ver=0,timer=null,busy=false,again=false,first=true;
 
   const collect=()=>({marks,hl:hls,hlt,hldel,markt,markdel,reads,readt,plan,plant,qthl,qthldel,
                       stars,starat:starAt,stardel:starDel,set:setVal,updatedAt:Date.now()});
@@ -2775,18 +2769,6 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     if(initial||JSON.stringify([hls,marks,reads])+"|"+Object.keys(qthl).sort().join()!==before){applySettings();render(curPage);}   // 지금 보던 쪽은 유지
   }
 
-  let fbReady=null,asked=false;
-  function showMig(){
-    const on=!!user&&!migrated;migRow.hidden=!on;migNote.hidden=!on;
-    if(on){
-      if(!fbReady)fbReady=loadFb().catch(e=>{fbReady=null;throw e;});   // 누르자마자 구글 창이 뜨게 미리 받아 둔다(늦으면 팝업 차단)
-      /* 로그인하고 아직 안 옮겼으면 한 번 묻는다 — '가져오기'를 누른 그 손길로 구글 창을 연다 */
-      if(!asked){asked=true;setTimeout(async()=>{
-        if(migrated||!user)return;
-        if(await askConfirm("예전에 구글로 쌓은 기록(형광펜·가름끈·읽은 횟수·보기 설정)을\n이 계정으로 가져올까요?",{okText:"가져오기",cancelText:"나중에"}))migrate();
-      },700);}
-    }
-  }
   const acctBtn=$("acctBtn"),acctIco=acctBtn.querySelector(".acct-ico"),ICO=acctIco.innerHTML;
   let pop=null;
   function closePop(){if(pop){pop.classList.remove("open");}}
@@ -2822,7 +2804,6 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
       st.textContent="로그인하면 다른 기기와 형광펜·가름끈·읽은 기록이 동기화됩니다.";
       first=true;ver=0;
     }
-    showMig();
   }
   /* 서버 것을 받아 합친다 */
   async function pull(){
@@ -2831,20 +2812,20 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     if(!r.ok)throw new Error("sync "+r.status);
     const j=await r.json();
     if(j.doc)mergeCloud(j.doc,first);
-    first=false;ver=j.ver||0;migrated=!!j.migrated;showMig();
+    first=false;ver=j.ver||0;
     return true;
   }
   /* 이 기기 것을 올린다 (다른 기기가 먼저 올렸으면 합쳐서 다시) */
-  async function push(extra){
+  async function push(){
     if(!user)return;
     if(busy){again=true;return;}
     busy=true;
     try{
       for(let i=0;i<4;i++){
-        const r=await api("PUT",Object.assign({doc:collect(),base:ver},extra||{}));
+        const r=await api("PUT",{doc:collect(),base:ver});
         if(r.status===409){const j=await r.json();if(j.doc)mergeCloud(j.doc,false);ver=j.ver||0;continue;}
         if(r.status===401){setUser(null);break;}
-        if(r.ok){const j=await r.json();ver=j.ver;if(j.migrated)migrated=true;showMig();}
+        if(r.ok){const j=await r.json();ver=j.ver;}
         break;
       }
     }catch(e){/* 오프라인 — 연결되면 다시 */}
@@ -2869,34 +2850,6 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     if(!await askConfirm("로그아웃할까요?\n이 기기의 형광펜·가름끈은 그대로 남습니다."))return;
     try{await fetch("/xms-api/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"});}catch(e){}
     setUser(null);toast("로그아웃했습니다");
-  }
-
-  /* 예전 구글(Firebase) 기록 한 번 옮겨오기 — 그때만 Firebase 를 받는다 */
-  function loadJs(src){return new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc);});}
-  async function loadFb(){
-    const V="https://www.gstatic.com/firebasejs/10.12.2/";
-    if(!window.RB_FIREBASE)await loadJs("firebase-config.js");
-    if(!window.firebase)await loadJs(V+"firebase-app-compat.js");
-    if(!firebase.auth)await loadJs(V+"firebase-auth-compat.js");
-    if(!firebase.firestore)await loadJs(V+"firebase-firestore-compat.js");
-    return firebase.apps.length?firebase.app():firebase.initializeApp(window.RB_FIREBASE);
-  }
-  migBtn.onclick=()=>migrate();
-  async function migrate(){
-    if(!user)return;
-    migBtn.disabled=true;const label=migBtn.textContent;migBtn.textContent="가져오는 중…";
-    try{
-      const app=await(fbReady||(fbReady=loadFb()));
-      const auth=app.auth();
-      const cred=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-      const snap=await app.firestore().collection("users").doc(cred.user.uid).get();
-      if(snap.exists)mergeCloud(snap.data(),true);
-      await auth.signOut().catch(()=>{});
-      await push({migrated:true});
-      toast(snap.exists?"구글 기록을 모두 옮겼습니다":"구글 계정에 저장된 기록이 없습니다");
-    }catch(e){
-      toast("가져오지 못했습니다"+(e&&e.code?" ("+e.code+")":""));
-    }finally{migBtn.disabled=false;migBtn.textContent=label;}
   }
 
   start();

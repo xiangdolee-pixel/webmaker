@@ -6,8 +6,7 @@
       "!/bible-data.js",
       "!/icon*.png",
       "!/manifest.json",
-      "!/sw.js",
-      "!/firebase-config.js"
+      "!/sw.js"
     ]
   },
   "durable_objects": {

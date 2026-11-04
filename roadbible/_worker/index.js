@@ -2,7 +2,7 @@
    - /qt       : 성서유니온 '오늘의 묵상'(sum.su.or.kr)을 서버에서 받아 파싱 → JSON (같은 출처라 브라우저 CORS 없음)
                  업스트림(:8888)이 느리고 응답시간이 들쭉날쭉(2~30초)이라, 파싱 결과를 worker 메모리 · 엣지 캐시에 담아
                  클라이언트에는 즉시 응답한다(느린 업스트림은 백그라운드에서만 갱신).
-   - /api/sync : 회원별 형광펜 · 가름끈 · 읽음 · 별표 · 설정 (xms 로그인 — 같은 xms_sess 쿠키, 2026-11-04 구글 로그인 · Firestore 에서 옮김)
+   - /api/sync : 회원별 형광펜 · 가름끈 · 읽음 · 별표 · 설정 (xms 로그인 — 같은 xms_sess 쿠키, 2026-11-04 구글 로그인 · Firestore 에서 옮겨 연결 끊음)
                  저장은 Durable Object(Sync, 회원 하나에 하나). 합치기는 화면(mergeCloud)이 하고, 서버는 버전 번호로 앞뒤만 가린다.
    - 그 밖     : xim 공통 사이트 Worker (회원 로그인 · 가입 · 계정 버튼 · 정적 파일) */
 import { DurableObject } from 'cloudflare:workers';
@@ -183,13 +183,6 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/qt') return handleQt(ctx);
     if (url.pathname === '/api/sync' && env.SYNC) return syncApi(request, env);
-    // 임시(확인 뒤 지움): 옮긴 기록 개수만 본다
-    if (url.pathname === '/api/sync/peek' && env.DIAG_TOKEN && url.searchParams.get('k') === env.DIAG_TOKEN) {
-      const st = await env.SYNC.get(env.SYNC.idFromName(`roadbible:${url.searchParams.get('id')}`)).read();
-      const d = st.doc || {};
-      const n = (o) => (Array.isArray(o) ? o.length : o && typeof o === 'object' ? Object.keys(o).length : 0);
-      return json({ ver: st.ver, migrated: st.migrated, at: st.at, hl: n(d.hlt), marks: n(d.marks), reads: n(d.reads), stars: n(d.stars), qthl: n(d.qthl), set: d.set || null });
-    }
     return env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request);
   },
 };

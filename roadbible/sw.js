@@ -2,19 +2,19 @@
    - 같은 출처(앱·성경 본문 4.7MB): 설치 때 통째로 캐시 → 인터넷 없이도 열림
    - 문서(HTML): 네트워크 우선이되 2.5초 안에 안 오면 캐시로 즉시 표시
      → 완전 오프라인은 물론, '끊길 듯 말 듯'한 회선에서도 빈 화면으로 기다리지 않음
-   - CDN(폰트·Firebase SDK): 버전이 박힌 불변 파일이라 캐시 우선.
+   - CDN(폰트): 버전이 박힌 불변 파일이라 캐시 우선.
      별도 캐시(roadbible-cdn)에 담아 앱 버전이 올라가도 지워지지 않음 — 배포 직후 오프라인 사고 방지
-   - 필수 CDN(기본 폰트 CSS·Firebase SDK)은 설치 때 미리 받아 둠(실패해도 설치는 계속)
+   - 필수 CDN(기본 폰트 CSS)은 설치 때 미리 받아 둠(실패해도 설치는 계속)
    - /qt(오늘의 묵상)·회원 로그인·동기화(/api/sync) 등 실시간 요청엔 개입하지 않음 */
-const APP_CACHE="roadbible-v132";
+const APP_CACHE="roadbible-v134";
 const CDN_CACHE="roadbible-cdn";   // 배포마다 지우지 않는다 (폰트·SDK 보존)
 const ASSETS=["./","index.html","bible-data.js","icon.png","icon-32.png","icon-180.png","icon-192.png","manifest.json","privacy.html"];
-const CDN_HOSTS=["cdn.jsdelivr.net","www.gstatic.com","fonts.googleapis.com","fonts.gstatic.com"];
+const CDN_HOSTS=["cdn.jsdelivr.net"];
 const CDN_PRECACHE=[
   "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
 ];
 /* 회원 로그인 · 동기화 · 관리 화면은 서비스워커가 손대지 않는다 (늘 서버에서 — 옛 로그인 상태가 캐시로 보이지 않게) */
-const LIVE=/^\/(api|xms-api|xms|member|board|admin)(\/|$)|^\/(rss\.xml|sitemap\.xml|robots\.txt|firebase-config\.js)$/;
+const LIVE=/^\/(api|xms-api|xms|member|board|admin)(\/|$)|^\/(rss\.xml|sitemap\.xml|robots\.txt)$/;
 const cacheable=r=>r&&(r.ok||r.type==="opaque");
 
 self.addEventListener("install",e=>{
