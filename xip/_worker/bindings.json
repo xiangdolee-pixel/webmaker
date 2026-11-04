@@ -1,5 +1,7 @@
 {
+  "xim": true,
   "placement": { "mode": "smart" },
+  "assets": { "run_worker_first": ["/*", "!/css/*", "!/js/*", "!/img/*", "!/favicon.ico", "!/manifest.webmanifest"] },
   "durable_objects": {
     "bindings": [{ "name": "HUB", "class_name": "Hub" }]
   },

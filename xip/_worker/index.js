@@ -1,15 +1,17 @@
 // xip — 시세 중계 Worker
-//   /api/indices : 네이버 증권 지수 5종 + 원자재 6종 + 환율 4종(달러·엔·위안·유로)
+//   /api/indices : 네이버 증권 지수 5종 + 원자재 6종 + 환율 4종(달러·엔·위안·유로) + 미국채 금리 4종(2·5·10·30년)
 //   /api/coins   : 코인게코 시가총액 상위 20위 (브라우저 직접 호출이 실패할 때 쓰는 예비)
 //   /api/top     : 거래대금 상위 20 종목 (?market=kr|us) — 국내는 ETF 제외, 미국은 나스닥+뉴욕+아멕스 합쳐 정렬
 //   /api/market  : 국내·미국 휴장일(조기폐장 포함) + 서킷브레이커 발동 여부·시각 (30초)
 //   /api/13f     : 유명 투자자 최신 13F 에서 새로 산·늘린 미국 주식 (?m=buffett|ackman|druck|tepper, SEC EDGAR)
-//   /api/chart   : 지수·환율·원자재·종목 차트 (?kind=index|fx|cmdty|stock&code=…&range=1d|1w|1m|1y|10y|all)
+//   /api/chart   : 지수·환율·원자재·미국채·종목 차트 (?kind=index|fx|cmdty|bond|stock&code=…&range=1d|1w|1m|1y|10y|all)
 //   /api/all     : 위 지수·거래대금·휴장/서킷브레이커를 한 번에 (?top=kr|us) — 웹소켓이 안 될 때 쓰는 예비
 //   /ws          : 웹소켓. Hub(Durable Object) 하나가 값을 받아 바뀔 때만 모든 화면에 밀어준다
 // 네이버 API 는 브라우저(다른 사이트 Origin)에서 부르면 403 이라 여기서 대신 부른다.
 // workers.dev 에서는 Cache API 가 동작하지 않으므로 isolate 메모리에 잠깐 들고 있는다.
+//   그 밖(페이지 · /member 회원가입 · 로그인 · /xms 관리)은 xim 공통 사이트 Worker 가 맡는다 → 오른쪽 위 계정 버튼 · 회원
 import { DurableObject } from 'cloudflare:workers';
+import site from '../../xim/_worker/site-worker.js';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
@@ -40,6 +42,13 @@ const FXS = {
   FX_JPYKRW: ['일본 엔', '원 / 100엔'],
   FX_CNYKRW: ['중국 위안', '원 / 1위안'],
   FX_EURKRW: ['유로', '원 / 1유로'],
+};
+// 미국 국채 금리(%): 네이버 로이터 코드 → 표시 이름
+const BONDS = {
+  'US2YT=RR': '미국채 2년',
+  'US5YT=RR': '미국채 5년',
+  'US10YT=RR': '미국채 10년',
+  'US30YT=RR': '미국채 30년',
 };
 const UNITS = { 'USD/OZS': '달러/온스', 'USD/LBS': '달러/파운드', 'USD/BBL': '달러/배럴' };
 
@@ -133,6 +142,19 @@ async function loadCmdty(code) {
   };
 }
 
+async function loadBond(code) {
+  const i = await marketIndex('bond', code);
+  return {
+    code,
+    name: BONDS[code],
+    price: num(i.closePrice),
+    change: num(i.fluctuations),
+    ratio: num(i.fluctuationsRatio),
+    status: i.marketStatus || null,
+    tradedAt: i.localTradedAt || null,
+  };
+}
+
 async function loadFx(code) {
   const i = await marketIndex('exchange', code);
   return {
@@ -157,6 +179,7 @@ const PART_TTL = {
   us: () => (usOpen() ? 4000 : 300000),
   fx: () => 30000,
   cm: () => 60000,
+  bd: () => 30000, // 미국채: 실시간이지만 금리는 천천히 움직여 30초
 };
 const basicIdx = (codes, host) => Promise.all(codes.map((c) =>
   getJSON(`${host}/${encodeURIComponent(c)}/basic`).then((d) => ({ ...d, itemCode: c })))).then((datas) => ({ datas }));
@@ -171,28 +194,31 @@ const loadUsIdx = () => firstOk(
 ).then((j) => (j.datas || []).map(normIndex));
 const loadFxAll = () => Promise.all(Object.keys(FXS).map((c) => loadFx(c).catch(() => null))).then((l) => l.filter(Boolean));
 const loadCmAll = () => Promise.all(Object.keys(CMDTY).map((c) => loadCmdty(c).catch(() => null))).then((l) => l.filter(Boolean));
+const loadBdAll = () => Promise.all(Object.keys(BONDS).map((c) => loadBond(c).catch(() => null))).then((l) => l.filter(Boolean));
 const part = (k, f) => cached(`part:${k}`, PART_TTL[k](), f).then((r) => r.data).catch(() => null);
 
 async function loadIndices() {
   const fxCodes = Object.keys(FXS);
   const cmCodes = Object.keys(CMDTY);
   // 한 곳이 실패해도 나머지는 보여준다. 전부 실패할 때만 에러(→ 직전 값 사용)
-  const [kr, us, fxl, cml] = await Promise.all([part('kr', loadKrIdx), part('us', loadUsIdx), part('fx', loadFxAll), part('cm', loadCmAll)]);
+  const [kr, us, fxl, cml, bdl] = await Promise.all([part('kr', loadKrIdx), part('us', loadUsIdx), part('fx', loadFxAll), part('cm', loadCmAll), part('bd', loadBdAll)]);
   // 이번에 못 받은 항목은 직전 값으로 채운다(화면에서 칸이 사라지지 않게)
   const keep = (list, codes, prev) => codes.map((c) => (list || []).find((x) => x.code === c) || (prev || []).find((x) => x.code === c)).filter(Boolean);
   const fxs = keep(fxl, fxCodes, lastIdx && lastIdx.fxs);
   const cm = keep(cml, cmCodes, lastIdx && lastIdx.cmdty);
-  if (!kr && !us && !fxs.length && !cm.length) throw new Error('naver unreachable');
+  const bonds = keep(bdl, Object.keys(BONDS), lastIdx && lastIdx.bonds);
+  if (!kr && !us && !fxs.length && !cm.length && !bonds.length) throw new Error('naver unreachable');
   let items = [...(kr || []), ...(us || [])];
   if (lastIdx) for (const p of lastIdx.items) if (!items.some((x) => x.code === p.code)) items.push(p);
   const order = Object.keys(INDEX_NAMES);
   items.sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
   const usd = fxs.find((f) => f.code === 'FX_USDKRW');
-  lastIdx = { items, cmdty: cm, fxs };
+  lastIdx = { items, cmdty: cm, fxs, bonds };
   return {
     items,
     cmdty: cm,
     fxs,
+    bonds,
     fx: usd ? { rate: usd.price, change: usd.change, ratio: usd.ratio, tradedAt: usd.tradedAt } : null,
   };
 }
@@ -272,8 +298,9 @@ async function indexChart(code, range) {
 
 async function cmdtyChart(code, range) {
   const fx = !!FXS[code];
-  const cat = fx ? 'exchange' : CMDTY[code][0];
-  const info = fx ? 'marketindex' : 'futures';
+  const bond = !!BONDS[code];
+  const cat = fx ? 'exchange' : bond ? 'bond' : CMDTY[code][0];
+  const info = fx ? 'marketindex' : bond ? 'governmentBond' : 'futures';
   // 네이버는 환율·원자재를 10년(주 단위)까지만 준다 → '전체'도 10년
   const type = { '1d': 'day', '1w': 'areaMonth', '1m': 'areaMonth', '1y': 'areaYear', '10y': 'areaYearTen', all: 'areaYearTen' }[range];
   const j = await getJSON(
@@ -282,7 +309,7 @@ async function cmdtyChart(code, range) {
   let pts = toPoints(j.result && j.result.priceInfos);
   if (range === '1d') pts = lastDay(pts);
   if (range === '1w') pts = pts.slice(-6);
-  return { points: pts, note: range === 'all' ? '네이버는 환율·원자재를 10년까지만 제공해요' : '' };
+  return { points: pts, note: range === 'all' ? '네이버는 환율·원자재·국채 금리를 10년까지만 제공해요' : '' };
 }
 
 /* ---------- 거래대금 상위 종목 ---------- */
@@ -801,7 +828,7 @@ export default {
         if (!['1d', '1w', '1m', '1y', '10y', 'all'].includes(range)) return json({ error: 'bad range' }, 400);
         let loader;
         if (kind === 'index' && INDEX_NAMES[code]) loader = () => indexChart(code, range);
-        else if ((kind === 'cmdty' && CMDTY[code]) || (kind === 'fx' && FXS[code])) loader = () => cmdtyChart(code, range);
+        else if ((kind === 'cmdty' && CMDTY[code]) || (kind === 'fx' && FXS[code]) || (kind === 'bond' && BONDS[code])) loader = () => cmdtyChart(code, range);
         else if (kind === 'stock' && /^(\d{6}|[A-Za-z0-9-]{1,10}(\.[A-Z]{1,2})?)$/.test(code || '')) loader = () => stockChart(code, range);
         else return json({ error: 'bad code' }, 400);
         const ttl = range === '1d' ? 30000 : range === '10y' || range === 'all' ? 6 * 3600e3 : 300000;
@@ -812,6 +839,6 @@ export default {
       return json({ error: String(err.message || err) }, 502);
     }
     if (pathname.startsWith('/api/')) return json({ error: 'not found' }, 404);
-    return env.ASSETS.fetch(request);
+    return env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request);
   },
 };

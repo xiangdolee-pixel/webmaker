@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>xip — 실시간 시세 · 지수 · 환율 · 원자재 · 코인</title>
-  <meta name="description" content="xip — 코스피·코스닥·S&P500·나스닥·다우존스 지수, 환율, 금·은·원유 등 원자재, 거래대금 상위 종목, 시가총액 상위 20개 코인, 13F 매수 종목을 실시간으로">
+  <meta name="description" content="xip — 코스피·코스닥·S&P500·나스닥·다우존스 지수, 환율, 금·은·원유 등 원자재, 미국채 2·5·10·30년 금리, 거래대금 상위 종목, 시가총액 상위 20개 코인, 13F 매수 종목을 실시간으로">
   <meta name="theme-color" content="#ffffff">
   <meta name="application-name" content="xip">
   <meta name="apple-mobile-web-app-title" content="xip">
@@ -27,6 +27,7 @@
         <span class="fx" id="fx">원/달러 —</span>
         <span class="conn" id="conn" data-state="wait"><i></i><b>연결 중</b></span>
       </div>
+      <span class="top-acc" data-xms-account></span>
     </div>
   </header>
 
@@ -130,6 +131,16 @@
     </section>
    </div>
    <div class="col col-d">
+    <section class="sec sec-tiles sec-bonds" style="--rows: 4">
+      <div class="sec-head">
+        <h2 class="sec-title">미국채 금리</h2>
+        <span class="sec-note">네이버 증권 · 연 % · 실시간</span>
+      </div>
+      <div class="tile-grid fx-grid" id="bonds">
+        <div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div><div class="card tile skel"></div>
+      </div>
+    </section>
+
     <section class="sec sec-list">
       <div class="sec-head">
         <h2 class="sec-title">13F 매수 종목</h2>
@@ -158,7 +169,7 @@
    </div>
    </div>
 
-    <p class="foot">지수·원자재·종목: 네이버 증권 (국내 거래대금 상위는 ETF·ETN 제외, 미국은 나스닥·뉴욕·아멕스 합산) · 코인 순위·시가총액: CoinGecko · 달러 실시간 가격: Binance · 원화: 업비트 원화 시세(업비트에 없는 코인은 ≈ 업비트 USDT 시세로 환산) · 원/달러: 하나은행 고시 · 13F: 미국 SEC EDGAR(분기 말 기준, 45일 안에 제출 · 최신 보고서와 직전 보고서 비교, 옵션 제외)<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
+    <p class="foot">지수·원자재·미국채 금리·종목: 네이버 증권 (국내 거래대금 상위는 ETF·ETN 제외, 미국은 나스닥·뉴욕·아멕스 합산) · 코인 순위·시가총액: CoinGecko · 달러 실시간 가격: Binance · 원화: 업비트 원화 시세(업비트에 없는 코인은 ≈ 업비트 USDT 시세로 환산) · 원/달러: 하나은행 고시 · 13F: 미국 SEC EDGAR(분기 말 기준, 45일 안에 제출 · 최신 보고서와 직전 보고서 비교, 옵션 제외)<br>투자 판단의 근거로 쓰지 마세요. 데이터는 지연되거나 다를 수 있습니다.</p>
   </main>
 
   <div class="sheet" id="sheet" hidden>

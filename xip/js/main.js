@@ -211,6 +211,7 @@
   var naverStatus = {}; // KOSPI / .INX 의 네이버 장 상태(목록에 없는 임시 휴장 판단용)
   var market = null;    // /api/market : 휴장일·조기폐장·서킷브레이커
   function toMap(list) { var m = {}; (list || []).forEach(function (h) { m[h.date] = h.name; }); return m; }
+  var openNow = { kr: false, us: false }; // 지금 장중인 시장 (휴장 반영)
   function renderHours() {
     var off = nyOffsetMin(); // EST -300, EDT -240
     var diff = 540 - off;    // 한국 - 뉴욕 (분)
@@ -233,6 +234,7 @@
       var holName = hol[today] || null;
       var kst = function (min) { return h.key === 'us' ? ' (한국 ' + hm(min + diff) + ')' : ''; };
       var closedToday = holName || adhoc;
+      openNow[h.key] = s.open && !closedToday;
       st.className = 'badge ' + (s.open && !adhoc ? 'open' : 'close');
       st.textContent = closedToday ? '휴장' : s.open ? '장중' : '장마감';
       if (holName) left.textContent = '오늘은 ' + holName + ' — 휴장 · 다음 개장 ' + mdw(s.next) + ' ' + hm(h.open) + kst(h.open);
@@ -248,7 +250,7 @@
       renderCB(box.querySelector('[data-cb]'), h.key, diff);
     });
     $('hr-us').querySelector('[data-kst]').textContent = hm(570 + diff) + ' ~ ' + hm(960 + diff);
-    $('hr-us').querySelector('[data-dst]').textContent = off === -240 ? '서머타임 적용 중' : '서머타임 아님';
+    $('hr-us').querySelector('[data-dst]').textContent = off === -240 ? '서머타임 적용 중' : '서머타임 아님';    autoTop();
   }
 
   // 서킷브레이커: 발동 시각 · 매매 정지 · (단일가) · 재개 시각과 지금 상태
@@ -320,6 +322,7 @@
     'cmdty:HGcv1': metal('Cu', '#f0a37a', '#b5582e', '#fff'),
     'cmdty:CLcv1': drop('#1f2937'),
     'cmdty:LCOcv1': drop('#6b4423'),
+    'bond:US2YT=RR': flag('us'), 'bond:US5YT=RR': flag('us'), 'bond:US10YT=RR': flag('us'), 'bond:US30YT=RR': flag('us'),
   };
 
   /* ---------- 지수·환율·원자재 칸 ---------- */
@@ -332,7 +335,12 @@
     if (v == null) return '—';
     // 원자재는 달러 시세 → $ 를 붙인다 (금 $3,953.40, 등락 $15.20)
     if (kind === 'cmdty') { var d = decFor(ref == null ? v : ref); return '$' + nf(v, d, d); }
+    if (kind === 'bond') return nf(v, 3, 3) + '%';
     return nf(v, 2, 2);
+  }
+  // 등락폭: 국채 금리는 %p (4.929% → ▼0.021%p)
+  function chgFmt(kind, v, ref) {
+    return kind === 'bond' ? nf(v, 3, 3) + '%p' : tileFmt(kind, v, ref);
   }
   function renderTiles(elId, kind, items) {
     var box = $(elId);
@@ -360,14 +368,14 @@
       } else {
         var open = it.status === 'OPEN';
         c.badge.className = 'badge ' + (open ? 'open' : 'close');
-        c.badge.textContent = kind === 'cmdty' ? (open ? '거래중' : '마감') : open ? '장중' : '장마감';
+        c.badge.textContent = kind === 'cmdty' || kind === 'bond' ? (open ? '거래중' : '마감') : open ? '장중' : '장마감';
         c.badge.title = c.badge.textContent;
       }
       var dir = c.last == null || it.price == null ? 0 : it.price - c.last;
       setFlash(c.price, tileFmt(kind, it.price), dir);
       c.last = it.price;
       c.chg.className = 'tile-chg ' + dirCls(it.change);
-      c.chg.textContent = it.change == null ? '' : arrow(it.change) + tileFmt(kind, Math.abs(it.change), it.price) + ' (' + fmtPct(it.ratio) + ')';
+      c.chg.textContent = it.change == null ? '' : arrow(it.change) + chgFmt(kind, Math.abs(it.change), it.price) + ' (' + fmtPct(it.ratio) + ')';
       var t = it.tradedAt ? fmtTime(it.tradedAt) + ' 기준' : '';
       c.time.textContent = it.unit ? it.unit + (t ? ' · ' + t : '') : t;
     });
@@ -376,7 +384,7 @@
   // 못 받으면 빈 칸 대신 이유를 보여준다 (프로그램이 멈춘 줄 알지 않게)
   var idxFails = 0;
   function tileMsg(text) {
-    ['indices', 'fxs', 'cmdty'].forEach(function (id) {
+    ['indices', 'fxs', 'cmdty', 'bonds'].forEach(function (id) {
       var box = $(id);
       if (text && box.querySelector('.skel')) box.setAttribute('data-msg', text);
       else box.removeAttribute('data-msg');
@@ -391,6 +399,7 @@
     renderTiles('indices', 'index', data.items);
     renderTiles('fxs', 'fx', data.fxs);
     renderTiles('cmdty', 'cmdty', data.cmdty);
+    if (data.bonds) renderTiles('bonds', 'bond', data.bonds);
     renderHours();
     chartTick();
   }
@@ -552,13 +561,26 @@
     var m = topMarket;
     return getJSON('/api/top?market=' + m).then(renderTop).catch(function (e) { console.warn('[top]', e); });
   }
-  slideSeg($('top-seg'), function (b) {
-    topMarket = b.getAttribute('data-market');
+  function switchTop(m) {
+    topMarket = m;
     elTop.setAttribute('data-key', '');
     if (topData[topMarket]) renderTop(topData[topMarket]);
     else elTop.innerHTML = '';
     loadTop();
-  });
+  }
+  var topSeg = slideSeg($('top-seg'), function (b) { switchTop(b.getAttribute('data-market')); });
+  // 장 시간에 따라 기본 탭: 미국장만 장중이면 미국, 그 밖(국내 장중 · 둘 다 마감)은 국내.
+  //   장 상태가 바뀔 때만 옮긴다 → 그 사이 직접 고른 탭은 그대로 둔다
+  var topWant = null;
+  function autoTop() {
+    if (!topSeg) return;
+    var want = openNow.us && !openNow.kr ? 'us' : 'kr';
+    if (want === topWant) return;
+    topWant = want;
+    if (want === topMarket) return;
+    topSeg.pick(function (b) { return b.getAttribute('data-market') === want; });
+    switchTop(want);
+  }
 
   /* ---------- 13F 매수 종목 ---------- */
   var f13Cache = {};
@@ -960,8 +982,8 @@
       return { name: it.name, sub: (m === 'kr' ? '국내 주식 · ' : '미국 주식 · ') + it.symbol, icon: it.logo, price: it.price, text: f(it.price), krw: m === 'us' && fxRate ? '≈ ' + fmtKRW(it.price * fxRate) : '', change: it.ratio, chgText: arrow(it.change) + stockPrice(m, Math.abs(it.change)).replace('$', '') + ' (' + fmtPct(it.ratio) + ')', fmt: f };
     }
     f = function (v) { return tileFmt(k, v, it.price); };
-    var sub = k === 'index' ? '지수' : k === 'fx' ? '환율 · ' + it.unit : '원자재 · ' + it.unit + ' · 약 10분 지연';
-    return { name: it.name, sub: sub, icon: null, price: it.price, text: f(it.price), krw: '', change: it.change, chgText: arrow(it.change) + f(Math.abs(it.change)) + ' (' + fmtPct(it.ratio) + ')', fmt: f };
+    var sub = k === 'index' ? '지수' : k === 'fx' ? '환율 · ' + it.unit : k === 'bond' ? '미국 국채 금리 · 연 %' : '원자재 · ' + it.unit + ' · 약 10분 지연';
+    return { name: it.name, sub: sub, icon: null, price: it.price, text: f(it.price), krw: '', change: it.change, chgText: arrow(it.change) + chgFmt(k, Math.abs(it.change), it.price) + ' (' + fmtPct(it.ratio) + ')', fmt: f };
   }
 
   function renderSheetHead() {
