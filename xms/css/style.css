@@ -860,6 +860,9 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
 .crop-stage:active { cursor: grabbing; }
 .crop-stage img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
 .crop-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(17, 20, 26, .55); outline: 2px solid rgba(255, 255, 255, .9); outline-offset: -2px; pointer-events: none; }
+.crop-ring.rect { border-radius: 0; box-shadow: none; }
+.crop-box.wide { width: min(100%, 640px); }
+.crop-box.wide .crop-stage { width: 100%; border-radius: 10px; }
 .crop-zoom { display: flex; align-items: center; gap: 10px; color: #6b7385; font-size: 16px; }
 .crop-zoom input { flex: 1; accent-color: var(--brand); }
 .crop-acts { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }

@@ -2,6 +2,7 @@
 import { $, $$, esc, makeApi, fmtDate, fmtPhone, toast, pillTabs, slideTabs, formData, openDialog, busy, confirmInline } from './common.js';
 import { mountEditor, mountAttach } from './editor.js';
 import { sortable, treeFromDepths } from './drag.js';
+import { cropImage } from './crop.js';
 
 const api0 = makeApi('/xms-api/admin');
 // index.html 이 미리 요청해 둔 자료(window.__xmsPre)가 있으면 그것을 한 번 쓴다 — 기다리는 왕복을 줄여 빨리 뜨게
@@ -1221,9 +1222,9 @@ async function sharePage() {
         <section class="panel pad"><h2>미리보기 그림 <small class="meta">대화방에서 글 위에 크게 뜨는 그림입니다</small></h2>
           ${d.image ? `<img class="share-now" src="/xms/file/og?v=${d.image.updated_at}" alt="지금 쓰는 미리보기 그림"><div class="actions gap"><button class="btn danger" type="button" data-off>그림 내리기</button></div>`
             : '<p class="meta">아직 없습니다. 없으면 홈페이지에 원래 넣어 둔 그림이 나갑니다.</p>'}
-          <h2 class="gap">그림 바꾸기 <small class="meta">1200×630 권장</small></h2>
+          <h2 class="gap">그림 바꾸기 <small class="meta">어떤 사진 · 그림이든 올려도 됩니다</small></h2>
           <div data-pick></div>
-          <p class="meta gap">비율이 다르면 대화방이 위아래를 잘라 냅니다. 바꿔도 카카오톡은 한동안 옛 그림을 보여 줍니다 — 급하면 <a href="https://developers.kakao.com/tool" target="_blank" rel="noopener">카카오 개발자도구</a>에서 캐시를 지웁니다.</p>
+          <p class="meta gap">고르면 대화방에 보일 부분(가로로 긴 1200×630)을 직접 맞추는 창이 뜹니다. 끌어서 옮기고 크기를 맞춘 뒤, 오른쪽 미리보기를 보고 <b>이 그림으로 바꾸기</b>를 누르면 됩니다.<br>바꿔도 카카오톡은 한동안 옛 그림을 보여 줍니다 — 급하면 <a href="https://developers.kakao.com/tool" target="_blank" rel="noopener">카카오 개발자도구</a>에서 캐시를 지웁니다.</p>
           <p class="err" role="alert"></p>
           <div class="actions"><button class="btn primary" type="button" data-save disabled>이 그림으로 바꾸기</button></div>
         </section>
@@ -1251,8 +1252,11 @@ async function sharePage() {
   let image = null;
   imagePicker($('[data-pick]'), async (file) => {
     try {
-      const img = await loadImage(file);
-      image = fitJpeg(img, 1200, 700000);
+      if (!/^image\//.test(file.type)) throw new Error('그림 파일을 골라 주세요.');
+      // 대화방에 보일 부분을 직접 맞춘다 (1200×630, 카카오톡이 잘 읽는 JPEG)
+      const cut = await cropImage(file, { w: 1200, h: 630, type: 'image/jpeg', title: '카톡 미리보기 그림 맞추기', help: '이 틀 안이 대화방에 보입니다 · 끌어서 옮기고, 벌리거나 아래 막대로 크게 · 작게' });
+      if (!cut) return;
+      image = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(cut); });
       $('[data-pv-img]').innerHTML = `<img src="${image}" alt="">`;
       $('[data-save]').disabled = false;
     } catch (e) { toast(e.message); }
