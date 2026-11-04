@@ -1,6 +1,7 @@
 // xip 화면 구성 — 회원은 블록 보이기 · 숨기기 · 순서 · 칸 · 목록 개수를 바꿔 저장한다 (서버 /api/prefs, 회원별)
 //   손님: 머리글에 "회원가입하면 편집할 수 있어요" 흐르는 글자
-//   회원: "화면 편집" 버튼 → 편집 창. 끌어서 순서 바꾸기는 xms 공통 sortable(/xms/js/drag.js) 그대로
+//   회원: "화면 편집" 버튼 → 지금 화면에서 바로 편집(블록마다 ⠿ 끌기 · 켜기/끄기 · 줄 수), 아래 막대에서 저장
+//   끌기는 xms 공통 sortable(xms/js/drag.js)과 같은 움직임(따라오기 · FLIP 비켜나기 · 내려앉기)을 칸 사이로 넓힌 것
 const BLOCKS = {
   hours: '장 시간', indices: '주요 지수', fx: '환율', cmdty: '원자재', bonds: '미국채 금리',
   top: '거래대금 상위 종목', coins: '코인 시가총액', f13: '13F 매수 종목',
@@ -41,6 +42,8 @@ function apply(l) {
     if (!c.hidden) shown++;
   });
   dash.style.setProperty('--cols', shown || 1);
+  // 1200~1499 화면: 1~3열만 첫 줄에 (4열은 아래 줄 전체 폭)
+  dash.style.setProperty('--cols3', cols.slice(0, 3).filter((c) => !c.hidden).length || 1);
   LISTS.forEach((id) => {
     const ol = sec(id).querySelector('.coin-list');
     COUNTS.forEach((n) => ol.classList.toggle(`lim-${n}`, l.counts[id] === n && n < 20));
@@ -69,7 +72,7 @@ if (member) {
     if (!d) return;
     saved = d.layout ? clean(d.layout) : copy(DEF);
     store.set(d.layout ? saved : null);
-    if (edOpen) return; // 편집 중이면 건드리지 않는다
+    if (editing) return; // 편집 중이면 건드리지 않는다
     apply(saved);
   }).catch(() => {});
 } else {
@@ -77,104 +80,214 @@ if (member) {
   $('top-flow').hidden = false;
 }
 
-/* ---------- 편집 창 ---------- */
-const ed = $('ed');
-const list = $('ed-list');
-let edOpen = false;
-let draft = null;
-let lastFocus = null;
-let sortReady = false;
+/* ---------- 화면에서 바로 편집 ---------- */
+const EASE = 'cubic-bezier(.22, .8, .24, 1)';
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+let editing = false;
 
-function rowHtml(id, l) {
-  const cnt = LISTS.includes(id)
-    ? `<select class="ed-cnt" aria-label="${BLOCKS[id]} 개수">${COUNTS.map((n) => `<option value="${n}"${l.counts[id] === n ? ' selected' : ''}>${n}개</option>`).join('')}</select>`
-    : '';
-  const on = !l.hidden.includes(id);
-  return `<li class="ed-row${on ? '' : ' off'}" data-id="${id}">
-    <button type="button" class="handle" aria-label="${BLOCKS[id]} 끌어서 옮기기">⠿</button>
-    <span class="ed-name">${BLOCKS[id]}</span>${cnt}
-    <label class="ed-sw"><input type="checkbox"${on ? ' checked' : ''}><span>${on ? '보임' : '숨김'}</span></label>
-  </li>`;
-}
-function draw(l) {
-  list.innerHTML = l.cols.map((ids, i) => `<li class="ed-col" data-id="col${i}"><b>${i + 1}열</b></li>${ids.map((id) => rowHtml(id, l)).join('')}`).join('');
-}
-// 편집 창 → 값
-function read() {
-  const out = { cols: [[], [], [], []], hidden: [], counts: {} };
-  let c = 0;
-  [...list.children].forEach((li) => {
-    if (li.classList.contains('ed-col')) { c = +li.dataset.id.slice(3); return; }
-    const id = li.dataset.id;
-    out.cols[c].push(id);
-    if (!li.querySelector('input').checked) out.hidden.push(id);
-    const s = li.querySelector('select');
-    if (s) out.counts[id] = +s.value;
+// 블록마다 편집 도구(편집 중에만 보임)
+Object.keys(BLOCKS).forEach((id) => {
+  const t = document.createElement('div');
+  t.className = 'ed-tools';
+  t.innerHTML = `<button type="button" class="handle" aria-label="${BLOCKS[id]} 끌어서 옮기기">⠿</button><b>${BLOCKS[id]}</b>` +
+    (LISTS.includes(id) ? `<select class="ed-cnt" aria-label="${BLOCKS[id]} 줄 수">${COUNTS.map((n) => `<option value="${n}">${n}개</option>`).join('')}</select>` : '') +
+    `<label class="ed-sw"><input type="checkbox" role="switch" aria-label="${BLOCKS[id]} 켜기"><i aria-hidden="true"></i><span>켜짐</span></label>`;
+  sec(id).prepend(t);
+});
+// 아래 막대
+const bar = document.createElement('div');
+bar.className = 'ed-bar';
+bar.hidden = true;
+bar.innerHTML = `<div class="wrap ed-bar-in"><b>화면 편집 중</b><span class="ed-tip">⠿ 를 끌어 옮기고 · 켜기/끄기 · 줄 수를 고르세요</span>
+  <span class="ed-err" role="alert"></span><span class="ed-gap"></span>
+  <button class="btn-l" type="button" data-act="reset">기본값</button><button class="btn-l" type="button" data-act="cancel">취소</button><button class="btn-l pri" type="button" data-act="save">저장</button></div>`;
+document.body.appendChild(bar);
+const err = bar.querySelector('.ed-err');
+
+// 편집 중 모습: 꺼진 블록도 흐리게 보이고, 빈 칸도 놓을 자리로 보인다
+function applyEdit(l) {
+  l.cols.forEach((ids, i) => ids.forEach((id) => cols[i].appendChild(sec(id))));
+  cols.forEach((c) => { c.hidden = false; });
+  dash.style.setProperty('--cols', 4);
+  dash.style.setProperty('--cols3', 3);
+  Object.keys(BLOCKS).forEach((id) => {
+    const s = sec(id);
+    const on = !l.hidden.includes(id);
+    s.hidden = false;
+    s.classList.toggle('ed-off', !on);
+    s.querySelector('.ed-sw input').checked = on;
+    s.querySelector('.ed-sw span').textContent = on ? '켜짐' : '꺼짐';
+    const sel = s.querySelector('.ed-cnt');
+    if (sel) sel.value = l.counts[id];
   });
+  LISTS.forEach((id) => {
+    const ol = sec(id).querySelector('.coin-list');
+    COUNTS.forEach((n) => ol.classList.toggle(`lim-${n}`, l.counts[id] === n && n < 20));
+  });
+  window.dispatchEvent(new Event('resize'));
+}
+// 지금 화면 → 값
+function readEdit() {
+  const out = { cols: cols.map((c) => [...c.querySelectorAll(':scope > [data-block]')].map((s) => s.dataset.block)), hidden: [], counts: {} };
+  Object.keys(BLOCKS).forEach((id) => { if (sec(id).classList.contains('ed-off')) out.hidden.push(id); });
+  LISTS.forEach((id) => { out.counts[id] = +sec(id).querySelector('.ed-cnt').value; });
   return clean(out);
 }
-const preview = () => { draft = read(); apply(draft); };
 
-list.addEventListener('change', (e) => {
+function startEdit() {
+  if (editing) return;
+  editing = true;
+  err.textContent = '';
+  document.body.classList.add('editing');
+  $('top-edit').classList.add('on');
+  bar.hidden = false;
+  applyEdit(saved);
+}
+function stopEdit(l) {
+  editing = false;
+  document.body.classList.remove('editing');
+  $('top-edit').classList.remove('on');
+  bar.hidden = true;
+  Object.keys(BLOCKS).forEach((id) => sec(id).classList.remove('ed-off'));
+  apply(l);
+}
+$('top-edit').addEventListener('click', () => (editing ? stopEdit(saved) : startEdit()));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editing) stopEdit(saved); });
+
+dash.addEventListener('change', (e) => {
+  if (!editing) return;
   const box = e.target.closest('.ed-sw input');
   if (box) {
-    const li = box.closest('.ed-row');
-    li.classList.toggle('off', !box.checked);
-    li.querySelector('.ed-sw span').textContent = box.checked ? '보임' : '숨김';
+    const s = box.closest('[data-block]');
+    s.classList.toggle('ed-off', !box.checked);
+    s.querySelector('.ed-sw span').textContent = box.checked ? '켜짐' : '꺼짐';
   }
-  preview();
+  if (e.target.closest('.ed-cnt')) applyEdit(readEdit());
 });
+// 편집 중에는 칸을 눌러도 차트가 열리지 않게
+dash.addEventListener('click', (e) => { if (editing && !e.target.closest('.ed-tools')) { e.preventDefault(); e.stopPropagation(); } }, true);
 
-async function openEd() {
-  lastFocus = document.activeElement;
-  $('ed-err').textContent = '';
-  draft = copy(saved);
-  draw(draft);
-  ed.hidden = false;
-  edOpen = true;
-  document.body.classList.add('lock');
-  $('ed-save').focus({ preventScroll: true });
-  if (!sortReady) {
-    sortReady = true;
-    try {
-      const { sortable } = await import('/xms/js/drag.js');
-      sortable(list, { rowSel: 'li[data-id]', onDrop: preview });
-    } catch (e) {
-      sortReady = false;
-      $('ed-err').textContent = '끌어서 옮기기를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.';
-    }
-  }
-}
-function closeEd(keep) {
-  ed.hidden = true;
-  edOpen = false;
-  document.body.classList.remove('lock');
-  if (!keep) apply(saved); // 취소: 저장한 모습으로 되돌린다
-  if (lastFocus) lastFocus.focus({ preventScroll: true });
-}
-$('top-edit').addEventListener('click', openEd);
-ed.addEventListener('click', (e) => { if (e.target.closest('[data-ed-close]')) closeEd(false); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && edOpen) closeEd(false); });
-$('ed-reset').addEventListener('click', () => { draw(DEF); preview(); });
-$('ed-save').addEventListener('click', async () => {
-  const btn = $('ed-save');
-  const l = read();
+bar.addEventListener('click', async (e) => {
+  const act = e.target.closest('[data-act]');
+  if (!act) return;
+  const a = act.dataset.act;
+  if (a === 'cancel') { stopEdit(saved); return; }
+  if (a === 'reset') { applyEdit(copy(DEF)); return; }
+  const l = readEdit();
   const isDef = JSON.stringify(l) === JSON.stringify(clean(DEF));
-  btn.disabled = true;
-  $('ed-err').textContent = '';
+  act.disabled = true;
+  err.textContent = '';
   try {
     const r = await fetch('/api/prefs', {
       method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(isDef ? { reset: true } : l),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || '저장하지 못했어요.');
+    if (!r.ok) throw new Error(r.status === 401 ? '회원 계정으로 로그인해야 저장돼요.' : d.error || '저장하지 못했어요.');
     saved = l;
     store.set(isDef ? null : l);
-    closeEd(true);
-  } catch (e) {
-    $('ed-err').textContent = e.message === '회원 로그인이 필요합니다.' ? '회원 계정으로 로그인해야 저장돼요.' : e.message;
+    stopEdit(saved);
+  } catch (ex) {
+    err.textContent = ex.message;
   } finally {
-    btn.disabled = false;
+    act.disabled = false;
   }
+});
+
+// 끌어서 옮기기 — 칸 안 위아래 + 다른 칸으로. 끄는 블록은 손가락을 따라오고, 나머지는 미끄러지듯 비켜난다(FLIP)
+dash.addEventListener('pointerdown', (e) => {
+  if (!editing || e.button > 0) return;
+  const handle = e.target.closest('.ed-tools .handle');
+  if (!handle) return;
+  e.preventDefault();
+  const el = handle.closest('[data-block]');
+  const sx = e.clientX;
+  const sy = e.clientY;
+  let lx = sx;
+  let ly = sy;
+  const r0 = el.getBoundingClientRect();
+  el.classList.add('ed-drag');
+  document.body.classList.add('is-sorting');
+
+  // 지금 원래 자리(변환 없이)를 재서, 손가락이 처음 잡은 곳 밑에 그대로 둔다
+  const follow = () => {
+    el.style.transform = 'none';
+    const r = el.getBoundingClientRect();
+    el.style.transform = `translate(${lx - sx - (r.left - r0.left)}px, ${ly - sy - (r.top - r0.top)}px)`;
+  };
+  const others = () => [...dash.querySelectorAll('[data-block]')].filter((b) => b !== el);
+  const flip = (mutate) => {
+    const list = others();
+    const first = new Map(list.map((b) => [b, b.getBoundingClientRect()]));
+    mutate();
+    if (reduced()) return;
+    for (const b of list) {
+      const a = first.get(b);
+      const n = b.getBoundingClientRect();
+      const dx = a.left - n.left;
+      const dy = a.top - n.top;
+      if (!dx && !dy) continue;
+      b.style.transition = 'none';
+      b.style.transform = `translate(${dx}px, ${dy}px)`;
+      void b.offsetHeight;
+      b.style.transition = `transform 220ms ${EASE}`;
+      b.style.transform = '';
+    }
+  };
+  // 손가락에 가장 가까운 칸 (PC: 가로 위치가 먼저, 폰: 칸이 위아래로 쌓여 세로 위치로)
+  const pickCol = () => {
+    let best = cols[0];
+    let bd = Infinity;
+    for (const c of cols) {
+      const r = c.getBoundingClientRect();
+      const dx = lx < r.left ? r.left - lx : lx > r.right ? lx - r.right : 0;
+      const dy = ly < r.top ? r.top - ly : ly > r.bottom ? ly - r.bottom : 0;
+      const d = dx * 10 + dy;
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  };
+  const move = () => {
+    const col = pickCol();
+    const sibs = [...col.querySelectorAll(':scope > [data-block]')].filter((b) => b !== el);
+    let target = null;
+    for (const b of sibs) {
+      const r = b.getBoundingClientRect();
+      const m = new DOMMatrixReadOnly(getComputedStyle(b).transform === 'none' ? undefined : getComputedStyle(b).transform);
+      if (ly < r.top - m.f + r.height / 2) { target = b; break; } // 미끄러지는 중이면 도착 위치로
+    }
+    const here = el.parentNode === col && el.nextElementSibling === target
+      && (target || !sibs.length || sibs[sibs.length - 1].nextElementSibling === el);
+    if (!here) flip(() => col.insertBefore(el, target));
+    follow();
+  };
+  // 화면 끝에 가까우면 저절로 스크롤 (폰)
+  let raf = 0;
+  const auto = () => {
+    const edge = 70;
+    const v = ly < edge ? -12 : ly > innerHeight - edge ? 12 : 0;
+    if (v && document.scrollingElement.scrollHeight > innerHeight) { window.scrollBy(0, v); move(); }
+    raf = requestAnimationFrame(auto);
+  };
+  raf = requestAnimationFrame(auto);
+  const onMove = (ev) => { lx = ev.clientX; ly = ev.clientY; move(); };
+  const up = () => {
+    cancelAnimationFrame(raf);
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', up);
+    document.body.classList.remove('is-sorting');
+    el.style.transition = reduced() ? 'none' : `transform 240ms ${EASE}`;
+    el.style.transform = '';
+    // 내려앉은 뒤에 정리 (바로 다시 그리면 끊긴다)
+    setTimeout(() => {
+      el.classList.remove('ed-drag');
+      el.style.transition = '';
+      others().forEach((b) => { b.style.transition = ''; });
+      window.dispatchEvent(new Event('resize'));
+    }, reduced() ? 0 : 240);
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', up);
+  document.addEventListener('pointercancel', up);
 });
