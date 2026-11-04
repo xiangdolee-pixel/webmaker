@@ -1,0 +1,15 @@
+:root {
+  --bg: #fff;
+  --fg: #111;
+  --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111; --fg: #f2f2f2; }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); }
+main { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.mail { color: inherit; text-decoration: none; font-size: clamp(18px, 5vw, 28px); font-weight: 500; letter-spacing: -.01em; word-break: break-all; text-align: center; }
+.mail:hover { text-decoration: underline; text-underline-offset: 4px; }
+.mail:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 4px; }
