@@ -110,9 +110,9 @@ body.lock {
   word-break: keep-all;
   white-space: pre-line;
 }
-.branch, .quote, .meta { transition: opacity .22s ease, transform .22s ease; }
-.branch.shift-l, .quote.shift-l, .meta.shift-l { opacity: 0; transform: translateX(-28px); }
-.branch.shift-r, .quote.shift-r, .meta.shift-r { opacity: 0; transform: translateX(28px); }
+.branch, .top-stars, .quote, .meta { transition: opacity .22s ease, transform .22s ease, color 1.6s ease; }
+.branch.shift-l, .top-stars.shift-l, .quote.shift-l, .meta.shift-l { opacity: 0; transform: translateX(-28px); }
+.branch.shift-r, .top-stars.shift-r, .quote.shift-r, .meta.shift-r { opacity: 0; transform: translateX(28px); }
 .source {
   color: var(--ink-soft);
   font-size: 15px;
@@ -317,3 +317,38 @@ h1 .ob-acc { margin-left: 10px; flex: none; }
 h1 .ob-acc .xa-login { font-size: 14px; border: 0; }
 h1 .back { white-space: nowrap; flex: none; }
 @media (max-width: 400px) { h1 { font-size: 19px; gap: 8px; } h1 .leaf-mark { width: 32px; height: 24px; } }
+
+/* ---------- 위 메뉴 · 담기 버튼 (index) ---------- */
+.ob-top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+  display: flex; align-items: center; gap: 10px;
+  height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 16px 0;
+}
+.ob-logo {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 0;
+  color: var(--ink); text-decoration: none; font-weight: 700; font-size: 18px; letter-spacing: .02em;
+  transition: color 1.6s ease;   /* 배경 장면이 바뀌면 글자색도 따라 */
+  white-space: nowrap;
+}
+.ob-logo .leaf-mark { width: 34px; height: 25px; flex: none; }
+.ob-top .ob-acc { margin-left: auto; }
+.ob-top .ob-acc .xa-login {
+  border: 1px solid var(--line); border-radius: 99px; padding: 0 14px; line-height: 32px;
+  font-size: 14px; opacity: 1; background: color-mix(in srgb, var(--card) 70%, transparent);
+}
+.ob-fab {
+  position: fixed; z-index: 20;
+  right: calc(18px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  background: var(--olive); color: var(--b0, #fff); text-decoration: none;   /* 장면 색을 따른다 */
+  font-size: 13px; font-weight: 600; line-height: 1.1;
+  box-shadow: 0 6px 18px rgba(40, 48, 25, .28);
+  transition: transform .18s ease, box-shadow .18s ease, background-color 1.6s ease, color 1.6s ease;
+}
+.ob-fab-plus { font-size: 24px; font-weight: 400; line-height: 1; margin-top: -2px; }
+.ob-fab:active { transform: scale(.94); box-shadow: 0 3px 10px rgba(40, 48, 25, .24); }
+@media (prefers-reduced-motion: reduce) { .ob-fab { transition: none; } }
+
+/* 글 위 별표 (예전 바구니 그림 자리) */
+.top-stars { flex: none; min-height: 24px; margin: 0 0 18px; font-size: 18px; letter-spacing: .4em; text-indent: .4em; }

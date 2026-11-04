@@ -18,10 +18,7 @@ try { token = localStorage.getItem('ob_authed') || ''; } catch {}
 
 // 로그인 안 했으면 소개 문구만, 하단에 로그인·가입
 const INTRO = { id: 0, text: '가입하고,\n올리브를 모으듯\n나만의 영감을 담아보세요.', source: '올리브바스켓', stars: 1 };
-function setAuthed(on) {
-  document.getElementById('addLink').hidden = !on;
-  document.getElementById('authLinks').hidden = on;
-}
+function setAuthed() { /* 담기 버튼은 늘 보인다 — 로그인 전이면 /basket 이 로그인 화면으로 보낸다 */ }
 // 로그인 여부: 서버에 묻는다. 인터넷이 없으면 지난번 상태로 (마지막 구절을 보여 주게)
 const authReady = fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' })
   .then(r => (r.ok ? r.json() : {}))
@@ -55,22 +52,23 @@ function changeScene() {
   if (tc) tc.content = getComputedStyle(back).getPropertyValue('--b0').trim();
 }
 
-const $branch = document.querySelector('.branch');
+const $branch = $stars; // 글 위 별표 (예전 바구니 그림 자리) — 글자와 함께 사라졌다 나타남
 
 function render(item) {
   changeScene();
   $quote.textContent = item.text;
   $source.textContent = item.source || '';
   $stars.textContent = item.id ? '★'.repeat(item.stars || 1) : '';
+  $stars.setAttribute('aria-label', item.id ? `중요도 ${item.stars || 1}` : '');
   lastId = item.id || 0;
   fitQuote();
   try { localStorage.setItem('ob_last', JSON.stringify(item)); } catch {}
 }
 
-// 긴 문구가 아래 '담기'·'로그인' 줄과 겹치지 않게: 화면에 들어올 때까지 글자를 1px씩 줄임
+// 긴 문구가 오른쪽 아래 '담기' 버튼과 겹치지 않게: 화면에 들어올 때까지 글자를 1px씩 줄임
 function fitQuote() {
   $quote.style.fontSize = '';
-  const limit = document.querySelector('.hint').getBoundingClientRect().top - 12;
+  const limit = document.getElementById('addLink').getBoundingClientRect().top - 12;
   let size = parseFloat(getComputedStyle($quote).fontSize);
   while ($meta.getBoundingClientRect().bottom > limit && size > 14) {
     size -= 1;
