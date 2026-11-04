@@ -265,6 +265,9 @@ async function withXms(res, request, env, data) {
   const ogDesc = h.share_description || '';
   const ogImage = h.og_image ? `${url.origin}${h.og_image}` : '';
   let hasDesc = false;
+  // 오픈그래프(네이버 · 카톡 · 페이스북 미리보기): 사이트에 없는 태그는 끝에 채워 넣는다 (2026-11-04 네이버 "Open Graph 제목이 없습니다")
+  const og = { title: false, type: false, url: false, site_name: false, description: false };
+  let pageTitle = '';
 
   let rw = new HTMLRewriter();
   if (data) {
@@ -286,6 +289,16 @@ async function withXms(res, request, env, data) {
     rw = rw.on('title', { element(el) { el.setInnerContent(h.title); } })
       .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', h.title); } });
   }
+  rw = rw.on('title', { text(t) { pageTitle += t.text; } });
+  rw = rw.on('meta[property^="og:"]', {
+    element(el) {
+      const k = (el.getAttribute('property') || '').slice(3);
+      if (k in og) og[k] = true;
+      // 미리보기 그림 · 주소는 전체 주소여야 네이버 · 카톡이 읽는다 (/img/… → https://도메인/img/…)
+      const c = el.getAttribute('content') || '';
+      if ((k === 'image' || k === 'url') && c.startsWith('/') && !c.startsWith('//')) el.setAttribute('content', url.origin + c);
+    },
+  });
   rw = rw.on('meta[name="description"]', { element(el) { hasDesc = true; if (home && h.description) el.setAttribute('content', h.description); } });
   if (ogDesc) rw = rw.on('meta[property="og:description"], meta[name="twitter:description"]', { element(el) { el.remove(); } });
   if (ogImage) rw = rw.on('meta[property="og:image"], meta[name="twitter:image"]', { element(el) { el.remove(); } });
@@ -313,7 +326,17 @@ async function withXms(res, request, env, data) {
       }
       el.append(tags.join('\n'), { html: true });
       // 설명 태그가 아예 없던 페이지에는 검색엔진 설명글을 넣는다
-      el.onEndTag((end) => { if (!hasDesc && h.description) end.before(`<meta name="description" content="${attr(h.description)}">`, { html: true }); });
+      el.onEndTag((end) => {
+        const add = [];
+        if (!hasDesc && h.description) add.push(`<meta name="description" content="${attr(h.description)}">`);
+        const title = (home && h.title) || pageTitle.replace(/\s+/g, ' ').trim();
+        if (!og.title && title) add.push(`<meta property="og:title" content="${attr(title)}">`);
+        if (!og.type) add.push('<meta property="og:type" content="website">');
+        if (!og.url) add.push(`<meta property="og:url" content="${attr(url.origin + url.pathname)}">`);
+        if (!og.site_name && h.site_name) add.push(`<meta property="og:site_name" content="${attr(h.site_name)}">`);
+        if (!ogDesc && !og.description && h.description) add.push(`<meta property="og:description" content="${attr(h.description)}">`);
+        if (add.length) end.before(add.join('\n'), { html: true });
+      });
     },
   });
   return rw.transform(res);
