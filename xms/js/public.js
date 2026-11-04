@@ -1,6 +1,7 @@
 // xms 방문자 화면: 메뉴 열기 · 로그인 · 가입 · 마이페이지 · 글쓰기 · 댓글
 import { $, $$, makeApi, formData, busy, toast, openDialog, confirmInline } from './common.js';
 import { shrinkImage } from './editor.js';
+import { cropCircle } from './crop.js';
 
 const api = makeApi('/xms-api');
 
@@ -306,7 +307,8 @@ $$('form[data-form=signup] [name=nickname], form[data-form=profile] [name=nickna
 });
 
 // ───── 프로필 사진 ─────
-//   글 사진과 같이 WEBP 로 바꿔 올린다(긴 변 512px). 가입 화면은 골라 두었다가 가입 뒤에, 마이페이지는 고르자마자 올린다.
+//   고르면 먼저 동그라미에 맞춰 자르고(crop.js) 512px WEBP 로 올린다. 가입 화면은 골라 두었다가 가입 뒤에, 마이페이지는 자르자마자 올린다.
+//   움직이는 GIF 는 자르지 않고 그대로(자르면 움직임이 사라진다)
 const avatar = { pending: null, url: '' };
 async function uploadAvatar(file) {
   const res = await fetch('/xms-api/uploads?for=avatar&kind=IMAGE', {
@@ -339,7 +341,8 @@ if (pick) {
     if (!f) return;
     if (!f.type.startsWith('image/')) { toast('사진 파일을 골라 주세요.'); return; }
     try {
-      const small = await shrinkImage(f, { max: 512, maxBytes: 160000 });
+      const small = f.type === 'image/gif' ? await shrinkImage(f, { max: 512, maxBytes: 160000 }) : await cropCircle(f);
+      if (!small) return; // 자르기 취소
       if (!live) { // 가입 화면: 미리 보기만
         avatar.pending = small;
         if (avatar.url) URL.revokeObjectURL(avatar.url);
