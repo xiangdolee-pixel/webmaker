@@ -1,8 +1,8 @@
-const CACHE = 'olivebasket-v32';
+const CACHE = 'olivebasket-v33';
 const SHELL = [
   './',
   'basket',
-  'style.css?v=28',
+  'style.css?v=29',
   'app.js?v=31',
   'admin.js?v=24',
   'manifest.webmanifest',

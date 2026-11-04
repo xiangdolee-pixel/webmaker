@@ -142,16 +142,6 @@ body.lock {
 
 /* ---------- 관리 (admin) ---------- */
 .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
-h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--olive-deep);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 8px 0 20px;
-}
-h1 .leaf-mark { width: 38px; height: 28px; flex: none; }
 a.back { color: var(--ink-soft); text-decoration: none; font-size: 16px; }
 
 .card {
@@ -305,7 +295,6 @@ button:disabled { opacity: .35; cursor: default; }
 * { -webkit-tap-highlight-color: transparent; }
 a:focus, button:focus { outline: none; }
 a, button { -webkit-touch-callout: none; }
-h1 a.home { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; word-break: keep-all; min-width: 0; }
 
 /* 사이트 회원 계정 버튼(사람 동그라미 · 로그인) — xim 공통 버튼을 올리브 색에 맞춤 */
 .ob-acc { --xa-bg: #e6e4d6; --xa-fg: #5a6740; display: inline-flex; align-items: center; vertical-align: middle; }
@@ -313,10 +302,6 @@ h1 a.home { display: flex; align-items: center; gap: 10px; color: inherit; text-
 .ob-acc .xa-login { display: inline-block; padding: 0 10px; color: var(--olive); text-decoration: none; font-size: 13px;
   font-family: inherit; font-weight: 400; border-bottom: 1px solid var(--line); opacity: .8; white-space: nowrap; line-height: inherit; }
 .ob-acc .xa-avatar { width: 30px; height: 30px; }
-h1 .ob-acc { margin-left: 10px; flex: none; }
-h1 .ob-acc .xa-login { font-size: 14px; border: 0; }
-h1 .back { white-space: nowrap; flex: none; }
-@media (max-width: 400px) { h1 { font-size: 19px; gap: 8px; } h1 .leaf-mark { width: 32px; height: 24px; } }
 
 /* ---------- 위 메뉴 · 담기 버튼 (index) ---------- */
 .ob-top {
@@ -352,3 +337,8 @@ h1 .back { white-space: nowrap; flex: none; }
 
 /* 글 위 별표 (예전 바구니 그림 자리) */
 .top-stars { flex: none; min-height: 24px; margin: 0 0 18px; font-size: 18px; letter-spacing: .4em; text-indent: .4em; }
+
+/* 첫 화면 말고 다른 화면(담기 · 로그인 · 내 정보): 같은 위 메뉴를 바탕색 위에 고정, 그 아래로 내용 */
+body.page { padding-top: calc(56px + env(safe-area-inset-top)); }
+.page .ob-top { background: var(--bg); }
+.page .wrap { padding-top: 12px; }

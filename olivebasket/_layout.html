@@ -10,16 +10,15 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.2.5/index.css" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="/style.css?v=27">
+<link rel="stylesheet" href="/style.css?v=29">
 </head>
-<body>
-<!-- 회원가입 · 로그인 · 내 정보 화면의 틀 (xms 가 <main> 자리에 내용을 넣는다) -->
+<body class="page">
+<!-- 회원가입 · 로그인 · 내 정보 화면의 틀 (xms 가 <main> 자리에 내용을 넣는다) — 위 메뉴는 첫 화면과 같다 -->
+<header class="ob-top">
+  <a class="ob-logo" href="/"><span class="leaf-mark" aria-hidden="true"></span>올리브바스켓</a>
+  <span class="ob-acc" data-xms-account></span>
+</header>
 <div class="wrap">
-  <h1>
-    <a class="home" href="/"><span class="leaf-mark" aria-hidden="true"></span>올리브바스켓</a>
-    <a class="back" href="/" style="margin-left:auto">← 처음으로</a>
-    <span class="ob-acc" data-xms-account></span>
-  </h1>
   <main></main>
 </div>
 </body>
