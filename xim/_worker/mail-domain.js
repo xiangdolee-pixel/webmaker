@@ -51,6 +51,9 @@ export async function ensureMailDomain(token, domain) {
     let added = 0;
     const failed = [];
     for (const rec of list) {
+      // 루트 도메인(예: plators.com)의 DMARC 는 넣지 않는다 — p=reject 가 붙으면 그 도메인으로 쓰던 메일
+      // (Gmail '다른 주소로 보내기' 등)이 상대 서버에서 모두 거부된다 (2026-11-04 master@plators.com 사고).
+      if (rec.type === 'TXT' && String(rec.name).replace(/\.$/, '') === `_dmarc.${zone.name}`) continue;
       const b = { type: rec.type, name: rec.name, content: rec.content, ttl: rec.ttl || 1 };
       if (rec.priority != null) b.priority = rec.priority;
       try { await cf(token, 'POST', `/zones/${zone.id}/dns_records`, b); added++; } catch (e) {
