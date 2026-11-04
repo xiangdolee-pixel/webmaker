@@ -112,7 +112,7 @@ $('form[data-form=signup-verify] [name=code]')?.addEventListener('input', (e) =>
   if (e.target.value.length === 6) e.target.form.requestSubmit();
 });
 // 시간이 걸리는 일(가입 · 로그인): 화면을 덮고 "…중입니다" — 다음 화면이 뜰 때까지 버튼을 다시 못 누르게
-function waiting(form, text) {
+function waiting(form, text, sub = '잠시만 기다려 주세요') {
   const host = form.closest('.xms-c') || document.body;
   let el = host.querySelector(':scope > .wait-cover');
   if (!el) {
@@ -124,6 +124,7 @@ function waiting(form, text) {
     host.append(el);
   }
   el.querySelector('b').textContent = text;
+  el.querySelector('small').textContent = sub;
   el.hidden = false;
   form.querySelectorAll('button, input, select').forEach((x) => { x.dataset.waitOff = x.disabled ? '1' : ''; x.disabled = true; });
   return {
@@ -140,7 +141,7 @@ onForm('signup', async (form, data) => {
     await api('/signup', { method: 'POST', data: { ...data, email: signup.email, ticket: signup.ticket } });
   } catch (e) { w.done(); throw e; }
   // 가입하면 바로 로그인돼 있다 → 고른 프로필 사진을 이어서 올린다 (실패해도 가입은 끝났으니 넘어간다)
-  if (avatar.pending) { w.say('프로필 사진 올리는 중…'); try { await uploadAvatar(avatar.pending); } catch (e) { /* 마이페이지에서 다시 */ } }
+  if (avatar.pending) { w.say('프로필 사진을 적용하고 있어요…'); try { await uploadAvatar(avatar.pending); } catch (e) { /* 마이페이지에서 다시 */ } }
   w.say('가입 완료! 이동하는 중…');
   location.href = '/member/welcome'; // 덮개는 그대로 — 다음 화면이 뜰 때까지
 });
@@ -340,6 +341,7 @@ if (pick) {
     input.value = '';
     if (!f) return;
     if (!f.type.startsWith('image/')) { toast('사진 파일을 골라 주세요.'); return; }
+    let w = null;
     try {
       const small = f.type === 'image/gif' ? await shrinkImage(f, { max: 512, maxBytes: 160000 }) : await cropCircle(f);
       if (!small) return; // 자르기 취소
@@ -350,14 +352,17 @@ if (pick) {
         showAvatar(avatar.url);
         return;
       }
-      $$('[data-avatar-view]').forEach((el) => el.classList.add('busy'));
+      // 올리고 새 사진을 받아 오기까지 몇 초 걸린다 → 화면을 덮고 안내 (사용자 지시 2026-11-04: "기다릴 수 있는 안내문")
+      w = waiting(pick, '프로필 사진을 적용하고 있어요…', '사진을 올리는 중이에요. 몇 초면 끝나요.');
       const url = await uploadAvatar(small);
+      // 새 사진을 다 받아 둔 뒤에 바꾼다 (덮개가 걷혔는데 빈 동그라미가 보이지 않게)
+      await new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = url; setTimeout(r, 8000); });
       showAvatar(url);
       toast('프로필 사진을 바꿨습니다.');
     } catch (e) {
       toast(e.message || '사진을 올리지 못했습니다.');
     } finally {
-      $$('[data-avatar-view]').forEach((el) => el.classList.remove('busy'));
+      w?.done();
     }
   });
   $$('[data-avatar-clear]').forEach((b) => b.addEventListener('click', async () => {
