@@ -42,8 +42,9 @@ export function cookie(request, name) {
   const m = (request.headers.get('Cookie') || '').match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
   return m ? m[1] : null;
 }
+// maxAgeSec 가 null 이면 브라우저를 닫으면 사라지는 쿠키
 export const setCookie = (name, value, maxAgeSec) =>
-  `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSec}`;
+  `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAgeSec === null ? '' : `; Max-Age=${maxAgeSec}`}`;
 
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 export const randomHex = (bytes) => hex(crypto.getRandomValues(new Uint8Array(bytes)));
@@ -75,16 +76,24 @@ export const recordFail = (db, key) => db.prepare('INSERT INTO login_fails (key,
 
 // ───────── 세션 ─────────
 export const SESS_COOKIE = 'xms_sess';
-const MEMBER_SESSION = 7 * DAY;
+// 로그인 유지(kind 'keep', 사용자 지시 2026-11-04 "매번 로그인 안 해도 되게"):
+//   마지막으로 들어온 날부터 90일 동안 로그인이 이어진다(들어올 때마다 늘어남). 쿠키는 브라우저 한도인 400일.
+//   유지를 끄면(kind 'member') 브라우저를 닫으면 끝나는 쿠키, 서버 쪽도 12시간.
+const MEMBER_SESSION = 12 * 3600000;
+const KEEP_SESSION = 90 * DAY;
+const KEEP_COOKIE_SEC = 400 * 86400;
 const STAFF_SESSION = 8 * 3600000;
+
+// 로그인 유지 쿠키를 다시 400일로 (account.js 가 하루 한 번 부른다)
+export const keepCookie = (token) => setCookie(SESS_COOKIE, token, KEEP_COOKIE_SEC);
 
 export async function createSession(db, site, kind, memberId = null) {
   const token = randomHex(32);
-  const ms = kind === 'staff' ? STAFF_SESSION : MEMBER_SESSION;
+  const ms = kind === 'staff' ? STAFF_SESSION : kind === 'keep' ? KEEP_SESSION : MEMBER_SESSION;
   await db.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now()).run();
   await db.prepare('INSERT INTO sessions (token, site, member_id, kind, expires_at) VALUES (?, ?, ?, ?, ?)')
     .bind(token, site, memberId, kind, now() + ms).run();
-  return setCookie(SESS_COOKIE, token, ms / 1000);
+  return setCookie(SESS_COOKIE, token, kind === 'keep' ? KEEP_COOKIE_SEC : kind === 'member' ? null : ms / 1000);
 }
 
 // 지금 요청한 사람: { kind: 'guest' } | { kind: 'member', member, level } | { kind: 'staff', level: 1 }
@@ -92,14 +101,18 @@ export async function whoAmI(db, request, site) {
   const token = cookie(request, SESS_COOKIE);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return { kind: 'guest', level: 0 };
   // 세션 · 회원을 한 번에 (DB 왕복 줄이기)
-  const s = await db.prepare(`SELECT s.kind AS s_kind, m.* FROM sessions s
+  const s = await db.prepare(`SELECT s.kind AS s_kind, s.expires_at AS s_exp, m.* FROM sessions s
     LEFT JOIN members m ON m.id = s.member_id AND m.site = s.site AND m.status = 'ACTIVE'
     WHERE s.token = ? AND s.site = ? AND s.expires_at > ?`).bind(token, site, now()).first();
   if (!s) return { kind: 'guest', level: 0 };
   if (s.s_kind === 'staff') return { kind: 'staff', level: 1, token, name: '운영자' };
   if (!s.id) return { kind: 'guest', level: 0 };
-  const { s_kind, ...m } = s;
-  return { kind: 'member', member: m, level: m.level, token, name: m.name };
+  const { s_kind, s_exp, ...m } = s;
+  // 로그인 유지: 하루에 한 번만 만료를 다시 90일 뒤로
+  if (s_kind === 'keep' && s_exp - now() < KEEP_SESSION - DAY) {
+    await db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').bind(now() + KEEP_SESSION, token).run();
+  }
+  return { kind: 'member', member: m, level: m.level, token, name: m.name, keep: s_kind === 'keep' };
 }
 export const isAdmin = (me) => me.level === 1;
 

@@ -42,6 +42,14 @@
       }
       return;
     }
+    // 로그인 유지: 하루 한 번 쿠키 기한을 늘린다 (유지를 끈 로그인은 서버가 그냥 둔다)
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem('xa-keep') !== day) {
+        localStorage.setItem('xa-keep', day);
+        fetch('/xms-api/keep', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+      }
+    } catch { /* 저장소를 못 쓰면 건너뜀 */ }
     const admin = !!me.admin;
     if (!el.querySelector('.xa-avatar')) el.innerHTML = `<button type="button" class="xa-avatar" aria-haspopup="menu" aria-expanded="false" aria-label="내 계정 메뉴">${PERSON}</button>`;
     // 프로필 사진이 있으면 사람 모양 대신 사진 (주소는 /xms/upload/<임의 id> 만 받는다)

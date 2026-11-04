@@ -1,7 +1,7 @@
 // xms 방문자 화면 · API — 고객 사이트 주소 아래 /member/* · /board/* · /xms-api/*
 import {
   DAY, now, bad, forbidden, notFound, HttpError, json, html, esc, str, body, siteSettings, MEMBER_COLUMNS, canBy, levelBit,
-  createSession, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit, verOf,
+  createSession, keepCookie, SESS_COOKIE, setCookie, ensureDocs, hashPassword, newPassword, sameText, sanitizeHtml, plainText, clientIp, tooManyFails, recordFail, isAdmin, audit, verOf,
   memberValues, uniqueProblem,
 } from './lib.js';
 import { boardOptions } from './admin-api.js';
@@ -151,6 +151,7 @@ async function loginPage(ctx) {
     <form data-form="login" data-next="${esc(next)}" class="mb-form">
       <label class="field"><span>이메일(아이디)</span><input class="input" name="login_id" type="email" autocomplete="username" required maxlength="254" placeholder="name@example.com"></label>
       <label class="field"><span>비밀번호</span>${pwInput('password', 'current-password', ' required placeholder="비밀번호"')}</label>
+      <label class="check keep"><input type="checkbox" name="keep" checked> 로그인 유지</label>
       <p class="err" role="alert"></p>
       <button class="btn primary wide mb-go" type="submit">로그인</button>
     </form>
@@ -558,7 +559,11 @@ export async function publicApi(ctx) {
     }
     if (m2.status === 'LOCKED') throw new HttpError(423, '관리자가 로그인을 막아 둔 계정입니다. 관리자에게 문의해 주세요.');
     await db.prepare('UPDATE members SET fail_count = 0, locked_until = 0, last_login_at = ? WHERE id = ?').bind(now(), m2.id).run();
-    return json({ ok: true, admin: m2.level === 1 }, 200, { 'Set-Cookie': await createSession(db, site, 'member', m2.id) });
+    return json({ ok: true, admin: m2.level === 1 }, 200, { 'Set-Cookie': await createSession(db, site, raw.keep === false ? 'member' : 'keep', m2.id) });
+  }
+  // 로그인 유지: 쿠키 기한을 다시 늘린다 (서버 쪽 기한은 whoAmI 가 늘림)
+  if (path === '/keep' && method === 'POST') {
+    return json({ ok: true }, 200, me.keep ? { 'Set-Cookie': keepCookie(me.token) } : {});
   }
   if (path === '/logout' && method === 'POST') {
     if (me.token) await db.prepare('DELETE FROM sessions WHERE token = ?').bind(me.token).run();
@@ -603,7 +608,7 @@ export async function publicApi(ctx) {
     const id = r.meta.last_row_id;
     const stmts = [docs.TERMS, docs.PRIVACY].filter(Boolean).map((d) => db.prepare('INSERT INTO member_agreements (member_id, document_id, agreed_at) VALUES (?, ?, ?)').bind(id, d.id, t));
     await db.batch([...stmts, tk.done()]);
-    return json({ ok: true }, 200, { 'Set-Cookie': await createSession(db, site, 'member', id) });
+    return json({ ok: true }, 200, { 'Set-Cookie': await createSession(db, site, 'keep', id) });
   }
 
   // 아래는 로그인한 회원만
