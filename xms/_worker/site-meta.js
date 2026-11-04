@@ -198,7 +198,7 @@ export async function serveRss(env, site, origin) {
   const db = env.DB;
   const guest = { kind: 'guest', level: 0 };
   const [s, seo, { results: boards }] = await Promise.all([
-    env.XIM_DB.prepare('SELECT name FROM sites WHERE slug = ?').bind(site).first(),
+    env.XIM_DB.prepare('SELECT name, created_at FROM sites WHERE slug = ?').bind(site).first(),
     getSeo(db, site),
     db.prepare('SELECT * FROM boards WHERE site = ? AND deleted_at IS NULL AND visible = 1').bind(site).all(),
   ]);
@@ -226,6 +226,30 @@ export async function serveRss(env, site, origin) {
     <description>${cdata(abs(p.content_html))}</description>
   </item>`;
   }).join('\n');
+  // 공개 글이 하나도 없으면(게시판이 없는 사이트 등) 네이버가 "형식이 올바르지 않다"며 받지 않는다
+  //   → 홈페이지와 메뉴 페이지를 항목으로 넣는다 (날짜 = 사이트 만든 날, 늘 같게)
+  const since = new Date(s?.created_at || Date.UTC(2026, 0, 1)).toUTCString();
+  let pageItems = '';
+  if (!posts.length) {
+    const pages = [{ path: '/', title: name, desc: seo.description || name }];
+    const walk = (list) => list.forEach((m) => {
+      if (m.href && !m.external) {
+        const path = m.href.split('#')[0] || '/';
+        if (path.startsWith('/') && !path.startsWith('//')) pages.push({ path, title: `${m.title} — ${name}`, desc: `${name} · ${m.title}` });
+      }
+      walk(m.children || []);
+    });
+    walk(await visibleMenus(db, site, guest));
+    const seen = new Set();
+    pageItems = pages.filter((x) => !seen.has(x.path) && seen.add(x.path)).slice(0, 50).map((x) => `  <item>
+    <title>${esc(x.title)}</title>
+    <link>${esc(origin + x.path)}</link>
+    <guid isPermaLink="true">${esc(origin + x.path)}</guid>
+    <pubDate>${since}</pubDate>
+    <description>${cdata(x.desc)}</description>
+  </item>`).join('\n');
+  }
+  const last = posts.length ? new Date(posts[0].published_at).toUTCString() : since;
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
@@ -233,8 +257,9 @@ export async function serveRss(env, site, origin) {
   <link>${esc(origin)}/</link>
   <description>${esc(seo.description || name)}</description>
   <language>ko</language>
+  <lastBuildDate>${last}</lastBuildDate>
   <atom:link href="${esc(origin)}/rss.xml" rel="self" type="application/rss+xml"/>
-${items}
+${items || pageItems}
 </channel>
 </rss>
 `;
