@@ -1,0 +1,9 @@
+{
+  "xim": true,
+  "assets": {
+    "run_worker_first": ["/*", "!/*.png", "!/manifest.json", "!/OneSignalSDKWorker.js"]
+  },
+  "d1_databases": [
+    { "binding": "SB_DB", "database_name": "sugarbreak", "database_id": "d40129d3-7484-4c37-a499-edb7b6fb76ef" }
+  ]
+}

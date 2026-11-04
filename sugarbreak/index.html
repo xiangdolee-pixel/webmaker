@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>슈가브레이크 — 당류 끊기 건강관리</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#16b87f" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="슈가브레이크" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+<style>
+  :root{
+    --bg:#f3f7f4; --card:#ffffff; --card2:#f0f5f1; --line:#e2e9e3;
+    --text:#1f2a24; --muted:#7c8a82; --accent:#16b87f; --accent2:#0e9d6a;
+    --warn:#e8910f; --danger:#e7544b; --flame:#ff7a18; --blue:#3b82f6;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Pretendard Variable','Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+    background:#dfe8e2; color:var(--text);
+    display:flex; justify-content:center;
+    font-size:18px; line-height:1.5;
+  }
+  #app{
+    width:100%; max-width:430px; min-height:100vh;
+    background:linear-gradient(180deg,#f7fbf8 0%, #eef5f0 100%);
+    position:relative; padding-bottom:90px; overflow-x:hidden;
+  }
+  header{
+    padding:calc(14px + env(safe-area-inset-top)) 16px 6px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo-row{display:flex; align-items:center; gap:9px;}
+  .logo-img{height:42px; width:auto; display:block;}
+  .logo-text{font-size:21px; font-weight:800; letter-spacing:-.5px; color:var(--text);}
+  .screen{display:none; padding:0 16px 20px; animation:fade .25s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin:12px 0; box-shadow:0 4px 14px rgba(31,42,36,.05);}
+  .card h3{margin:0 0 12px; font-size:19px; font-weight:700;}
+  .muted{color:var(--muted);}
+  .small{font-size:15.5px; line-height:1.55;}
+
+  .streak{
+    display:flex; align-items:center; gap:14px; text-align:left; padding:15px 18px; border:none; color:#fff; min-height:104px;
+    background-color:#1c4733; background-size:cover; background-position:center;
+    text-shadow:0 1px 6px rgba(0,0,0,.5); transition:background-image .4s ease;
+  }
+  .flame{font-size:40px; line-height:1; flex:none; filter:drop-shadow(0 0 12px rgba(255,150,40,.7));}
+  .flame.hasbadge{filter:drop-shadow(0 1px 4px rgba(0,0,0,.45));}
+  .cheer-card{background:linear-gradient(135deg,#fff6e9,#fffdf8); border:1px solid #ffe2b8; border-left:5px solid var(--warn);}
+  .streak-mid{flex:1; min-width:0;}
+  .streak .num{font-size:30px; font-weight:900; letter-spacing:-1px; color:#fff; line-height:1.1;}
+  .streak .num span{font-size:15px; color:#e8f5ee; font-weight:600;}
+  .streak .label{color:#ffd9a0; font-weight:800; font-size:14px; margin-top:1px;}
+  .streak .best{color:#dfeee7; font-size:16px; text-align:right; flex:none; line-height:1.3;}
+  .streak .best b{color:#fff; font-size:24px;}
+
+  .sugar-row{display:flex; gap:10px;}
+  .sugar-btn{
+    flex:1; background:#eef1f0; border:2px solid #d7ddda; border-radius:16px;
+    padding:14px 6px; text-align:center; cursor:pointer; transition:.15s; user-select:none; opacity:.7;
+  }
+  .sugar-btn .emoji{font-size:34px; filter:grayscale(.6);}
+  .sugar-btn .name{font-size:16px; margin-top:6px; font-weight:700; color:var(--muted);}
+  .sugar-btn .state{font-size:13px; margin-top:4px; color:var(--muted); font-weight:600;}
+  .sugar-btn.no{border-color:var(--accent); background:#e3f6ed; opacity:1;}
+  .sugar-btn.no .emoji{filter:none;}
+  .sugar-btn.no .name{color:var(--text);}
+  .sugar-btn.no .state{color:var(--accent2);}
+  .sugar-btn.yes{border-color:var(--danger); background:#fdeceb; opacity:1;}
+  .sugar-btn.yes .emoji{filter:none;}
+  .sugar-btn.yes .name{color:var(--text);}
+  .sugar-btn.yes .state{color:var(--danger);}
+  .sugar-btn:active{transform:scale(.96);}
+
+  .btn{
+    display:block; width:100%; border:none; border-radius:14px; padding:15px;
+    font-size:16px; font-weight:700; cursor:pointer; font-family:inherit;
+    background:var(--accent); color:#ffffff;
+  }
+  .btn.sos{background:linear-gradient(135deg,#2faf6a,#10663d); color:#fff; font-size:20px; box-shadow:0 6px 18px rgba(16,102,61,.4);}
+  .btn.ghost{background:transparent; border:1px solid var(--line); color:var(--text);}
+  .btn.sm{padding:12px; font-size:16px;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.5;}
+
+  .mrow{display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line);}
+  .mrow:last-child{border-bottom:none;}
+  .mrow .mv{font-size:21px; font-weight:800;}
+  .mrow .mu{font-size:15px; color:var(--muted); font-weight:600;}
+  .badge{display:inline-block; padding:4px 11px; border-radius:20px; font-size:14px; font-weight:700;}
+  .b-good{background:#dff5e9; color:var(--accent2);}
+  .b-warn{background:#fcefd6; color:var(--warn);}
+  .b-danger{background:#fbe1df; color:var(--danger);}
+  .b-low{background:#e1ecfb; color:#2563eb;}
+  .b-high{background:#ffe7d1; color:#d9730b;}
+  .bp-table{width:100%; border-collapse:collapse; font-size:15px;}
+  .bp-table th,.bp-table td{border:1px solid var(--line); padding:9px 8px; text-align:center;}
+  .bp-table th{background:var(--card2); color:var(--muted); font-weight:700; font-size:14px;}
+  .bp-table td:first-child{white-space:nowrap;}
+  .bp-table .badge{font-size:13px; padding:3px 9px;}
+
+  label{display:block; font-size:16px; color:var(--muted); margin:14px 0 6px;}
+  input,select{
+    width:100%; padding:14px; font-size:18px; border-radius:12px;
+    border:1px solid var(--line); background:var(--card2); color:var(--text); font-family:inherit;
+  }
+  input:focus,select:focus{outline:none; border-color:var(--accent);}
+  textarea{width:100%; padding:14px; font-size:17px; border-radius:12px; border:1px solid var(--line); background:var(--card2); color:var(--text); font-family:inherit; line-height:1.65; resize:vertical;}
+  textarea:focus{outline:none; border-color:var(--accent);}
+  .conv{font-size:15px; color:var(--accent2); margin-top:6px; font-weight:600; min-height:18px;}
+  .hint{font-size:15.5px; color:var(--accent2); margin-top:6px; background:#e3f6ed; border:1px solid #cdeadd; border-radius:10px; padding:9px 12px; line-height:1.55;}
+  .goalshow{font-size:15.5px; margin-top:6px; font-weight:700; color:var(--accent2);}
+  .qrow{display:flex; align-items:center; gap:8px;}
+  .qrow input{flex:1; min-width:0;}
+  .qunit{font-size:16px; color:var(--muted); font-weight:600; white-space:nowrap;}
+  .qsep{color:var(--muted); font-weight:700;}
+  .qbtn{width:auto; padding:14px 18px; flex:none;}
+  .lastval{font-size:15px; color:var(--muted); margin-top:8px; min-height:16px;}
+  .lastval b{color:var(--text);}
+  .delbtn{flex:none; width:30px; height:30px; border-radius:9px; border:1px solid var(--line); background:var(--card2); color:var(--muted); font-size:14px; cursor:pointer; line-height:1;}
+  .delbtn:active{transform:scale(.9); background:#fbe1df; color:var(--danger);}
+  .viewbtn{margin-top:10px; display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:11px; border:1px solid var(--accent); background:#e3f6ed; color:var(--accent2); font-weight:700; font-size:15px; cursor:pointer; font-family:inherit;}
+  .viewbtn:active{transform:scale(.97);}
+  .periodbar{display:flex; gap:6px; flex-wrap:wrap; margin:4px 0 14px;}
+  .periodbar button{flex:1; min-width:44px; padding:10px 4px; font-size:15px; font-weight:700; border-radius:10px; border:1px solid var(--line); background:var(--card2); color:var(--muted); cursor:pointer; font-family:inherit;}
+  .periodbar button.on{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .chart-legend{display:flex; gap:14px; justify-content:center; font-size:13px; color:var(--muted); margin-top:6px;}
+  .chart-legend span b{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:4px; vertical-align:middle;}
+  .twocol{display:flex; gap:10px;}
+  .twocol>div{flex:1;}
+  .guide{background:var(--card2); border:1px solid var(--line); border-radius:14px; padding:14px; font-size:15px; line-height:1.7;}
+  .guide b{color:var(--accent);}
+  .guide ul{margin:6px 0 0; padding-left:18px;}
+
+  /* 홈: 빠른 기록 */
+  .quick h3{display:flex; align-items:baseline; justify-content:space-between;}
+  .qk{padding:12px 0; border-bottom:1px solid var(--line);}
+  .qk:last-child{border-bottom:none; padding-bottom:2px;}
+  .qk:first-of-type{padding-top:2px;}
+  .qk-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
+  .qk-lab{font-size:17px; font-weight:800;}
+  .qk-lab .done{font-size:13px; color:var(--accent2); font-weight:700; margin-left:4px;}
+  .qk-last{font-size:13.5px; color:var(--muted); text-align:right; cursor:pointer;}
+  .qk-last b{color:var(--text);}
+  .qk input{padding:12px 10px; font-size:20px; font-weight:700; text-align:center;}
+  .qk input::placeholder{font-weight:500; color:#a9b4ad; font-size:16px;}
+  .qk .qbtn{padding:13px 16px;}
+  .qk .qunit{font-size:15px;}
+  .qk.donetoday .qk-lab{color:var(--accent2);}
+  .qk-head{cursor:pointer; user-select:none;}
+  .qk-arrow{display:inline-block; color:var(--muted); transition:transform .2s;}
+  .qk.open .qk-arrow{transform:rotate(180deg);}
+  .qk-more{display:none;}
+  .qk.open .qk-more{display:block; margin-top:10px; animation:fade .2s ease;}
+  .qk-more .mrow{padding:10px 0;}
+  .qk-more .mrow .mv{font-size:18px;}
+  .qk-more .mrow .mu{font-size:13.5px;}
+  .qk-more .hint{font-size:14px;}
+  .qk-more .guide{margin-top:10px; font-size:14px;}
+  .qk-extra-btn{display:block; width:100%; margin-top:12px; padding:11px; border-radius:12px; border:1px dashed #c9d6cd; background:none; color:var(--muted); font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;}
+  .qk-extra-btn[hidden]{display:none;}
+  .qk-extra-btn.on{border-style:solid; color:var(--accent2);}
+
+  nav{
+    position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:430px;
+    background:rgba(255,255,255,.95); border-top:1px solid var(--line); backdrop-filter:blur(8px);
+    display:flex; padding:8px 4px calc(8px + env(safe-area-inset-bottom)); z-index:20;
+  }
+  nav button{
+    flex:1; background:none; border:none; color:#8a978f; font-family:inherit;
+    font-size:13px; font-weight:700; cursor:pointer; padding:6px 0;
+  }
+  nav button .ic{width:27px; height:27px; display:block; margin:0 auto 3px; padding:5px 14px; box-sizing:content-box; border-radius:16px; transition:background .18s;}
+  nav button .ic *{stroke:none;}
+  nav button .ic .g{fill:url(#sgGrad);}
+  nav button .ic .d{fill:#243029;}
+  nav button .ic .w{fill:#ffffff;}
+  nav button:not(.active) .ic .g{fill:#c4cdc7;}
+  nav button:not(.active) .ic .d{fill:#aab4ae;}
+  nav button:not(.active) .ic .w{fill:#eef1ef;}
+  nav button.active{color:var(--accent2);}
+  nav button.active .ic{background:#e3f6ed;}
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.7); display:none;
+    align-items:center; justify-content:center; padding:24px; z-index:50; backdrop-filter:blur(3px);
+  }
+  .overlay.show{display:flex;}
+  .modal{background:var(--card); border:1px solid var(--line); border-radius:22px; padding:24px; width:100%; max-width:360px; text-align:center; animation:pop .25s;}
+  @keyframes pop{from{transform:scale(.9); opacity:0;} to{transform:none; opacity:1;}}
+  .modal .why{font-size:19px; font-weight:800; line-height:1.5; margin:10px 0 4px;}
+  .modal .quote{color:var(--muted); font-size:13px; margin-bottom:18px;}
+  .timer{font-size:48px; font-weight:900; color:var(--flame); margin:10px 0; font-variant-numeric:tabular-nums;}
+  .toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:#1f2a24; color:#fff; padding:13px 22px; border-radius:30px; font-weight:700; font-size:16px; z-index:60; opacity:0; transition:.3s; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.2); white-space:nowrap;}
+  .toast.show{opacity:1; bottom:110px;}
+  .empty{text-align:center; color:var(--muted); padding:30px 10px; font-size:16px;}
+  .acc-head{cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0; user-select:none;}
+  .acc-arrow{color:var(--muted); font-size:18px; transition:transform .2s; flex:none;}
+  .card.open .acc-arrow{transform:rotate(180deg);}
+  .acc-body{max-height:0; opacity:0; overflow:hidden; margin-top:0;
+    transition:max-height .35s ease, opacity .25s ease, margin-top .35s ease;}
+  .card.open .acc-body{max-height:1600px; opacity:1; margin-top:14px;
+    transition:max-height .6s ease, opacity .45s ease, margin-top .6s ease;}
+  .card.acc.donetoday{background:linear-gradient(135deg,#eafaf1,#f4fbf7); border-color:#bfe6cf;}
+  .card.acc.donetoday>.acc-head>span:first-child::after{content:' ✓ 오늘 입력함'; color:var(--accent2); font-size:13px; font-weight:700;}
+  .header-right{display:flex; align-items:center; gap:10px;}
+  .hdr-date{font-size:15px; color:var(--muted); font-weight:600; white-space:nowrap;}
+  .sync{width:9px; height:9px; border-radius:50%; background:#c4cdc7; flex:none;}
+  .sync.ok{background:var(--accent);}
+  .sync.pending{background:var(--warn);}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo-row">
+      <img src="ci.png" alt="Sugar Break" class="logo-img" />
+      <span class="logo-text">슈가브레이크</span>
+    </div>
+    <div class="header-right">
+      <span class="hdr-date" id="todayStr"></span>
+      <span class="sync" id="syncDot" title="클라우드 저장 상태"></span>
+    </div>
+  </header>
+
+  <!-- ===== 홈 ===== -->
+  <section class="screen active" id="home">
+    <div class="card streak" onclick="openGoal()" style="cursor:pointer" title="내 목표 보기">
+      <div class="flame" id="flame">🔥</div>
+      <div class="streak-mid">
+        <div class="num"><span id="streakNum">0</span><span> 일째</span></div>
+        <div class="label">단 거 안 먹는 중!</div>
+      </div>
+      <div class="best">최고<br><b id="bestNum">0</b>일</div>
+    </div>
+
+    <div class="card cheer-card">
+      <div class="small" id="badgeCheer" style="line-height:1.6"></div>
+    </div>
+
+    <!-- 신체 기록: 입력 + 펼치면 이전 기록 -->
+    <div class="card quick">
+      <h3>오늘 바로 기록 <span class="small muted" style="font-weight:600">항목 누르면 이전 기록</span></h3>
+      <div class="qk" data-q="weight">
+        <div class="qk-head" onclick="toggleQk('weight')"><div class="qk-lab">⚖️ 체중<span class="done"></span></div><div class="qk-last"><span id="hl_weight"></span> <span class="qk-arrow">▾</span></div></div>
+        <div class="qrow">
+          <input id="h_weight" type="number" inputmode="decimal" step="0.1" enterkeyhint="done">
+          <span class="qunit">kg</span>
+          <button class="btn sm qbtn" onclick="saveHome('weight')">기록</button>
+        </div>
+        <div class="qk-more" id="more_weight"></div>
+      </div>
+      <div class="qk" data-q="bp">
+        <div class="qk-head" onclick="toggleQk('bp')"><div class="qk-lab">❤️ 혈압<span class="done"></span></div><div class="qk-last"><span id="hl_bp"></span> <span class="qk-arrow">▾</span></div></div>
+        <div class="qrow">
+          <input id="h_sys" type="number" inputmode="numeric" placeholder="수축기" enterkeyhint="next">
+          <span class="qsep">/</span>
+          <input id="h_dia" type="number" inputmode="numeric" placeholder="이완기" enterkeyhint="next">
+          <input id="h_hr" type="number" inputmode="numeric" placeholder="맥박" enterkeyhint="done" style="flex:.8">
+          <button class="btn sm qbtn" onclick="saveHome('bp')">기록</button>
+        </div>
+        <div class="qk-more" id="more_bp"></div>
+      </div>
+      <div class="qk" data-q="waist">
+        <div class="qk-head" onclick="toggleQk('waist')"><div class="qk-lab">📏 허리 <span class="small muted" style="font-weight:600">배꼽 높이</span><span class="done"></span></div><div class="qk-last"><span id="hl_waist"></span> <span class="qk-arrow">▾</span></div></div>
+        <div class="qrow">
+          <input id="h_waist" type="number" inputmode="decimal" step="0.1" enterkeyhint="done">
+          <span class="qunit">cm</span>
+          <button class="btn sm qbtn" onclick="saveHome('waist')">기록</button>
+        </div>
+        <div class="qk-more" id="more_waist"></div>
+      </div>
+      <button class="qk-extra-btn" id="extraBtn" onclick="toggleExtra()">＋ 혈당 · 당화혈색소</button>
+      <div id="qkExtra" hidden>
+      <div class="qk" data-q="glucose">
+        <div class="qk-head" onclick="toggleQk('glucose')"><div class="qk-lab">🩸 혈당 <span class="small muted" style="font-weight:600">공복</span><span class="done"></span></div><div class="qk-last"><span id="hl_glucose"></span> <span class="qk-arrow">▾</span></div></div>
+        <div class="qrow">
+          <input id="h_glucose" type="number" inputmode="numeric" step="0.1" enterkeyhint="done">
+          <span class="qunit">mg/dL</span>
+          <button class="btn sm qbtn" onclick="saveHome('glucose')">기록</button>
+        </div>
+        <div class="qk-more" id="more_glucose"></div>
+      </div>
+      <div class="qk" data-q="hba1c">
+        <div class="qk-head" onclick="toggleQk('hba1c')"><div class="qk-lab">🧪 당화혈색소<span class="done"></span></div><div class="qk-last"><span id="hl_hba1c"></span> <span class="qk-arrow">▾</span></div></div>
+        <div class="qrow">
+          <input id="h_hba1c" type="number" inputmode="decimal" step="0.1" enterkeyhint="done">
+          <span class="qunit">%</span>
+          <button class="btn sm qbtn" onclick="saveHome('hba1c')">기록</button>
+        </div>
+        <div class="qk-more" id="more_hba1c"></div>
+      </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>오늘의 당류 체크</h3>
+      <div class="small muted" style="margin-bottom:10px">한 번 누르면 <b style="color:var(--accent2)">안 먹음</b>, 다시 누르면 <b style="color:var(--danger)">먹음</b>, 또 누르면 미정. 오늘 기록은 <b>자정에 streak에 반영</b>됩니다.</div>
+      <div class="sugar-row" id="sugarRow"></div>
+      <div class="small" id="todaySugarNote" style="margin-top:10px"></div>
+    </div>
+
+    <button class="btn sos" onclick="openSOS()">🆘 단 거 당길 때 누르기</button>
+
+    <div class="card" id="bmiCard">
+      <h3>나의 BMI (체질량지수)</h3>
+      <div id="bmiBody"></div>
+    </div>
+
+    <div class="card" id="todaySummary">
+      <h3>오늘 기록 요약 <span class="small muted">· 항목 누르면 모아보기</span></h3>
+      <div id="todayMeasures"></div>
+    </div>
+  </section>
+
+  <!-- ===== 설정 ===== -->
+  <section class="screen" id="settings">
+    <div class="card">
+      <h3>☁️ 데이터 보관</h3>
+      <div class="small" id="syncInfo"></div>
+      <div class="small muted" id="acctInfo" style="margin-top:12px"></div>
+      <span data-xms-account hidden></span>
+    </div>
+    <div class="card acc">
+      <h3 class="acc-head" onclick="toggleCard(this)"><span>🎯 내 목표 · 나의 "왜"</span><span class="acc-arrow">▾</span></h3>
+      <div class="acc-body">
+        <div class="small muted" style="margin-bottom:8px">매일 지킬 나의 목표예요. (홈의 배너를 누르면 이 목표가 보입니다.)</div>
+        <textarea id="myGoal" rows="6"></textarea>
+        <label>나의 "왜" — 단 게 당길 때(🆘) 다시 보여줘요</label>
+        <input id="whyInput" placeholder="예: 손주와 오래 건강하게 살고 싶어서" />
+        <button class="btn sm" style="margin-top:12px" onclick="saveMyGoal()">저장</button>
+      </div>
+    </div>
+    <div class="card acc">
+      <h3 class="acc-head" onclick="toggleCard(this)"><span>📐 내 신체 정보</span><span class="acc-arrow">▾</span></h3>
+      <div class="acc-body">
+        <div class="small muted" style="margin-bottom:4px">BMI·정상범위 기준으로 쓰여요.</div>
+        <label>키 (cm)</label><input id="setHeight" type="number" inputmode="decimal" placeholder="예: 173">
+        <div class="small muted" style="margin-top:8px">BMI는 홈에서 가장 최근에 기록한 체중으로 계산됩니다.</div>
+        <label>성별 (허리둘레 기준)</label>
+        <select id="setSex"><option value="male">남성</option><option value="female">여성</option></select>
+        <button class="btn sm" style="margin-top:16px" onclick="saveBody()">저장</button>
+      </div>
+    </div>
+    <div class="card acc">
+      <h3 class="acc-head" onclick="toggleCard(this)"><span>📊 목표값</span><span class="acc-arrow">▾</span></h3>
+      <div class="acc-body">
+        <label>목표 체중 (kg)</label>
+        <input id="goalWeight" type="number" inputmode="decimal" placeholder="예: 75" />
+        <label>목표 혈압 (수축기 / 이완기)</label>
+        <div class="qrow">
+          <input id="goalSys" type="number" inputmode="numeric" placeholder="수축기 120">
+          <span class="qsep">/</span>
+          <input id="goalDia" type="number" inputmode="numeric" placeholder="이완기 80">
+          <span class="qunit">mmHg</span>
+        </div>
+        <label>목표 심박수 (bpm)</label>
+        <input id="goalHr" type="number" inputmode="numeric" placeholder="예: 70" />
+        <label>목표 허리둘레 (cm)</label>
+        <input id="goalWaist" type="number" inputmode="decimal" placeholder="예: 88" />
+        <div class="hint" id="waistHint"></div>
+        <label>목표 혈당 (공복, mg/dL)</label>
+        <input id="goalGlucose" type="number" inputmode="numeric" placeholder="예: 99" />
+        <label>목표 당화혈색소 (%)</label>
+        <input id="goalHba1c" type="number" inputmode="decimal" step="0.1" placeholder="예: 6.5" />
+        <div class="hint" id="hba1cHint"></div>
+        <button class="btn sm" style="margin-top:16px" onclick="saveGoals()">저장</button>
+      </div>
+    </div>
+    <div class="card acc">
+      <h3 class="acc-head" onclick="toggleCard(this)"><span>❤️ 혈압 5단계 분류기준</span><span class="acc-arrow">▾</span></h3>
+      <div class="acc-body">
+        <div class="small muted" style="margin-bottom:10px">수축기·이완기 중 더 높은 단계로 판정합니다. (단위 mmHg)</div>
+        <table class="bp-table">
+          <thead><tr><th>구분</th><th>수축기</th><th>이완기</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge b-low">🔵 낮은편</span></td><td>90 미만</td><td>60 미만</td></tr>
+            <tr><td><span class="badge b-good">✅ 정상</span></td><td>90 ~ 120</td><td>60 ~ 80</td></tr>
+            <tr><td><span class="badge b-warn">🟡 조금 높은편</span></td><td>121 ~ 140</td><td>81 ~ 90</td></tr>
+            <tr><td><span class="badge b-high">🟠 높은편</span></td><td>141 ~ 160</td><td>91 ~ 100</td></tr>
+            <tr><td><span class="badge b-danger">🔴 매우 높은편</span></td><td>161 이상</td><td>101 이상</td></tr>
+          </tbody>
+        </table>
+        <div class="small muted" style="margin-top:10px">심박수 정상 범위: 60 ~ 100 bpm</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💾 백업 파일</h3>
+      <div class="small muted" style="margin-bottom:12px">클라우드에 자동 보관되지만, 따로 파일로도 받아둘 수 있어요. 예전 앱 백업 파일을 불러오면 빠진 기록만 합쳐집니다(기존 기록은 지워지지 않아요).</div>
+      <button class="btn sm" onclick="exportData()">파일로 내보내기</button>
+      <label class="btn ghost sm" style="margin-top:8px; display:block; text-align:center; cursor:pointer">백업 파일 불러오기(합치기)
+        <input type="file" accept="application/json,.json" onchange="importData(this)" hidden>
+      </label>
+    </div>
+  </section>
+
+  <!-- ===== 상세(모아보기) ===== -->
+  <section class="screen" id="detail">
+    <button class="btn ghost sm" style="width:auto;padding:8px 16px;margin:6px 0 0" onclick="backFromDetail()">‹ 뒤로</button>
+    <div class="card">
+      <h3 id="detailTitle"></h3>
+      <div class="hint" id="detailRef"></div>
+      <div class="periodbar" id="periodBar"></div>
+      <div id="detailChart"></div>
+      <div id="detailDist" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <h3>기록 목록 <span class="small muted" id="detailCount"></span></h3>
+      <div id="detailList"></div>
+    </div>
+  </section>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <linearGradient id="sgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#86cf9a"/>
+      <stop offset="1" stop-color="#2d9c5d"/>
+    </linearGradient>
+  </defs></svg>
+  <nav>
+    <button class="active" data-s="home" onclick="go('home',this)">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="g" d="M11.35 3.5a1 1 0 0 1 1.3 0l8 7.05a1 1 0 0 1 .35.76V19.5A1.5 1.5 0 0 1 19.5 21h-15A1.5 1.5 0 0 1 3 19.5v-8.19a1 1 0 0 1 .35-.76z"/>
+        <rect class="w" x="9.9" y="13.6" width="4.2" height="7.4" rx="1.3"/>
+      </svg>홈</button>
+    <button data-s="settings" onclick="go('settings',this)">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="g" d="M10.6 2.6h2.8l.45 2.36a6.9 6.9 0 0 1 1.62.94l2.26-.86 1.4 2.42-1.8 1.55a7 7 0 0 1 0 1.88l1.8 1.55-1.4 2.42-2.26-.86a6.9 6.9 0 0 1-1.62.94l-.45 2.36h-2.8l-.45-2.36a6.9 6.9 0 0 1-1.62-.94l-2.26.86-1.4-2.42 1.8-1.55a7 7 0 0 1 0-1.88l-1.8-1.55 1.4-2.42 2.26.86a6.9 6.9 0 0 1 1.62-.94z"/>
+        <circle class="w" cx="12" cy="12" r="2.7"/>
+      </svg>설정</button>
+  </nav>
+</div>
+
+<!-- 로그인 -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal">
+    <img src="ci.png" alt="" style="height:54px">
+    <div class="why">슈가브레이크</div>
+    <div class="small muted" style="margin-bottom:14px" id="loginNote">관리자 계정으로 한 번 로그인하면 이 폰에서 계속 쓸 수 있어요.</div>
+    <a class="btn" style="margin-top:12px;display:block;text-decoration:none" id="loginBtn" href="/member/login">로그인</a>
+    <div class="small" id="loginMsg" style="color:var(--danger);margin-top:10px;min-height:20px"></div>
+  </div>
+</div>
+
+<!-- 내 목표 modal -->
+<div class="overlay" id="goalOverlay">
+  <div class="modal" style="text-align:left">
+    <div style="font-size:30px;text-align:center">🎯</div>
+    <div class="why" style="text-align:center;margin-bottom:14px">나의 목표</div>
+    <div id="goalText" style="font-size:16px;line-height:1.7"></div>
+    <button class="btn" style="margin-top:18px" onclick="closeGoal()">닫기</button>
+  </div>
+</div>
+
+<!-- SOS modal -->
+<div class="overlay" id="sosOverlay">
+  <div class="modal">
+    <div style="font-size:30px">🛑</div>
+    <div class="muted small">잠깐! 단 게 당기시나요?</div>
+    <div class="why" id="sosWhy"></div>
+    <div class="quote">이게 당신이 시작한 이유예요.</div>
+    <div class="timer" id="sosTimer">5:00</div>
+    <div class="muted small" style="margin-bottom:16px">5분만 참아봐요. 물 한 잔 마시거나 잠깐 걸어볼까요?</div>
+    <button class="btn" onclick="winSOS()">참았어요! 💪</button>
+    <button class="btn ghost sm" style="margin-top:8px" onclick="closeSOS()">닫기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+//==================== 데이터 ====================
+// 원본은 Cloudflare D1. 이 폰의 localStorage는 화면을 빨리 띄우기 위한 캐시 + 오프라인 대기열일 뿐.
+const CACHE_KEY='sb2_cache', OUTBOX_KEY='sb2_outbox', PASS_KEY='sb2_pass', OLD_KEY='sugarbreak_v1';
+const DEFAULT_GOAL='단 음료 완전 중단\n과자, 빵, 떡 제로\n저녁 식사 후 15~20분 걷기\n단백질 충분히 먹기 (계란, 두부, 그릭요거트 등)\n주 2~3회 스쿼트, 런지 같은 하체 운동';
+const defaultGoals={hba1c:'',waist:'',height:'',weight:'',sex:'male',goalWeight:'',goalSys:'',goalDia:'',goalHr:'',goalGlucose:''};
+const lsGet=(k)=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+const lsDel=(k)=>{ try{ localStorage.removeItem(k); }catch(e){} };
+
+function emptyDB(){ return { why:'', myGoal:DEFAULT_GOAL, goals:{...defaultGoals}, days:{}, best:0, measures:[] }; }
+function fromServer(s){
+  const d=emptyDB(), st=s.settings||{};
+  if(st.why!==undefined) d.why=st.why;
+  if(st.myGoal!==undefined) d.myGoal=st.myGoal;
+  d.goals=Object.assign({},defaultGoals,st.goals||{});
+  d.best=+st.best||0;
+  d.days=s.days||{};
+  d.measures=(s.records||[]).filter(r=>r.type!=='workout').sort((a,b)=>b.t-a.t);
+  return d;
+}
+let DB=(()=>{ try{ const c=JSON.parse(lsGet(CACHE_KEY)); if(c&&c.measures){ c.goals=Object.assign({},defaultGoals,c.goals||{}); return c; } }catch(e){} return emptyDB(); })();
+function cache(){ lsSet(CACHE_KEY, JSON.stringify(DB)); }
+
+//==================== 서버 통신 ====================
+let outbox=(()=>{ try{ return JSON.parse(lsGet(OUTBOX_KEY))||[]; }catch(e){ return []; } })();
+let flushing=false, online=false;
+// 로그인 = 사이트 관리자 계정(xms 쿠키). PASS_KEY 에는 '로그인했음' 표시만 둔다 (오프라인에서도 대기열을 지키려고)
+function pass(){ return lsGet(PASS_KEY)||''; }
+async function api(method, path, body){
+  const res=await fetch('/api/'+path,{method, credentials:'same-origin', headers:{'content-type':'application/json'}, body:body===undefined?undefined:JSON.stringify(body)});
+  if(res.status===401){ lsDel(PASS_KEY); showLogin(); throw new Error('unauthorized'); }
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+// 쓰기는 일단 대기열에 넣고 순서대로 보낸다. 실패하면 남겨뒀다가 다음에 다시.
+function send(method, path, body){
+  outbox.push({method, path, body});
+  lsSet(OUTBOX_KEY, JSON.stringify(outbox));
+  setSync();
+  flush();
+}
+async function flush(){
+  if(flushing || !pass()) return;
+  flushing=true;
+  try{
+    while(outbox.length){
+      const op=outbox[0];
+      await api(op.method, op.path, op.body);
+      outbox.shift(); lsSet(OUTBOX_KEY, JSON.stringify(outbox));
+    }
+    online=true;
+  }catch(e){ online=false; }
+  flushing=false; setSync();
+}
+function setSync(){
+  const dot=document.getElementById('syncDot');
+  dot.className='sync '+(outbox.length?'pending':online?'ok':'');
+  const info=document.getElementById('syncInfo'); if(!info) return;
+  const n=DB.measures.length, days=Object.keys(DB.days).length;
+  info.innerHTML = (outbox.length
+      ? `<span style="color:var(--warn);font-weight:700">⏳ 아직 못 올린 기록 ${outbox.length}건</span> — 인터넷이 연결되면 자동으로 올라갑니다.`
+      : online ? `<span style="color:var(--accent2);font-weight:700">✅ 모든 기록이 클라우드(Cloudflare)에 저장돼 있어요.</span>`
+               : `<span class="muted">클라우드 연결 확인 중…</span>`)
+    + `<div class="muted" style="margin-top:8px">신체 기록 ${n}건 · 당류 체크 ${days}일. 기록은 기간 제한 없이 계속 보관되고, 삭제해도 서버에는 보관용으로 남습니다.</div>`
+    + `<button class="btn ghost sm" style="margin-top:12px" onclick="pullServer(true)">지금 새로고침</button>`;
+}
+async function pullServer(showToast){
+  await flush();
+  if(outbox.length) return;   // 못 보낸 게 남아 있으면 덮어쓰지 않음
+  try{
+    const s=await api('GET','data');
+    DB=fromServer(s); cache(); online=true;
+    refreshCurrent(); setSync();
+    if(showToast) toast('최신 기록을 불러왔어요 ☁️');
+  }catch(e){ online=false; setSync(); if(showToast) toast('연결할 수 없어요'); }
+}
+// 같은 주소의 예전 앱이 이 폰에 남긴 데이터가 있으면 서버로 합쳐 넣는다 (멱등)
+async function migrateOldLocal(){
+  const raw=lsGet(OLD_KEY); if(!raw) return;
+  try{
+    const old=JSON.parse(raw);
+    await api('POST','import',old);
+    lsSet(OLD_KEY+'_migrated', raw); lsDel(OLD_KEY);
+    toast('예전 기록을 클라우드로 옮겼어요 ☁️');
+  }catch(e){ console.warn('old migrate fail',e); }
+}
+
+function showLogin(msg){
+  if(msg) document.getElementById('loginNote').textContent=msg;
+  document.getElementById('loginOverlay').classList.add('show');
+}
+async function logout(){
+  try{ await fetch('/xms-api/logout',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}'}); }catch(e){}
+  lsDel(PASS_KEY); showLogin();
+}
+async function boot(){
+  // 로그인 확인: 인터넷이 없으면 지난번 로그인 표시로 (캐시 화면 · 대기열은 그대로)
+  try{
+    const r=await fetch('/api/me',{credentials:'same-origin',cache:'no-store'});
+    if(r.status===401){
+      lsDel(PASS_KEY);
+      const me=await fetch('/xms-api/me',{credentials:'same-origin',cache:'no-store'}).then(x=>x.json()).catch(()=>({}));
+      showLogin(me.login_id?'지금 로그인한 '+me.login_id+' 계정은 관리자가 아니에요. 관리자 계정으로 로그인해 주세요.':'');
+      return;
+    }
+    if(r.ok){
+      const me=await r.json(); lsSet(PASS_KEY,'1');
+      const ai=document.getElementById('acctInfo');
+      if(ai) ai.innerHTML='로그인: <b>'+String(me.email||'').replace(/[<>&"]/g,'')+'</b> <button class="btn ghost sm" style="margin-left:8px" onclick="logout()">로그아웃</button>';
+    }
+  }catch(e){ if(!pass()){ showLogin(); return; } }
+  await migrateOldLocal();
+  await pullServer(false);
+}
+
+const SUGARS=[ {k:'snack',e:'🍪',n:'과자·빵·떡'}, {k:'fruit',e:'🍎',n:'과일'}, {k:'drink',e:'🥤',n:'가당음료'} ];
+const todayKey=()=>keyOf(new Date());
+function keyOf(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtTs(t){ return new Date(t).toLocaleString('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}); }
+function newId(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+//==================== 네비 ====================
+let navStack=['home'];
+let _suppressNav=false;
+function go(s,el){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById(s).classList.add('active');
+  if(!el) el=document.querySelector('nav button[data-s="'+s+'"]');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  if(!_suppressNav && navStack[navStack.length-1]!==s) navStack.push(s);
+  if(s==='home') setStreakBg();
+  if(s==='settings') fillSettings();
+  window.scrollTo(0,0);
+}
+function fillSettings(){
+  const g=DB.goals, set=(id,v)=>{ document.getElementById(id).value=v??''; };
+  set('myGoal',DB.myGoal); set('whyInput',DB.why);
+  set('goalWeight',g.goalWeight); set('goalSys',g.goalSys); set('goalDia',g.goalDia); set('goalHr',g.goalHr);
+  set('goalGlucose',g.goalGlucose); set('goalHba1c',g.hba1c); set('goalWaist',g.waist);
+  set('setHeight',g.height); set('setSex',g.sex||'male');
+  renderGoalHints(); setSync();
+}
+
+// 하드웨어 뒤로가기: 오버레이 닫기 → 상세 닫기 → 이전 탭 → (홈이면) 종료 확인
+let _backReady=false;
+function onBack(){
+  const ov=document.querySelector('.overlay.show:not(#loginOverlay)');
+  if(ov){ if(ov.id==='sosOverlay') closeSOS(); else ov.classList.remove('show'); return; }
+  const act=document.querySelector('.screen.active');
+  const cur = act ? act.id : 'home';
+  if(cur==='detail'){ backFromDetail(); return; }
+  if(cur!=='home'){
+    navStack.pop();
+    let prev=navStack[navStack.length-1];
+    if(!prev || prev===cur) prev='home';
+    _suppressNav=true; go(prev); _suppressNav=false;
+    return;
+  }
+  if(confirm('앱을 종료하시겠어요?')){
+    window.removeEventListener('popstate', _onPop);
+    history.go(-2);
+  }
+}
+function _onPop(){ history.pushState({sb:1}, ''); onBack(); }
+function setupBackTrap(){
+  if(_backReady || location.protocol==='file:') return;
+  _backReady=true;
+  history.pushState({sb:1}, '');
+  window.addEventListener('popstate', _onPop);
+}
+
+//==================== 당류 체크 / Streak ====================
+function sState(v){ if(v==='yes'||v===true) return 'yes'; if(v==='no') return 'no'; return 'mi'; }
+function ate(r){ return !!r && (sState(r.snack)==='yes'||sState(r.fruit)==='yes'||sState(r.drink)==='yes'); }
+function toggleSugar(k){
+  const tk=todayKey();
+  const r=Object.assign({}, DB.days[tk]);
+  const cur=sState(r[k]);
+  const next = cur==='mi' ? 'no' : cur==='no' ? 'yes' : 'mi';
+  if(next==='mi') delete r[k]; else r[k]=next;
+  DB.days[tk]=r; cache();
+  send('PUT','days/'+tk,{data:r});
+  renderSugar(); renderStreak();
+  toast(next==='no'?'좋아요! 안 먹음 💚' : next==='yes'?'먹음으로 표시했어요' : '미정으로 되돌렸어요');
+}
+function renderSugar(){
+  const r=DB.days[todayKey()]||{};
+  document.getElementById('sugarRow').innerHTML=SUGARS.map(s=>{
+    const st=sState(r[s.k]);
+    const cls = st==='yes'?'yes' : st==='no'?'no' : '';
+    const label = st==='yes'?'먹음 ✗' : st==='no'?'안 먹음 ✓' : '눌러서 체크';
+    return `<div class="sugar-btn ${cls}" onclick="toggleSugar('${s.k}')">
+      <div class="emoji">${s.e}</div>
+      <div class="name">${s.n}</div>
+      <div class="state">${label}</div>
+    </div>`;
+  }).join('');
+  const note=document.getElementById('todaySugarNote');
+  if(ate(r)) note.innerHTML='<span style="color:var(--danger);font-weight:700">오늘 단 걸 먹었어요.</span> 이대로 자정이 지나면 streak이 끊깁니다.';
+  else {
+    const allNo=SUGARS.every(s=>sState(r[s.k])==='no');
+    note.innerHTML = allNo
+      ? '<span style="color:var(--accent2);font-weight:700">오늘 완벽해요! 👍</span> 자정이 지나면 +1일 됩니다.'
+      : '<span class="muted">아직 미정인 항목이 있어요. 먹지 않았다면 “안 먹음”으로 체크해 두세요. (미정도 자정엔 안 먹은 날로 처리됩니다.)</span>';
+  }
+}
+// streak = 어제부터 거슬러 '먹은 날' 없이 이어진 날 수. 첫 기록일 이전은 세지 않음.
+function calcStreak(){
+  const keys=Object.keys(DB.days); if(!keys.length) return 0;
+  const earliest=keys.sort()[0];
+  let n=0; const d=new Date(); d.setDate(d.getDate()-1);
+  for(let i=0;i<3000;i++){
+    const k=keyOf(d);
+    if(k<earliest) break;
+    if(ate(DB.days[k])) break;
+    n++;
+    d.setDate(d.getDate()-1);
+  }
+  return n;
+}
+const STREAK_IMGS=[
+ 'photo-1551632811-561732d1e306','photo-1476480862126-209bfaa8edc8','photo-1571008887538-b36bb32f4571',
+ 'photo-1506744038136-46273834b3fb','photo-1538805060514-97d9cc17730c','photo-1500382017468-9049fed747ef',
+ 'photo-1483721310020-03333e577078','photo-1487956382158-bb926046304a','photo-1490806843957-31f4c9a91c65',
+ 'photo-1434596922112-19c563067271','photo-1518611012118-696072aa579a','photo-1461896836934-ffe607ba8211'
+];
+function dayOfYear(){ const d=new Date(); const s=new Date(d.getFullYear(),0,0); return Math.floor((d-s)/86400000); }
+function setStreakBg(){
+  const el=document.querySelector('.streak'); if(!el) return;
+  const id=STREAK_IMGS[dayOfYear() % STREAK_IMGS.length];
+  el.style.backgroundImage=`linear-gradient(180deg, rgba(12,40,28,.45), rgba(12,40,28,.78)), url("https://images.unsplash.com/${id}?w=900&q=70")`;
+}
+const BADGES=[{d:7,e:'🥉',t:'7일'},{d:30,e:'🥈',t:'30일'},{d:100,e:'🥇',t:'100일'},{d:200,e:'🏅',t:'200일'},{d:300,e:'🎖️',t:'300일'},{d:365,e:'👑',t:'365일'}];
+function currentBadge(streak){ let b=null; for(const x of BADGES) if(streak>=x.d) b=x; return b; }
+function renderStreak(){
+  const s=calcStreak()+1;
+  if(s>DB.best){ DB.best=s; cache(); send('PUT','settings',{best:s}); }
+  document.getElementById('streakNum').textContent=s;
+  document.getElementById('bestNum').textContent=DB.best;
+  const f=document.getElementById('flame');
+  const b=currentBadge(s);
+  f.textContent = b ? b.e : '🔥';
+  f.classList.toggle('hasbadge', !!b);
+  const next=BADGES.find(x=>x.d>s);
+  document.getElementById('badgeCheer').innerHTML = next
+    ? `잘 하고 있습니다! 앞으로 <b style="color:var(--accent2);font-size:18px">${next.d-s}일</b>만 더 인내하면 ${next.e} <b>${next.t} 뱃지</b>를 받을 수 있어요!`
+    : '🎉 최고 단계 👑 365일 뱃지까지 달성했어요! 정말 대단합니다!';
+}
+
+//==================== 수치 기록 ====================
+const TYPES={
+  glucose:{label:'혈당',unit:'mg/dL'},
+  bp:{label:'혈압',unit:'mmHg'},
+  hba1c:{label:'당화혈색소',unit:'%'},
+  weight:{label:'체중',unit:'kg'},
+  waist:{label:'허리둘레',unit:'cm'},
+};
+function addMeasure(type, data){
+  const now=Date.now();
+  const rec={id:newId(), type, date:todayKey(), t:now, ...data};
+  DB.measures.unshift(rec); cache();
+  send('POST','records',{id:rec.id, type, date:rec.date, t:now, data});
+  toast('기록됐어요 ✅');
+  renderAllMeasures();
+}
+function num(id){ const v=document.getElementById(id).value.trim(); return v===''?null:+v; }
+const RANGE={weight:[20,300],waist:[40,200],glucose:[20,600],hba1c:[3,20]};
+function saveHome(t){
+  if(t==='bp'){
+    const sys=num('h_sys'), dia=num('h_dia'), hr=num('h_hr');
+    if(!sys||!dia){ toast('수축기/이완기를 모두 입력하세요'); return; }
+    if(sys<50||sys>260||dia<30||dia>180){ toast('혈압 숫자를 다시 확인해 주세요'); return; }
+    const d={sys,dia}; if(hr) d.hr=hr;
+    ['h_sys','h_dia','h_hr'].forEach(id=>document.getElementById(id).value='');
+    addMeasure('bp',d);
+  } else {
+    const v=num('h_'+t);
+    if(!v){ toast('값을 입력하세요'); return; }
+    const [lo,hi]=RANGE[t]; if(v<lo||v>hi){ toast('숫자를 다시 확인해 주세요'); return; }
+    document.getElementById('h_'+t).value='';
+    addMeasure(t,{v});
+  }
+  document.activeElement && document.activeElement.blur();
+}
+function delById(id){
+  const i=DB.measures.findIndex(m=>m.id===id); if(i<0) return;
+  const m=DB.measures[i];
+  if(!confirm(`${TYPES[m.type].label} 기록을 삭제할까요?`)) return;
+  DB.measures.splice(i,1); cache();
+  send('DELETE','records/'+encodeURIComponent(id));
+  toast('삭제됐어요');
+  renderAllMeasures();
+}
+function renderAllMeasures(){
+  renderHome(); renderBMI(); renderTodayMeasures();
+  if(document.getElementById('detail').classList.contains('active')) renderDetail();
+}
+// 홈 신체 기록: 항목을 누르면 펼쳐서 이전 기록 보기
+const QK_TYPES=['weight','bp','waist','glucose','hba1c'];
+const QK_PH={weight:'예: 72.5',waist:'예: 92',glucose:'예: 105',hba1c:'예: 6.4'};
+const openQk=new Set();
+let extraOpen=lsGet('sb2_extra')==='1';
+function toggleQk(t){ openQk.has(t)?openQk.delete(t):openQk.add(t); renderHome(); }
+function toggleExtra(){ extraOpen=!extraOpen; lsSet('sb2_extra',extraOpen?'1':'0'); renderHome(); }
+const WAIST_GUIDE=`<div class="guide"><b>측정 방법</b><ul><li>숨을 편하게 내쉰 상태, 배에 힘 주지 말고</li><li>줄자를 바닥과 평행하게, 배꼽 높이 둘레</li><li>같은 시간대에 (보통 아침 공복)</li></ul></div>`;
+function renderHome(){
+  const tk=todayKey();
+  // 혈당·당화혈색소: 기록이 있으면 항상 보이게
+  const hasExtra=DB.measures.some(m=>m.type==='glucose'||m.type==='hba1c');
+  const showExtra=extraOpen||hasExtra;
+  document.getElementById('qkExtra').hidden=!showExtra;
+  const eb=document.getElementById('extraBtn');
+  eb.hidden=hasExtra; eb.classList.toggle('on',showExtra); eb.textContent=showExtra?'－ 혈당 · 당화혈색소 접기':'＋ 혈당 · 당화혈색소';
+  QK_TYPES.forEach(t=>{
+    const list=DB.measures.filter(x=>x.type===t);
+    const m=list[0];
+    const box=document.querySelector(`.qk[data-q="${t}"]`);
+    const done=list.some(x=>x.date===tk);
+    box.classList.toggle('donetoday',done);
+    box.querySelector('.done').textContent=done?' ✓ 오늘':'';
+    const el=document.getElementById('hl_'+t);
+    if(!m) el.innerHTML='기록 없음';
+    else {
+      const d=new Date(m.t), when=(m.date===tk)?'오늘':(d.getMonth()+1)+'/'+d.getDate();
+      el.innerHTML=`지난 <b>${t==='bp'?m.sys+'/'+m.dia:m.v}</b> · ${when}`;
+    }
+    if(t==='bp'){
+      document.getElementById('h_sys').placeholder = m ? String(m.sys) : '수축기';
+      document.getElementById('h_dia').placeholder = m ? String(m.dia) : '이완기';
+      document.getElementById('h_hr').placeholder = m&&m.hr ? '맥박 '+m.hr : '맥박';
+    } else {
+      document.getElementById('h_'+t).placeholder = m ? String(m.v) : QK_PH[t];
+    }
+    const open=openQk.has(t);
+    box.classList.toggle('open',open);
+    const more=document.getElementById('more_'+t);
+    if(!open){ more.innerHTML=''; return; }
+    const goal=goalText(t);
+    const rows=list.slice(0,7).map(x=>{ const f=fmtMeasure(x);
+      return `<div class="mrow">
+        <div><div class="mv">${f.v} <span class="mu">${f.u}</span></div><div class="mu">${fmtTs(x.t)}</div></div>
+        <div style="display:flex;align-items:center;gap:8px">${statusBadge(x)}<button class="delbtn" onclick="delById('${x.id}')" title="삭제">✕</button></div>
+      </div>`; }).join('');
+    more.innerHTML=`<div class="hint">📊 ${refText(t)}</div>${goal?`<div class="goalshow">${goal}</div>`:''}
+      ${rows||'<div class="empty" style="padding:16px">아직 기록이 없어요.</div>'}
+      ${list.length?`<button class="viewbtn" onclick="openDetail('${t}')">📊 전체 기록 · 그래프 (${list.length}건)</button>`:''}
+      ${t==='waist'?WAIST_GUIDE:''}`;
+  });
+}
+
+//==================== 상세(모아보기) ====================
+let prevScreen='home', curType='weight', curPeriod=30;
+const PERIODS=[{k:7,t:'1주일'},{k:14,t:'2주일'},{k:30,t:'1개월'},{k:90,t:'3개월'},{k:180,t:'6개월'},{k:0,t:'전체'}];
+const TYPE_EMOJI={weight:'⚖️',bp:'❤️',waist:'📏',glucose:'🩸',hba1c:'🧪'};
+function openDetail(type){
+  const cur=document.querySelector('.screen.active');
+  prevScreen=cur&&cur.id!=='detail'?cur.id:'home';
+  curType=type; curPeriod=30;
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById('detail').classList.add('active');
+  renderDetail();
+  window.scrollTo(0,0);
+}
+function backFromDetail(){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.getElementById(prevScreen).classList.add('active');
+  window.scrollTo(0,0);
+}
+function setPeriod(k){ curPeriod=k; renderDetail(); }
+function renderDetail(){
+  const type=curType;
+  document.getElementById('detailTitle').textContent=`${TYPE_EMOJI[type]||''} ${TYPES[type].label} 모아보기`;
+  document.getElementById('detailRef').innerHTML='📊 '+refText(type);
+  document.getElementById('periodBar').innerHTML=PERIODS.map(p=>
+    `<button class="${p.k===curPeriod?'on':''}" onclick="setPeriod(${p.k})">${p.t}</button>`).join('');
+  const cutoff = curPeriod>0 ? Date.now()-curPeriod*86400000 : 0;
+  const recs=DB.measures.filter(m=>m.type===type && m.t>=cutoff);
+  const asc=recs.slice().sort((a,b)=>a.t-b.t);
+  document.getElementById('detailChart').innerHTML=drawChart(type, asc);
+  let c={good:0,warn:0,danger:0,none:0};
+  recs.forEach(m=>{ const st=getStatus(m); c[st&&st.s?st.s:'none']++; });
+  const total=recs.length;
+  const distEl=document.getElementById('detailDist');
+  document.getElementById('detailCount').textContent=`· ${total}건`;
+  if(!total){ distEl.innerHTML=''; document.getElementById('detailList').innerHTML='<div class="empty">이 기간에 기록이 없어요.</div>'; return; }
+  const bar=(s)=>{ const n=c[s]; const pct=Math.round(n/total*100); const S=STAGE[s];
+    return `<div style="margin:8px 0">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${S.i} ${S.t}</span><span class="muted">${n}회 (${pct}%)</span></div>
+      <div style="height:9px;background:var(--card2);border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--${s==='good'?'accent':s==='warn'?'warn':'danger'})"></div></div>
+    </div>`; };
+  let note='';
+  if(type==='weight' && !DB.goals.height) note='<div class="small" style="color:var(--warn);margin-top:8px">⚠️ 설정에서 키를 입력하면 정상범위(BMI)가 표시됩니다.</div>';
+  distEl.innerHTML=`<div class="small muted">정상범위 기준 분포</div>${bar('good')}${bar('warn')}${bar('danger')}${c.none?`<div class="small muted" style="margin-top:6px">판정 불가 ${c.none}회</div>`:''}${note}`;
+  document.getElementById('detailList').innerHTML=recs.map(m=>{
+    const f=fmtMeasure(m);
+    return `<div class="mrow">
+      <div><div class="mv">${f.v} <span class="mu">${f.u}</span></div><div class="mu">${fmtTs(m.t)}</div></div>
+      <div style="text-align:right; display:flex; align-items:center; gap:10px">
+        ${statusBadge(m)||'<span class="mu">—</span>'}
+        <button class="delbtn" onclick="delById('${m.id}')" title="삭제">✕</button>
+      </div></div>`;
+  }).join('');
+}
+function drawChart(type, ms){
+  if(!ms.length) return '<div class="empty" style="padding:20px">이 기간에 기록이 없어요.</div>';
+  let series;
+  if(type==='bp'){
+    series=[{name:'수축기',color:'#e7544b',vals:ms.map(m=>({x:m.t,y:m.sys}))},
+            {name:'이완기',color:'#3b82f6',vals:ms.map(m=>({x:m.t,y:m.dia}))}];
+    if(ms.some(m=>m.hr!=null)) series.push({name:'심박수',color:'#e8910f',vals:ms.filter(m=>m.hr!=null).map(m=>({x:m.t,y:m.hr}))});
+  } else {
+    series=[{name:TYPES[type].label,color:'#16b87f',vals:ms.map(m=>({x:m.t,y:m.v}))}];
+  }
+  const W=300,H=160,pL=34,pR=10,pT=12,pB=22;
+  let ys=[],xs=[];
+  series.forEach(s=>s.vals.forEach(p=>{ys.push(p.y); xs.push(p.x);}));
+  let ymin=Math.min(...ys), ymax=Math.max(...ys);
+  if(ymin===ymax){ ymin-=2; ymax+=2; }
+  const ypad=(ymax-ymin)*0.15; ymin-=ypad; ymax+=ypad;
+  let xmin=Math.min(...xs), xmax=Math.max(...xs); if(xmin===xmax) xmax=xmin+1;
+  const X=x=>pL+(x-xmin)/(xmax-xmin)*(W-pL-pR);
+  const Y=y=>H-pB-(y-ymin)/(ymax-ymin)*(H-pT-pB);
+  let grid='';
+  for(let g=0;g<=3;g++){ const yv=ymin+(ymax-ymin)*g/3; const yy=Y(yv);
+    grid+=`<line x1="${pL}" y1="${yy.toFixed(1)}" x2="${W-pR}" y2="${yy.toFixed(1)}" stroke="#e2e9e3"/>`;
+    grid+=`<text x="${pL-4}" y="${(yy+3).toFixed(1)}" font-size="9" fill="#7c8a82" text-anchor="end">${(Math.round(yv*10)/10)}</text>`; }
+  let paths='';
+  series.forEach(s=>{
+    if(!s.vals.length) return;
+    const pts=s.vals.map(p=>`${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`);
+    if(s.vals.length>1) paths+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" points="${pts.join(' ')}"/>`;
+    s.vals.forEach(p=>{ paths+=`<circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="2.6" fill="${s.color}"/>`; });
+  });
+  const fmtD=t=>{ const d=new Date(t); return (d.getMonth()+1)+'/'+d.getDate(); };
+  const xlab=`<text x="${pL}" y="${H-6}" font-size="9" fill="#7c8a82">${fmtD(xmin)}</text>`+
+             `<text x="${W-pR}" y="${H-6}" font-size="9" fill="#7c8a82" text-anchor="end">${fmtD(xmax)}</text>`;
+  const legend=`<div class="chart-legend">${series.map(s=>`<span><b style="background:${s.color}"></b>${s.name}</span>`).join('')}</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${grid}${paths}${xlab}</svg>${legend}`;
+}
+function fmtMeasure(m){
+  if(m.type==='bp') return {v:`${m.sys}/${m.dia}`,u:`mmHg${m.hr?'  ·  ❤︎'+m.hr+'bpm':''}`};
+  if(m.type==='waist') return {v:m.v,u:`cm (${(m.v/2.54).toFixed(1)}in)`};
+  return {v:m.v,u:TYPES[m.type].unit};
+}
+
+//==================== 상태 판정 ====================
+const STAGE={good:{c:'b-good',i:'✅',t:'정상'},warn:{c:'b-warn',i:'⚠️',t:'주의'},danger:{c:'b-danger',i:'🔴',t:'위험'}};
+function bmiVal(weight){ const h=parseFloat(DB.goals.height); if(isNaN(h)||h<=0||isNaN(weight)) return null; return weight/Math.pow(h/100,2); }
+function statusWeight(w){
+  const b=bmiVal(w); if(b===null) return {s:'none',t:'키 입력 필요'};
+  if(b<18.5) return {s:'warn',t:'저체중', d:`BMI ${b.toFixed(1)}`};
+  if(b<23)  return {s:'good',t:'정상',   d:`BMI ${b.toFixed(1)}`};
+  if(b<25)  return {s:'warn',t:'과체중', d:`BMI ${b.toFixed(1)}`};
+  return {s:'danger',t:'비만', d:`BMI ${b.toFixed(1)}`};
+}
+function getStatus(m){
+  if(m.type==='weight') return statusWeight(m.v);
+  if(m.type==='bp'){ const s=m.sys, d=m.dia;
+    if(s>=161||d>=101) return {s:'danger',t:'매우 높은편'};
+    if(s>=141||d>=91)  return {s:'danger',t:'높은편',       bc:'b-high', bi:'🟠'};
+    if(s>=121||d>=81)  return {s:'warn',  t:'조금 높은편',   bi:'🟡'};
+    if(s<90 || d<60)   return {s:'warn',  t:'낮은편',       bc:'b-low', bi:'🔵'};
+    return {s:'good',t:'정상'}; }
+  if(m.type==='glucose'){ const v=m.v; if(v>=126) return {s:'danger',t:'당뇨 의심'}; if(v<54) return {s:'danger',t:'저혈당 위험'}; if(v>=100) return {s:'warn',t:'공복혈당장애'}; if(v<70) return {s:'warn',t:'저혈당'}; return {s:'good',t:'정상'}; }
+  if(m.type==='hba1c'){ const v=m.v; if(v>=6.5) return {s:'danger',t:'당뇨 범위'}; if(v>=5.7) return {s:'warn',t:'당뇨 전단계'}; return {s:'good',t:'정상'}; }
+  if(m.type==='waist'){ const female=DB.goals.sex==='female'; const warn=female?80:90, dang=female?90:100; if(m.v>=dang) return {s:'danger',t:'내장지방 위험'}; if(m.v>=warn) return {s:'warn',t:'복부비만 주의'}; return {s:'good',t:'양호'}; }
+  return {s:'none',t:''};
+}
+function statusBadge(m){ const st=getStatus(m); if(!st||st.s==='none') return ''; const S=STAGE[st.s]; const cls=st.bc||S.c, ic=st.bi||S.i; return `<span class="badge ${cls}">${ic} ${st.t}${st.d?' · '+st.d:''}</span>`; }
+function refText(type){
+  const sexF=DB.goals.sex==='female';
+  if(type==='weight'){ const h=parseFloat(DB.goals.height);
+    if(!isNaN(h)&&h>0){ const lo=(18.5*Math.pow(h/100,2)).toFixed(1), hi=(22.9*Math.pow(h/100,2)).toFixed(1); return `정상 체중 <b>${lo}~${hi}kg</b> (BMI 18.5~22.9)`; }
+    return `정상 <b>BMI 18.5~22.9</b> · 설정에 키를 입력하면 kg 범위로 표시`; }
+  if(type==='bp') return `수축기/이완기 기준 · 낮은편 <b>90/60 미만</b> · 정상 <b>90~120 / 60~80</b> · 조금 높은편 <b>121~140 / 81~90</b> · 높은편 <b>141~160 / 91~100</b> · 매우 높은편 <b>161/101 이상</b> · 심박수 60~100bpm`;
+  if(type==='waist'){ const std=sexF?80:90; return `정상 <b>${std}cm 미만</b> (${sexF?'여성':'남성'} 기준) · ${(std/2.54).toFixed(1)}인치`; }
+  if(type==='glucose') return `정상 공복 <b>100mg/dL 미만</b> · 당뇨 126 이상`;
+  if(type==='hba1c') return `정상 <b>5.7% 미만</b> · 당뇨 6.5% 이상`;
+  return '';
+}
+function goalText(type){
+  const g=DB.goals;
+  if(type==='weight') return g.goalWeight ? `🎯 내 목표: ${g.goalWeight}kg` : '';
+  if(type==='bp'){ const p=[]; if(g.goalSys&&g.goalDia) p.push(`${g.goalSys}/${g.goalDia}mmHg`); if(g.goalHr) p.push(`심박수 ${g.goalHr}bpm`); return p.length?`🎯 내 목표: ${p.join(' · ')}`:''; }
+  if(type==='glucose') return g.goalGlucose ? `🎯 내 목표: ${g.goalGlucose}mg/dL` : '';
+  if(type==='hba1c') return g.hba1c ? `🎯 내 목표: ${g.hba1c}%` : '';
+  if(type==='waist'){ const v=parseFloat(g.waist); return !isNaN(v)?`🎯 내 목표: ${g.waist}cm (${(v/2.54).toFixed(1)}인치)`:''; }
+  return '';
+}
+function renderTodayMeasures(){
+  const el=document.getElementById('todayMeasures');
+  const tk=todayKey();
+  const today=DB.measures.filter(m=>m.date===tk);
+  if(!today.length){ el.innerHTML='<div class="empty">오늘 기록한 수치가 없어요.<br>위의 “오늘 바로 기록”에서 입력해 보세요.</div>'; return; }
+  const seen={}, list=[];
+  today.forEach(m=>{ if(!seen[m.type]){ seen[m.type]=1; list.push(m);} });
+  el.innerHTML=list.map(m=>{ const f=fmtMeasure(m);
+    return `<div class="mrow" style="cursor:pointer" onclick="openDetail('${m.type}')"><div style="font-weight:600">${TYPES[m.type].label} <span class="mu">›</span></div>
+      <div style="text-align:right"><div><span class="mv">${f.v}</span> <span class="mu">${f.u}</span></div>${statusBadge(m)?'<div style="margin-top:3px">'+statusBadge(m)+'</div>':''}</div></div>`;
+  }).join('');
+}
+
+//==================== SOS ====================
+let sosInt=null, sosLeft=300;
+function openSOS(){
+  document.getElementById('sosWhy').textContent=DB.why||'설정 → 내 목표에서 나의 "왜"를 적어보세요.';
+  sosLeft=300; updTimer();
+  document.getElementById('sosOverlay').classList.add('show');
+  clearInterval(sosInt);
+  sosInt=setInterval(()=>{ sosLeft--; updTimer(); if(sosLeft<=0){ clearInterval(sosInt); winSOS(); } },1000);
+}
+function updTimer(){ const m=Math.floor(sosLeft/60), s=sosLeft%60; document.getElementById('sosTimer').textContent=m+':'+String(s).padStart(2,'0'); }
+function winSOS(){ clearInterval(sosInt); closeSOS(); toast('잘 참았어요! 정말 대단해요 🎉'); }
+function closeSOS(){ clearInterval(sosInt); document.getElementById('sosOverlay').classList.remove('show'); }
+
+//==================== 설정 ====================
+const val=id=>document.getElementById(id).value;
+function saveGoals(){
+  const g=DB.goals;
+  g.goalWeight=val('goalWeight'); g.goalSys=val('goalSys'); g.goalDia=val('goalDia'); g.goalHr=val('goalHr');
+  g.waist=val('goalWaist'); g.goalGlucose=val('goalGlucose'); g.hba1c=val('goalHba1c');
+  cache(); send('PUT','settings',{goals:g});
+  toast('목표 저장됨 ✅'); renderGoalHints(); renderHome();
+}
+function saveBody(){
+  const g=DB.goals; g.height=val('setHeight'); g.sex=val('setSex');
+  cache(); send('PUT','settings',{goals:g});
+  toast('저장됐어요 ✅'); render(); renderGoalHints();
+}
+function saveMyGoal(){
+  DB.myGoal=val('myGoal'); DB.why=val('whyInput').trim();
+  cache(); send('PUT','settings',{myGoal:DB.myGoal, why:DB.why});
+  toast('저장했어요 ✅');
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function openGoal(){
+  const t=(DB.myGoal||'').trim();
+  const lines=t?t.split('\n').filter(x=>x.trim()):[];
+  document.getElementById('goalText').innerHTML = lines.length
+    ? lines.map(x=>`<div style="display:flex;gap:9px;margin:9px 0;align-items:flex-start"><span style="color:var(--accent2);font-weight:800">✓</span><span>${escapeHtml(x)}</span></div>`).join('')
+    : '<div class="muted">설정 → 내 목표에서 목표를 입력하세요.</div>';
+  document.getElementById('goalOverlay').classList.add('show');
+}
+function closeGoal(){ document.getElementById('goalOverlay').classList.remove('show'); }
+function renderGoalHints(){
+  const sexF = DB.goals.sex==='female';
+  const waistStd = sexF ? 80 : 90;
+  document.getElementById('hba1cHint').innerHTML=`✅ 적정 기준: <b>5.7% 미만</b> (정상) · 당뇨 관리 목표 <b>6.5% 미만</b>`;
+  document.getElementById('waistHint').innerHTML=`✅ 적정 기준(${sexF?'여성':'남성'}): <b>${waistStd}cm 미만</b> · ${(waistStd/2.54).toFixed(1)}인치 <span class="muted">· 설정의 성별 기준</span>`;
+}
+function renderBMI(){
+  const el=document.getElementById('bmiBody');
+  const h=parseFloat(DB.goals.height);
+  const wm=DB.measures.find(x=>x.type==='weight');
+  if(isNaN(h)||h<=0){ el.innerHTML='<div class="small muted">설정 → 내 신체 정보에서 키를 입력하면 BMI가 표시됩니다.</div>'; return; }
+  if(!wm){ el.innerHTML='<div class="small muted">위에서 체중을 기록하면 BMI가 표시됩니다.</div>'; return; }
+  const w=wm.v;
+  const b=w/Math.pow(h/100,2);
+  const st=statusWeight(w); const S=STAGE[st.s]||STAGE.good;
+  const lo=(18.5*Math.pow(h/100,2)).toFixed(1), hi=(22.9*Math.pow(h/100,2)).toFixed(1);
+  el.innerHTML=`<div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:38px;font-weight:900">${b.toFixed(1)}</span>
+      <span class="badge ${S.c}">${S.i} ${st.t}</span>
+    </div>
+    <div class="small muted" style="margin-top:6px">키 ${h}cm · 체중 ${w}kg (${wm.date===todayKey()?'오늘':(new Date(wm.t).getMonth()+1)+'/'+new Date(wm.t).getDate()} 기록)</div>
+    <div class="small" style="margin-top:6px">내 키 정상 체중범위: <b>${lo}~${hi}kg</b> (BMI 18.5~22.9)</div>`;
+}
+function exportData(){
+  try{
+    // 예전 앱과 같은 형식으로 내보내서 어디서든 다시 불러올 수 있게
+    const out={why:DB.why, myGoal:DB.myGoal, goals:DB.goals, days:DB.days, best:DB.best,
+      measures:DB.measures.map(({id,...m})=>({...m, ts:fmtTs(m.t)})), workouts:[], updatedAt:Date.now()};
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='슈가브레이크-백업-'+todayKey()+'.json'; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url); toast('백업 파일을 저장했어요 💾');
+  }catch(e){ console.error(e); toast('백업 중 오류'); }
+}
+function importData(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const obj=JSON.parse(r.result);
+      if(!obj || typeof obj!=='object' || !obj.measures) throw 0;
+      await flush();
+      await api('POST','import',obj);
+      await pullServer(false);
+      toast('백업을 합쳤어요 ✅');
+    }catch(e){ console.error(e); toast('파일을 불러올 수 없어요'); }
+    input.value='';
+  };
+  r.readAsText(f);
+}
+
+//==================== 공통 ====================
+function toggleCard(h){ h.parentElement.classList.toggle('open'); }
+let toastT=null;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1800); }
+function render(){ renderSugar(); renderStreak(); renderHome(); renderBMI(); renderTodayMeasures(); }
+function refreshCurrent(){
+  render();
+  const act=document.querySelector('.screen.active'); const id=act?act.id:'';
+  if(id==='detail') renderDetail();
+  else if(id==='settings') fillSettings();
+}
+function setTodayStr(){ document.getElementById('todayStr').textContent=new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'}); }
+
+setTodayStr();
+render();
+setStreakBg();
+setSync();
+setupBackTrap();
+boot();
+let _curDayKey=todayKey();
+setInterval(()=>{ if(todayKey()!==_curDayKey){ _curDayKey=todayKey(); setTodayStr(); render(); toast('새로운 하루가 시작됐어요! 오늘도 화이팅 💪'); } }, 30000);
+window.addEventListener('online', flush);
+// 앱으로 돌아올 때마다 서버 최신값 반영 (다른 기기에서 기록한 것 포함)
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && pass()) pullServer(false); });
+</script>
+</body>
+</html>

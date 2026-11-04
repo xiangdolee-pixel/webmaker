@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>슈가브레이크</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#16b87f">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<!-- 로그인 · 내 정보 화면의 틀 (xms 가 <main> 자리에 내용을 넣는다) — 앱과 같은 초록 · 글꼴 -->
+<style>
+:root{--bg:#f3f7f4;--text:#1f2a24;--line:#e2e9e3;--accent:#16b87f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Pretendard Variable',Pretendard,system-ui,sans-serif}
+.sb-top{display:flex;align-items:center;gap:10px;height:56px;padding:0 16px;padding-top:env(safe-area-inset-top);background:#fff;border-bottom:1px solid var(--line)}
+.sb-top a{display:inline-flex;align-items:center;gap:8px;color:var(--text);text-decoration:none;font-weight:800;font-size:17px}
+.sb-top img{height:30px}
+.sb-top .sp{flex:1}
+.sb-top [data-xms-account]{--xa-bg:#e3f4ec;--xa-fg:#0e9d6a}
+.xms-c{--brand:#16b87f}
+</style>
+</head>
+<body>
+<header class="sb-top">
+  <a href="/"><img src="/ci.png" alt="">슈가브레이크</a>
+  <span class="sp"></span>
+  <span data-xms-account></span>
+</header>
+<main></main>
+</body>
+</html>
