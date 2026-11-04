@@ -608,14 +608,33 @@ async function renderRequestView(id) {
 
 // ───────── 감시: 의심 요청 · 자동 차단 ─────────
 let monOnly = '';
+let monEp = 1, monBp = 1, monAp = 1; // 쪽 번호: 의심 요청 · 차단 중 · 예외
+const AL = 20;
 let monTimer = 0;
 const REASON = { attack: ['공격 주소', 'suspended'], '404': ['없는 주소', 'new'] };
 const flag = (c) => (c && /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map((x) => 0x1f1a5 + x.charCodeAt(0))) : '');
 const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? `${s}초 전` : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : fmtDate(t); };
 const left = (t) => { const m = Math.round((t - Date.now()) / 60000); return m < 60 ? `${m}분 남음` : m < 1440 ? `${Math.round(m / 60)}시간 남음` : `${Math.round(m / 1440)}일 남음`; };
+// 쪽 번호 (5개씩, ‹ › 로 다음 묶음)
+function monPager(key, page, size, total) {
+  const pages = Math.ceil(total / size);
+  if (pages <= 1) return '';
+  const start = Math.floor((page - 1) / 5) * 5 + 1;
+  const nums = Array.from({ length: Math.min(5, pages - start + 1) }, (_, i) => start + i);
+  const btn = (n, label = n) => `<button type="button" data-mon-page="${key}:${n}"${n === page ? ' class="on" aria-current="page"' : ''}>${label}</button>`;
+  return `<nav class="pager">${start > 1 ? btn(start - 1, '‹') : ''}${nums.map((n) => btn(n)).join('')}${start + 5 <= pages ? btn(start + 5, '›') : ''}</nav>`;
+}
 async function renderMonitor() {
   clearTimeout(monTimer);
-  const d = await api(`/sec${monOnly ? `?only=${monOnly}` : ''}`);
+  const d = await api(`/sec?${new URLSearchParams({ ...(monOnly ? { only: monOnly } : {}), ep: monEp, bp: monBp })}`);
+  const pg = d.paging;
+  // 지우거나 풀어서 쪽이 비면 앞 쪽으로
+  if ((monEp > 1 && !d.events.length && pg.ev_total) || (monBp > 1 && !d.blocks.length && pg.bl_total)) {
+    monEp = Math.min(monEp, Math.max(1, Math.ceil(pg.ev_total / pg.ev_size))); monBp = Math.min(monBp, Math.max(1, Math.ceil(pg.bl_total / pg.bl_size)));
+    return renderMonitor();
+  }
+  monAp = Math.min(monAp, Math.max(1, Math.ceil(d.allow.length / AL)));
+  const allowPage = d.allow.slice((monAp - 1) * AL, monAp * AL);
   if (tab !== 'monitor') return;
   const scroll = scrollY;
   view.innerHTML = `
@@ -629,19 +648,19 @@ async function renderMonitor() {
     <p class="meta mon-rule">공격 주소(.env · wp-admin · .php · .git …)를 찌르면 바로, 없는 주소를 10분에 15번 이상 던지면 그 IP 를 모든 사이트에서 막습니다. 처음엔 하루, 다시 걸리면 7일. 풀거나 막은 뒤 사이트에 반영되기까지 최대 1분.</p>
 
     <section class="card item">
-      <div class="item-head"><h3>지금 차단 중인 IP ${d.blocks.length}</h3>
+      <div class="item-head"><h3>지금 차단 중인 IP ${pg.bl_total}</h3>
         <form class="inline-form" data-block><input class="input sm" name="ip" placeholder="IP 직접 차단" required><select class="input sm" name="days"><option value="1">하루</option><option value="7">7일</option><option value="30" selected>30일</option><option value="3650">계속</option></select><button class="btn sm danger" type="submit">차단</button></form></div>
       ${d.blocks.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>IP</th><th>이유</th><th>사이트</th><th>걸린 횟수</th><th>마지막</th><th>풀림</th><th></th></tr></thead><tbody>
         ${d.blocks.map((b) => `<tr><td class="mono">${flag(b.country)} ${esc(b.ip)}</td><td>${esc(b.reason)}${b.manual ? ' <span class="badge doing">직접</span>' : ''}</td><td>${esc(b.site || '')}</td><td>${b.hits}</td><td>${ago(b.last_at)}</td><td>${left(b.until)}</td>
-          <td><button type="button" class="btn sm" data-unblock="${esc(b.ip)}">풀기</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="meta">막힌 IP 가 없습니다.</p>'}
+          <td><button type="button" class="btn sm" data-unblock="${esc(b.ip)}">풀기</button></td></tr>`).join('')}</tbody></table></div>${monPager('bp', pg.bp, pg.bl_size, pg.bl_total)}` : '<p class="meta">막힌 IP 가 없습니다.</p>'}
     </section>
 
     <section class="card item">
-      <div class="item-head"><h3>최근 의심 요청</h3><div class="tabs" id="mon-tabs"></div></div>
+      <div class="item-head"><h3>최근 의심 요청 ${pg.ev_total}</h3><div class="tabs" id="mon-tabs"></div></div>
       ${d.events.length ? `<div class="tbl-wrap"><table class="tbl mon-tbl"><thead><tr><th>때</th><th>사이트</th><th>IP</th><th>주소</th><th>이유</th><th>결과</th><th></th></tr></thead><tbody>
         ${d.events.map((e) => `<tr class="${e.action === 'block' ? 'hit' : ''}"><td title="${fmtDate(e.at)}">${ago(e.at)}</td><td>${esc(e.site)}</td><td class="mono">${flag(e.country)} ${esc(e.ip)}</td>
           <td class="mono path" title="${esc(e.ua)}">${esc(e.method)} ${esc(e.path)}</td><td><span class="badge ${REASON[e.reason]?.[1] || 'new'}">${REASON[e.reason]?.[0] || esc(e.reason)}</span></td>
-          <td>${e.action === 'block' ? '<b class="blocked">차단</b>' : '기록'}</td><td>${d.blocks.some((b) => b.ip === e.ip) ? '' : `<button type="button" class="btn sm danger" data-block-ip="${esc(e.ip)}">차단</button>`}</td></tr>`).join('')}</tbody></table></div>`
+          <td>${e.action === 'block' ? '<b class="blocked">차단</b>' : '기록'}</td><td>${e.blocked ? '' : `<button type="button" class="btn sm danger" data-block-ip="${esc(e.ip)}">차단</button>`}</td></tr>`).join('')}</tbody></table></div>${monPager('ep', pg.ep, pg.ev_size, pg.ev_total)}`
     : '<p class="meta">아직 의심 요청이 없습니다.</p>'}
     </section>
 
@@ -649,10 +668,15 @@ async function renderMonitor() {
       <div class="item-head"><h3>막지 않을 IP</h3>
         <form class="inline-form" data-allow><input class="input sm" name="ip" placeholder="IP" required><input class="input sm" name="memo" placeholder="메모 (예: 사무실)"><button class="btn sm" type="submit">추가</button></form></div>
       <p class="meta">지금 접속한 IP: <b class="mono">${esc(d.my_ip)}</b> ${d.allow.some((a) => a.ip === d.my_ip) ? '(예외에 있음)' : `<button type="button" class="link-btn" data-allow-me="${esc(d.my_ip)}">이 IP 를 예외로</button>`}</p>
-      ${d.allow.length ? `<ul class="allow-list">${d.allow.map((a) => `<li><span class="mono">${esc(a.ip)}</span> <small>${esc(a.memo)}</small><button type="button" class="link-btn" data-unallow="${esc(a.ip)}">빼기</button></li>`).join('')}</ul>` : ''}
+      ${d.allow.length ? `<ul class="allow-list">${allowPage.map((a) => `<li><span class="mono">${esc(a.ip)}</span> <small>${esc(a.memo)}</small><button type="button" class="link-btn" data-unallow="${esc(a.ip)}">빼기</button></li>`).join('')}</ul>${monPager('ap', monAp, AL, d.allow.length)}` : ''}
     </section>`;
   scrollTo(0, scroll);
-  pillTabs($('#mon-tabs'), [['', '전체'], ['attack', '공격 주소'], ['block', '차단된 것']], monOnly, (v) => { monOnly = v; renderMonitor(); });
+  pillTabs($('#mon-tabs'), [['', '전체'], ['attack', '공격 주소'], ['block', '차단된 것']], monOnly, (v) => { monOnly = v; monEp = 1; renderMonitor(); });
+  view.querySelectorAll('[data-mon-page]').forEach((b) => { b.onclick = () => {
+    const [k, n] = b.dataset.monPage.split(':');
+    if (k === 'ep') monEp = +n; else if (k === 'bp') monBp = +n; else monAp = +n;
+    guarded(renderMonitor);
+  }; });
   const act = (fn) => guarded(async () => { await fn(); renderMonitor(); });
   view.querySelector('[data-block]').onsubmit = (e) => { e.preventDefault(); const f = formData(e.target); act(() => api('/sec/blocks', { method: 'POST', data: f })).then(() => toast(`${f.ip} 를 막았습니다.`)); };
   view.querySelector('[data-allow]').onsubmit = (e) => { e.preventDefault(); const f = formData(e.target); act(() => api('/sec/allow', { method: 'POST', data: f })); };

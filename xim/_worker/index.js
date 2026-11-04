@@ -411,17 +411,24 @@ async function ximApi(request, env, url) {
     const t = now();
     const only = url.searchParams.get('only'); // block | attack
     const where = only === 'block' ? "WHERE action = 'block'" : only === 'attack' ? "WHERE reason = 'attack'" : '';
+    // 목록은 쪽으로 나눠 준다: 의심 요청 ep(30개씩), 차단 중 bp(20개씩)
+    const EV = 30, BL = 20;
+    const ep = Math.max(1, parseInt(url.searchParams.get('ep'), 10) || 1);
+    const bp = Math.max(1, parseInt(url.searchParams.get('bp'), 10) || 1);
     const [stats, events, blocks, allow] = await db.batch([
       db.prepare(`SELECT
           (SELECT COUNT(*) FROM sec_events WHERE at > ?) AS events24,
           (SELECT COUNT(*) FROM sec_events WHERE at > ? AND reason = 'attack') AS attacks24,
           (SELECT COUNT(*) FROM sec_blocks WHERE created_at > ? OR last_at > ?) AS blocked24,
-          (SELECT COUNT(*) FROM sec_blocks WHERE until > ?) AS active`).bind(t - DAY, t - DAY, t - DAY, t - DAY, t),
-      db.prepare(`SELECT * FROM sec_events ${where} ORDER BY id DESC LIMIT 200`),
-      db.prepare('SELECT * FROM sec_blocks WHERE until > ? ORDER BY last_at DESC LIMIT 300').bind(t),
+          (SELECT COUNT(*) FROM sec_blocks WHERE until > ?) AS active,
+          (SELECT COUNT(*) FROM sec_events ${where}) AS events_total`).bind(t - DAY, t - DAY, t - DAY, t - DAY, t),
+      db.prepare(`SELECT e.*, EXISTS(SELECT 1 FROM sec_blocks b WHERE b.ip = e.ip AND b.until > ?) AS blocked FROM sec_events e ${where} ORDER BY e.id DESC LIMIT ? OFFSET ?`).bind(t, EV, (ep - 1) * EV),
+      db.prepare('SELECT * FROM sec_blocks WHERE until > ? ORDER BY last_at DESC LIMIT ? OFFSET ?').bind(t, BL, (bp - 1) * BL),
       db.prepare('SELECT * FROM sec_allow ORDER BY created_at DESC'),
     ]);
-    return json({ stats: stats.results[0], events: events.results, blocks: blocks.results, allow: allow.results, my_ip: request.headers.get('CF-Connecting-IP') || '' });
+    const st = stats.results[0];
+    return json({ stats: st, events: events.results, blocks: blocks.results, allow: allow.results, my_ip: request.headers.get('CF-Connecting-IP') || '',
+      paging: { ep, ev_size: EV, ev_total: st.events_total, bp, bl_size: BL, bl_total: st.active } });
   }
   if (path === '/api/sec/blocks' && method === 'POST') {
     const raw = await body(request);
