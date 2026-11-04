@@ -80,12 +80,19 @@ textarea.input { min-height: 120px; resize: vertical; }
 .side-nav > button svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .side-nav > button .nav-num { margin-left: auto; }
 .side-nav .tab-ind { border-radius: 10px; }
+/* 메뉴 아래 바깥 바로가기 (포트폴리오) — 메뉴 칸과 같은 모양 */
+.side-link { display: flex; align-items: center; gap: 10px; min-height: 42px; margin-top: -10px; padding: 0 12px; border-radius: 10px; color: var(--sub); font-size: 15px; font-weight: 600; text-decoration: none; transition: color .3s, background-color .3s; }
+.side-link svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.side-link .ext { margin-left: auto; font-size: 13px; }
+.side-link:hover { color: var(--ink); background: var(--surface); }
 @media (max-width: 899px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .side { position: sticky; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
   .side .brand { padding: 0 4px; font-size: 22px; }
   .tabs.side-nav { flex: 1; flex-direction: row; overflow-x: auto; }
   .side-nav > button { padding: 0 10px; gap: 6px; }
+  .side-link { flex: none; margin: 0; padding: 0 10px; gap: 6px; white-space: nowrap; }
+  .side-link .ext { display: none; }
   .side-out { margin: 0; align-self: center; }
 }
 .tabs {
