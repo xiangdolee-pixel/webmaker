@@ -1,21 +1,34 @@
 // portfolio — 비밀번호를 넣어야 보이는 포트폴리오
 //   비밀번호는 리포에 두지 않는다(공개 리포): Worker 비밀값 PORTFOLIO_PASSWORD
 //     node deploy.mjs --wrangler secret put PORTFOLIO_PASSWORD --name portfolio
-//   맞게 넣으면 30일 동안 쿠키(비밀번호로 서명한 값)로 통과. 비밀번호를 바꾸면 예전 쿠키는 저절로 무효.
+//   접속할 때마다(새로고침 포함) 비밀번호를 묻는다:
+//     맞게 넣으면 한 번 쓰는 표(pf_once, 30초)로 페이지를 딱 한 번 열고, 그 응답에서 표를 지운다.
+//     이미지 · 그 밖의 파일은 따로 짧은 표(pf_ok, 10분)로 통과. 표는 비밀번호로 서명 → 비밀번호를 바꾸면 무효.
 //   그 밖(페이지 · /xms 관리 · /member)은 xim 공통 사이트 Worker 가 맡는다.
 import site from '../../xim/_worker/site-worker.js';
 
-const COOKIE = 'pf_ok';
-const MAX_AGE = 60 * 60 * 24 * 30;
+const ONCE = 'pf_once', ONCE_AGE = 30;   // 페이지 한 번 열기
+const FILES = 'pf_ok', FILES_AGE = 600;  // 이미지 등
 // 비밀번호 없이 열리는 것: 관리 화면 · 회원(자체 로그인), 파비콘 · CSS(비밀번호 화면이 씀)
 const OPEN = /^\/(xms|xms-api|member)(\/|$)|^\/(icon-\d+\.png|favicon\.ico|robots\.txt)$|^\/css\//;
 
 const enc = new TextEncoder();
-async function sign(secret) {
+async function hmac(secret, msg) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode('portfolio-ok-v1'));
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
+// 표 = 만료시각.서명
+async function ticket(secret, kind, age) {
+  const exp = Math.floor(Date.now() / 1000) + age;
+  return `${exp}.${await hmac(secret, `portfolio-v2:${kind}:${exp}`)}`;
+}
+async function valid(secret, kind, value) {
+  const [exp, sig] = String(value).split('.');
+  if (!secret || !sig || !(Number(exp) > Date.now() / 1000)) return false;
+  return same(sig, await hmac(secret, `portfolio-v2:${kind}:${exp}`));
+}
+const cookie = (name, value, age) => `${name}=${value}; Path=/; Max-Age=${age}; HttpOnly; Secure; SameSite=Lax`;
 function same(a, b) {
   const x = enc.encode(String(a)), y = enc.encode(String(b));
   if (x.length !== y.length) return false;
@@ -71,20 +84,17 @@ export default {
         await new Promise((r) => setTimeout(r, 800)); // 연달아 맞혀 보기 늦추기
         return lockPage(true, next);
       }
-      return new Response(null, {
-        status: 303,
-        headers: {
-          Location: next,
-          'Set-Cookie': `${COOKIE}=${await sign(secret)}; Path=/; Max-Age=${MAX_AGE}; HttpOnly; Secure; SameSite=Lax`,
-          'Cache-Control': 'no-store',
-        },
-      });
+      const h = new Headers({ Location: next, 'Cache-Control': 'no-store' });
+      h.append('Set-Cookie', cookie(ONCE, await ticket(secret, 'once', ONCE_AGE), ONCE_AGE));
+      h.append('Set-Cookie', cookie(FILES, await ticket(secret, 'files', FILES_AGE), FILES_AGE));
+      return new Response(null, { status: 303, headers: h });
     }
 
     if (!OPEN.test(url.pathname)) {
-      const ok = secret && same(cookieOf(request, COOKIE), await sign(secret));
+      const isPage = request.method === 'GET' && (request.headers.get('Accept') || '').includes('text/html');
+      const ok = isPage ? await valid(secret, 'once', cookieOf(request, ONCE)) : await valid(secret, 'files', cookieOf(request, FILES));
       if (!ok) {
-        if (request.method === 'GET' && (request.headers.get('Accept') || '').includes('text/html')) return lockPage(false, url.pathname + url.search);
+        if (isPage) return lockPage(false, url.pathname + url.search);
         return new Response('Unauthorized', { status: 401, headers: { 'Cache-Control': 'no-store' } });
       }
       const res = await (env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request));
@@ -92,6 +102,7 @@ export default {
       const out = new Response(res.body, res);
       out.headers.set('Cache-Control', 'private, no-store');
       out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      if (isPage) out.headers.append('Set-Cookie', cookie(ONCE, '', 0)); // 한 번 썼으면 지움 → 다음 접속 · 새로고침은 다시 비밀번호
       return out;
     }
     return env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request);
