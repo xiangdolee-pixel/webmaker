@@ -7,6 +7,8 @@
   --brand: #2563eb;
   --brand-fg: #fff;
   --thumb: #eef1f5;
+  --toast-bg: rgba(17, 20, 24, .9);
+  --toast-fg: #fff;
   --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 24px rgba(16, 24, 40, .06);
   --shadow-up: 0 2px 4px rgba(16, 24, 40, .06), 0 16px 36px rgba(16, 24, 40, .12);
   --radius: 18px;
@@ -17,6 +19,7 @@
   :root {
     --bg: #0e1116; --card: #161a21; --fg: #eef1f5; --sub: #9aa4b2; --line: #262c36;
     --brand: #5b8cff; --brand-fg: #0e1116; --thumb: #1d222b;
+    --toast-bg: rgba(238, 241, 245, .94); --toast-fg: #0e1116;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-up: 0 16px 36px rgba(0, 0, 0, .45);
   }
 }
@@ -58,6 +61,11 @@ a { color: inherit; text-decoration: none; }
 .url::after { content: " ↗"; }
 
 .foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--sub); font-size: 14px; text-align: center; }
+/* 누르면 복사되는 이메일 + 아래 가운데 알약 알림 */
+.mail { cursor: pointer; color: var(--fg); font-weight: 600; user-select: none; -webkit-user-select: none; text-underline-offset: 4px; }
+.mail:hover, .mail:focus-visible { text-decoration: underline; color: var(--brand); outline: none; }
+.toast { position: fixed; left: 50%; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); margin: 0; padding: 10px 20px; border-radius: 999px; background: var(--toast-bg); color: var(--toast-fg); font-size: 15px; font-weight: 500; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 12px); transition: opacity .3s var(--ease), transform .3s var(--ease); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
 
 /* 비밀번호 화면 (Worker 가 그린다) */
 .lock { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
@@ -87,6 +95,6 @@ a { color: inherit; text-decoration: none; }
   .desc { font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .card, .thumb img, .tag { transition: none; }
+  .card, .thumb img, .tag, .toast { transition: none; }
   .card:hover, .card:hover .thumb img { transform: none; }
 }
