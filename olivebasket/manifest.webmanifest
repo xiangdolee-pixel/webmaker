@@ -1,0 +1,16 @@
+{
+  "name": "올리브바스켓",
+  "short_name": "올리브바스켓",
+  "description": "책에서 모은 아포리즘을 한 구절씩",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f0e6",
+  "theme_color": "#5a6740",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

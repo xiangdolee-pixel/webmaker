@@ -70,7 +70,9 @@
 
     const place = () => {
       const r = btn.getBoundingClientRect();
-      menu.style.top = `${Math.round(r.bottom + 10)}px`;
+      // 버튼이 화면 아래쪽(하단 메뉴 등)에 있어 메뉴가 넘치면 버튼 위로 연다
+      const h = menu.offsetHeight || 220;
+      menu.style.top = `${Math.round(r.bottom + 10 + h > innerHeight - 8 ? Math.max(8, r.top - 10 - h) : r.bottom + 10)}px`;
       menu.style.right = `${Math.max(8, Math.round(innerWidth - r.right))}px`;
     };
     const open = (v, keyboard = false) => {

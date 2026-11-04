@@ -1,0 +1,18 @@
+{
+  "xim": true,
+  "assets": {
+    "run_worker_first": [
+      "/*",
+      "!/style.css",
+      "!/app.js",
+      "!/admin.js",
+      "!/sw.js",
+      "!/leaf.png",
+      "!/icons/*",
+      "!/manifest.webmanifest"
+    ]
+  },
+  "d1_databases": [
+    { "binding": "OB_DB", "database_name": "olivebasket", "database_id": "4b49ad43-a987-4d9f-8e74-333cdb6c48e7" }
+  ]
+}

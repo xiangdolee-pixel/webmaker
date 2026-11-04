@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>올리브바스켓 · 관리</title>
+<meta name="theme-color" content="#5a6740">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/noto-serif-kr@5.2.5/index.css">
+<link rel="stylesheet" href="style.css?v=26">
+</head>
+<body>
+<div class="wrap">
+  <h1>
+    <a class="home" href="./"><span class="leaf-mark" aria-hidden="true"></span>올리브바스켓 관리</a>
+    <a class="back" href="./" style="margin-left:auto">← 보기</a>
+    <span class="ob-acc" data-xms-account></span>
+  </h1>
+
+  <div class="who" id="who"></div>
+
+  <!-- 등록/수정 -->
+  <section class="card" id="editCard" hidden>
+    <label for="text">구절</label>
+    <textarea id="text" placeholder="마음에 남은 문장을 적어 두세요"></textarea>
+    <label for="src">출처 (책·저자, 선택)</label>
+    <input type="text" id="src" placeholder="예: 세네카, 인생의 짧음에 관하여">
+    <label>중요도</label>
+    <div class="star-pick" id="starPick">
+      <button type="button" data-v="1">★</button>
+      <button type="button" data-v="2">★★</button>
+      <button type="button" data-v="3" class="on">★★★</button>
+    </div>
+    <div class="row">
+      <button id="saveBtn">담기</button>
+      <button class="ghost" id="cancelBtn" hidden>수정 취소</button>
+      <button class="ghost" id="logoutBtn" style="margin-left:auto">로그아웃</button>
+    </div>
+    <div class="msg" id="editMsg"></div>
+  </section>
+
+  <!-- 목록 -->
+  <section id="listSec" hidden>
+    <div class="card mode-card">
+      <label style="margin-top:0">🫒 문구를 보여주는 방식</label>
+      <div class="mode-pick" id="modePick">
+        <button type="button" data-m="random">완전랜덤</button>
+        <button type="button" data-m="recent">최근 올린 글</button>
+        <button type="button" data-m="stars">별표</button>
+        <button type="button" data-m="short">짧은 글</button>
+        <button type="button" data-m="long">긴 글</button>
+      </div>
+      <p class="note" id="modeNote"></p>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="row" style="margin:0 0 12px">
+      <input type="text" id="q" placeholder="구절·출처 검색" style="flex:1;min-width:0">
+      <button class="ghost small" id="backupBtn">⤓ 백업</button>
+    </div>
+    <div class="card" id="list"></div>
+    <div class="pager" id="pager"></div>
+  </section>
+</div>
+
+<script src="admin.js?v=24"></script>
+</body>
+</html>

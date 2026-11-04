@@ -53,7 +53,7 @@ else {
   if (fs.existsSync(path.join(ROOT, `.deploy/${slug}.xim-connect.json`))) await fillDomain(slug);
 }
 
-// xim 에 대표 도메인이 비어 있으면, 이 Worker 에 Cloudflare 로 붙여 둔 사용자 도메인(Custom Domain)을 채운다.
+// xim 에 대표 도메인이 비어 있으면, 이 Worker 에 Cloudflare 로 붙여 둔 사용자 도메인(Custom Domain) — 없으면 Worker 경로(route) — 를 채운다.
 //   (도메인은 대시보드에서 붙이는 경우가 많아 xim 이 모른다 → 배포할 때마다 확인, 이미 있으면 건드리지 않음)
 //   채운 뒤 xim 이 사이트 목록을 열 때 메일 · 봇 확인을 자동 등록한다.
 async function fillDomain(folder) {
@@ -74,6 +74,17 @@ async function fillDomain(folder) {
     const out = await r.json();
     if (!out.success) throw new Error((out.errors || []).map((e) => e.message).join(', ') || `HTTP ${r.status}`);
     const hosts = (out.result || []).filter((d) => d.service === slug).map((d) => d.hostname);
+    // 사용자 도메인이 없으면 Worker 경로(route, 예: olivebasket.plators.com/*)로 붙인 주소도 본다 (Pages 에서 옮겨 온 사이트 등)
+    if (!hosts.length) {
+      const zr = await (await fetch(`https://api.cloudflare.com/client/v4/zones?account.id=${ACCOUNT_ID}&per_page=50`, { headers: { Authorization: `Bearer ${token}` } })).json();
+      for (const z of zr.result || []) {
+        const rr = await (await fetch(`https://api.cloudflare.com/client/v4/zones/${z.id}/workers/routes`, { headers: { Authorization: `Bearer ${token}` } })).json();
+        for (const x of rr.result || []) {
+          const h = x.script === slug && String(x.pattern).split('/')[0];
+          if (h && !h.includes('*')) hosts.push(h);
+        }
+      }
+    }
     if (!hosts.length) return console.log(`[domain] ${slug}: Cloudflare 에 붙인 도메인이 없음 (workers.dev 주소로 운영)`);
     // www 가 아닌 것 중 가장 짧은 것 (예: 나사렛장학회.kr 과 www.… → 앞의 것)
     const host = hosts.sort((a, b) => /^www\./.test(a) - /^www\./.test(b) || a.length - b.length)[0];
