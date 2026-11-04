@@ -39,6 +39,50 @@ function spark(k, list) {
   svg.innerHTML = `<polygon points="0,28 ${xy.join(' ')} 100,28" fill="${col}" opacity=".1"/><polyline points="${xy.join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`;
 }
 
+// 김프: 바이낸스 USDT 시세를 브라우저가 직접 받는다 (Cloudflare 서버에서는 바이낸스가 막힘). 못 받으면 서버가 준 OKX 값으로
+let bnPrices = { at: 0, map: null };
+async function binancePrices() {
+  if (bnPrices.map && Date.now() - bnPrices.at < 15000) return bnPrices.map;
+  for (const host of ['https://api.binance.com', 'https://data-api.binance.vision']) {
+    try {
+      const r = await fetch(`${host}/api/v3/ticker/price`, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const list = await r.json();
+      const map = {};
+      for (const t of list) if (t.symbol.endsWith('USDT')) map[t.symbol.slice(0, -4)] = +t.price;
+      bnPrices = { at: Date.now(), map };
+      return map;
+    } catch (e) { /* 다음 주소 */ }
+  }
+  return null;
+}
+let lastKimp = null;
+async function renderKimp(k) {
+  lastKimp = k;
+  const bn = await binancePrices();
+  if (lastKimp !== k) return; // 그 사이 새 값
+  const src = bn ? '바이낸스' : 'OKX';
+  const rows = [];
+  for (const c of k.coins || []) {
+    const usd = bn ? bn[c.sym] : c.okx;
+    if (!usd) continue; // 그 거래소에 없는 코인은 건너뛰고 다음 순위로
+    const global = usd * k.usdkrw;
+    rows.push({ ...c, global, premium: (c.krw / global - 1) * 100 });
+    if (rows.length === 10) break;
+  }
+  const btc = rows.find((r) => r.sym === 'BTC');
+  setKpi('kimp', btc ? `${sign(btc.premium, 2)}%` : '—', `${src} 기준${k.tether ? ` · 테더 ${sign(k.tether.premium, 2)}%` : ''} · 원/달러 ${nf(k.usdkrw, 1)}`);
+  kpi('kimp').querySelector('.kpi-v').className = `kpi-v ${btc ? cls(btc.premium) : ''}`;
+  $('kimp-src').textContent = `${src} 환산`;
+  $('kimp-note').textContent = `업비트 ÷ (${src} USDT × 원/달러) · 누르면 차트`;
+  $('kimp').querySelector('tbody').innerHTML = rows.map((c) => `<tr data-chart="up" data-code="${esc(c.sym)}" data-name="${esc(c.name)}" tabindex="0">
+      <td class="rk">${c.rank}</td>
+      <td class="nm"><b>${esc(c.name)}</b><small>${esc(c.sym)}</small></td>
+      <td>${nf(c.krw, c.krw < 100 ? 2 : 0)}</td>
+      <td class="hide-sm">${nf(c.global, c.global < 100 ? 2 : 0)}</td>
+      <td class="${cls(c.premium)}"><b>${sign(c.premium, 2)}%</b></td></tr>`).join('') || '<tr><td colspan="5" class="empty">받은 값이 없어요</td></tr>';
+}
+
 function render(d) {
   if (d.dom) {
     setKpi('dom', `${nf(d.dom.btc, 1)}%`, `${d.dom.eth != null ? `이더리움 ${nf(d.dom.eth, 1)}% · ` : ''}전체 ${trillion(d.dom.total / 1e9)}`);
@@ -63,17 +107,7 @@ function render(d) {
     kpi('mvrv').querySelector('.kpi-bar i').style.left = `${Math.max(0, Math.min(100, ((z + 1) / 9) * 100))}%`; // −1 ~ 8
     spark('mvrv', d.mvrv.series);
   }
-  if (d.kimp) {
-    const b = d.kimp.btc;
-    setKpi('kimp', b ? `${sign(b.premium, 2)}%` : '—', d.kimp.tether ? `테더 ${sign(d.kimp.tether.premium, 2)}% · 원/달러 ${nf(d.kimp.usdkrw, 1)}` : '');
-    if (b) kpi('kimp').querySelector('.kpi-v').className = `kpi-v ${cls(b.premium)}`;
-    $('kimp').querySelector('tbody').innerHTML = (d.kimp.top || []).map((c, i) => `<tr data-chart="up" data-code="${esc(c.sym)}" data-name="${esc(c.name)}" tabindex="0">
-      <td class="rk">${i + 1}</td>
-      <td class="nm"><b>${esc(c.name)}</b><small>${esc(c.sym)}</small></td>
-      <td>${nf(c.krw, c.krw < 100 ? 2 : 0)}</td>
-      <td class="hide-sm">${nf(c.global, c.global < 100 ? 2 : 0)}</td>
-      <td class="${cls(c.premium)}"><b>${sign(c.premium, 2)}%</b></td></tr>`).join('') || '<tr><td colspan="5" class="empty">받은 값이 없어요</td></tr>';
-  }
+  if (d.kimp) renderKimp(d.kimp);
   if (d.m2) {
     setKpi('m2', trillion(d.m2.value), `1년 전보다 ${sign(d.m2.yoy)}% · ${d.m2.date.slice(0, 7).replace('-', '.')} 기준`, cls(d.m2.yoy));
     spark('m2', d.m2.series);

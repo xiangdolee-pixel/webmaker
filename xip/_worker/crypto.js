@@ -5,7 +5,7 @@
 //   fng  : 크립토 공포 · 탐욕 지수 — alternative.me                                                30분 / 3일
 //   mvrv : MVRV Z-Score — Coin Metrics 일별 값으로 직접 계산(예비: bitcoin-data.com)                 6시간 / 7일
 //   m2   : 미국 M2 통화량 — 연준 H.6(예비: FRED M2SL), 월 단위, 10억 달러                           12시간 / 30일
-//   kimp : 김치 프리미엄 상위 10 — 업비트 원화 시세 ÷ (OKX USDT 시세 × 원/달러 하나은행 고시)       20초 / 10분
+//   kimp : 김치 프리미엄 — 시총 상위 10(스테이블 빼고) · 업비트 원화 ÷ (바이낸스 USDT × 원/달러). 바이낸스는 브라우저가  20초 / 10분
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
 async function get(url, as = 'json', ms = 10000) {
@@ -116,14 +116,31 @@ async function loadM2() {
   };
 }
 
-// 김프: 업비트 원화 거래대금 50억 원 이상 · OKX USDT 마켓에 있는 코인만 (같은 기호 다른 코인은 ±30% 넘으면 뺀다)
-const STABLE = new Set(['USDT', 'USDC', 'USDS', 'DAI', 'FDUSD', 'USDE', 'TUSD', 'PYUSD']);
 let upbitNames = { at: 0, map: {} };
+// 김프: 시가총액 상위(스테이블코인 빼고) 중 업비트 원화 마켓에 있는 코인 10개(예비로 몇 개 더) — 시총 순서 그대로
+//   기준 가격은 바이낸스 USDT. 바이낸스는 Cloudflare 서버에서 막혀(451) 방문자 브라우저가 직접 받아 계산하고,
+//   여기서는 업비트 원화값 · 시총 순위 · 예비로 OKX USDT 값만 준다 (브라우저도 바이낸스를 못 받으면 OKX 로 계산)
+const STABLE_SYM = /^(USDT|USDC|USDS|DAI|USDE|FDUSD|PYUSD|TUSD|USD1|BUSD|RLUSD|USDG|USDD|GUSD|USDP|LUSD|FRAX|USD0|EURC|EURT|XAUT|PAXG|BSC-USD)$/;
+let rankCache = { at: 0, list: [] };
+async function mcapRanks() {
+  if (Date.now() - rankCache.at < 30 * 60e3 && rankCache.list.length) return rankCache.list;
+  let list;
+  try {
+    const cg = await get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=60&page=1');
+    list = cg.map((c) => ({ sym: String(c.symbol).toUpperCase(), name: c.name, rank: c.market_cap_rank, stable: Math.abs((c.current_price || 0) - 1) < 0.03 }));
+  } catch (e) {
+    const cl = await get('https://api.coinlore.net/api/tickers/?start=0&limit=60');
+    list = (cl.data || []).map((c) => ({ sym: String(c.symbol).toUpperCase(), name: c.name, rank: +c.rank, stable: Math.abs(+c.price_usd - 1) < 0.03 }));
+  }
+  rankCache = { at: Date.now(), list };
+  return list;
+}
 async function loadKimp(usdkrw) {
   if (!usdkrw) throw new Error('no usdkrw');
-  const [up, okx] = await Promise.all([
+  const [up, okx, ranks] = await Promise.all([
     get('https://api.upbit.com/v1/ticker/all?quote_currencies=KRW'),
-    get('https://www.okx.com/api/v5/market/tickers?instType=SPOT'),
+    get('https://www.okx.com/api/v5/market/tickers?instType=SPOT').catch(() => ({ data: [] })),
+    mcapRanks(),
   ]);
   if (Date.now() - upbitNames.at > 864e5) {
     try {
@@ -131,26 +148,29 @@ async function loadKimp(usdkrw) {
       upbitNames = { at: Date.now(), map: Object.fromEntries(all.filter((m) => m.market.startsWith('KRW-')).map((m) => [m.market.slice(4), m.korean_name])) };
     } catch { /* 이름 없이 기호만 */ }
   }
-  const usdt = {};
-  for (const t of okx.data || []) if (t.instId.endsWith('-USDT')) usdt[t.instId.slice(0, -5)] = num(t.last);
-  const tether = up.find((t) => t.market === 'KRW-USDT');
-  const list = [];
-  for (const t of up) {
-    const sym = t.market.slice(4);
-    if (STABLE.has(sym) || !usdt[sym] || t.acc_trade_price_24h < 5e9) continue;
-    const global = usdt[sym] * usdkrw;
-    const p = (t.trade_price / global - 1) * 100;
-    if (Math.abs(p) > 30) continue;
-    list.push({ sym, name: upbitNames.map[sym] || sym, krw: t.trade_price, global, premium: p, value: t.acc_trade_price_24h });
+  const okxUsdt = {};
+  for (const t of okx.data || []) if (t.instId.endsWith('-USDT')) okxUsdt[t.instId.slice(0, -5)] = num(t.last);
+  const upKrw = Object.fromEntries(up.map((t) => [t.market.slice(4), t]));
+  const tether = upKrw.USDT;
+  const coins = [];
+  const seen = new Set();
+  for (const r of ranks) {
+    if (seen.has(r.sym) || r.stable || STABLE_SYM.test(r.sym) || !upKrw[r.sym]) continue;
+    seen.add(r.sym);
+    const t = upKrw[r.sym];
+    const okxP = okxUsdt[r.sym] || null;
+    coins.push({
+      sym: r.sym, name: upbitNames.map[r.sym] || r.name || r.sym, rank: r.rank,
+      krw: t.trade_price, okx: okxP, okxPremium: okxP ? (t.trade_price / (okxP * usdkrw) - 1) * 100 : null,
+    });
+    if (coins.length >= 14) break; // 바이낸스에 없는 코인이 있어도 10개를 채우게 몇 개 더
   }
-  list.sort((a, b) => b.premium - a.premium);
-  const pick = (s) => list.find((x) => x.sym === s) || null;
+  const btc = coins.find((c) => c.sym === 'BTC');
   return {
     usdkrw,
     tether: tether ? { krw: tether.trade_price, premium: (tether.trade_price / usdkrw - 1) * 100 } : null,
-    btc: pick('BTC'), eth: pick('ETH'),
-    top: list.slice(0, 10),
-    count: list.length,
+    btc: btc ? { premium: btc.okxPremium, krw: btc.krw } : null,
+    coins,
   };
 }
 
