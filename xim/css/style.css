@@ -44,7 +44,7 @@ a.btn { text-decoration: none; }
 .btn.sm { min-height: 36px; padding: 0 14px; font-size: 14px; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
 
-.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field { display: grid; gap: 6px; margin-bottom: 14px; align-content: start; }   /* 옆 칸에 도움말이 있어도 입력칸이 늘어나지 않게 */
 .field > span { font-size: 14px; font-weight: 600; color: var(--sub); }
 .field small { color: var(--mute); font-size: 13px; }
 .field .req { color: var(--danger); font-style: normal; }
@@ -58,7 +58,7 @@ a.btn { text-decoration: none; }
 }
 .input:focus { outline: none; border-color: var(--brand); background: #fff; }
 textarea.input { min-height: 120px; resize: vertical; }
-.row2 { display: grid; gap: 0 12px; grid-template-columns: minmax(0, 1fr); }
+.row2 { display: grid; gap: 0 12px; grid-template-columns: minmax(0, 1fr); align-items: start; }
 
 /* ── 로그인 ── */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
