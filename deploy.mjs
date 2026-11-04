@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, domainToUnicode } from 'node:url';
 import { ensureMailDomain } from './mail-domain.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -43,12 +43,52 @@ else if (arg === '--whoami') run('npx', ['wrangler', 'whoami']);
 else if (arg === '--wrangler') run('npx', ['wrangler', ...process.argv.slice(3)]); // 예) node deploy.mjs --wrangler d1 list
 else if (arg === '--mail-token') run('npx', ['wrangler', 'secret', 'put', 'CF_MAIL_TOKEN', '--name', 'xim']); // 대표 도메인 메일 등록용 토큰을 xim 에 (붙여넣기만)
 else if (arg === '--mail') await mailFor(process.argv[3] || '', true); // 예) node deploy.mjs --mail sjccc  (또는 도메인)
+else if (arg === '--domain') await fillDomain(process.argv[3] || ''); // 예) node deploy.mjs --domain xip  (Cloudflare 에 붙인 도메인을 xim 에 채움)
 else {
   // 배포용은 .deploy/<폴더> 에 따로 빌드한다 — 로컬 미리보기(dist · wrangler.jsonc)를 다른 작업이 동시에 고쳐도 섞이지 않게
   const slug = arg.replace(/[\/]+$/, '');
   run('node', ['build.mjs', slug], { XIM_DEPLOY: '1' });
   registerInXim(slug);
   run('npx', ['wrangler', 'deploy', '--config', `.deploy-${slug}.wrangler.jsonc`]);
+  if (fs.existsSync(path.join(ROOT, `.deploy/${slug}.xim-connect.json`))) await fillDomain(slug);
+}
+
+// xim 에 대표 도메인이 비어 있으면, 이 Worker 에 Cloudflare 로 붙여 둔 사용자 도메인(Custom Domain)을 채운다.
+//   (도메인은 대시보드에서 붙이는 경우가 많아 xim 이 모른다 → 배포할 때마다 확인, 이미 있으면 건드리지 않음)
+//   채운 뒤 xim 이 사이트 목록을 열 때 메일 · 봇 확인을 자동 등록한다.
+async function fillDomain(folder) {
+  const slug = folder.replace(/[\/]+$/, '').toLowerCase().replace(/[_.]/g, '-');
+  if (!/^[a-z0-9-]+$/.test(slug)) return;
+  const sh = (cmd) => spawnSync(cmd, { cwd: ROOT, env, shell: true, encoding: 'utf8' });
+  const rows = (r) => { try { return JSON.parse(r.stdout.slice(r.stdout.indexOf('[')))[0].results; } catch { return null; } };
+  try {
+    const site = rows(sh(`npx wrangler d1 execute xim --remote --json --command "SELECT domain FROM sites WHERE slug = '${slug}'"`))?.[0];
+    if (!site) return console.log(`[domain] ${slug}: xim 에 없는 사이트라 건너뜀`);
+    if (site.domain) return console.log(`[domain] ${slug}: xim 대표 도메인 ${site.domain} (그대로)`);
+    let token = CI_TOKEN || '';
+    if (!token) {
+      const toml = fs.readFileSync(path.join(AUTH_HOME, '.wrangler', 'config', 'default.toml'), 'utf8');
+      token = (toml.match(/^oauth_token\s*=\s*"([^"]+)"/m) || [])[1] || '';
+    }
+    const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/workers/domains?service=${slug}`, { headers: { Authorization: `Bearer ${token}` } });
+    const out = await r.json();
+    if (!out.success) throw new Error((out.errors || []).map((e) => e.message).join(', ') || `HTTP ${r.status}`);
+    const hosts = (out.result || []).filter((d) => d.service === slug).map((d) => d.hostname);
+    if (!hosts.length) return console.log(`[domain] ${slug}: Cloudflare 에 붙인 도메인이 없음 (workers.dev 주소로 운영)`);
+    // www 가 아닌 것 중 가장 짧은 것 (예: 나사렛장학회.kr 과 www.… → 앞의 것)
+    const host = hosts.sort((a, b) => /^www\./.test(a) - /^www\./.test(b) || a.length - b.length)[0];
+    const domain = domainToUnicode(host) || host;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xim-domain-'));
+    const f = path.join(tmp, 'q.sql');
+    fs.writeFileSync(f, `UPDATE sites SET domain = '${domain.replace(/'/g, "''")}' WHERE slug = '${slug}' AND domain = '';
+`);
+    const u = sh(`npx wrangler d1 execute xim --remote --file "${f}" -y`);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    if (u.status) throw new Error((u.stderr || '').slice(0, 300));
+    console.log(`[domain] ${slug}: xim 대표 도메인을 ${domain} 으로 채움 (메일 · 봇 확인은 xim 사이트 목록을 열 때 자동 등록)`);
+  } catch (e) {
+    console.warn(`[domain] ${slug}: 도메인 확인 실패(배포는 그대로) —`, e.message);
+  }
 }
 
 // 대표 도메인을 메일 보내는 도메인으로 (회원가입 인증 메일 = noreply@<도메인>). 평소에는 xim 에서 대표 도메인을 저장하면 자동.

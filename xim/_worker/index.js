@@ -320,6 +320,12 @@ async function ximApi(request, env, url) {
 
   // 사이트
   if (path === '/api/sites' && method === 'GET') {
+    // 배포할 때 도메인만 채워진 사이트(deploy.mjs) → 메일 · 봇 확인을 여기서 한 번 등록
+    const { results: pending } = await db.prepare("SELECT id, domain FROM sites WHERE domain != '' AND mail_status = ''").all();
+    for (const p of pending) {
+      const r = await mailRegister(env, p.id, p.domain).catch((e) => ({ message: e.message }));
+      await audit(db, request, 'SITE_MAIL', p.domain, `배포 때 채운 도메인 자동 등록 — ${r?.message || ''}`);
+    }
     const { results } = await db.prepare(`
       SELECT s.*, c.name AS customer_name,
         (SELECT COUNT(*) FROM requests r WHERE r.site_id = s.id AND r.status != 'done') AS open_requests

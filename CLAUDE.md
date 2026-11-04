@@ -95,6 +95,7 @@ design 쪽 규칙(`E:\ws\WebMaker\CLAUDE.md`, `E:\ws\WebMaker\design\CLAUDE.md`)
 - **새 고객 사이트는 디자인해서 `node deploy.mjs <폴더>` 로 올리기만 하면 자동으로 xim · xms 에 연결된다** (사용자 지시 2026-11-03 — "매번 프롬프트로 연결해 달라고 하면 xim 이 있을 이유가 없다"):
   - build.mjs: 공통 사이트 Worker(`xim/_worker/site-worker.js`)를 main 으로 붙이고(폴더에 복사하지 않는다), dist html 의 헤더 첫 `<nav>` 에 `data-xms-menu` · 링크에 `data-xms-item` · 계정 버튼 자리를 넣는다(원본은 그대로, 이미 표시가 있으면 손대지 않음).
   - deploy.mjs: 처음이면 xim 에 사이트 등록(이름 = index.html `<title>`), 헤더 메뉴 링크를 xms 메뉴 목록으로 한 번 가져온다. 그 뒤 메뉴 · 게시판은 업체가 xms 에서 고친다.
+  - deploy.mjs: xim 대표 도메인이 비어 있으면 그 Worker 에 Cloudflare 로 붙인 사용자 도메인(Custom Domain)을 읽어 채운다(이미 있으면 그대로). xim 은 사이트 목록을 열 때 메일 · 봇 확인을 자동 등록. 따로 하려면 `node deploy.mjs --domain <폴더>`.
   - 빠지는 폴더: xim · xms 자신, 자기 서버 Worker(`_worker/index.js`)가 있는 폴더(예: xip), `.xim-off` 파일을 둔 폴더.
   - 헤더 메뉴 중 버튼 모양(class 에 cta · btn · button)은 xms 메뉴로 바뀌지 않고 그대로 남는다(예: "후원하기").
   - **웹에서(xim "GitHub에서 연결")**: 폴더 주소(https://github.com/xiangdolee-pixel/webmaker2/tree/main/<폴더>)를 넣으면 xim 이 GitHub Actions `.github/workflows/xim-connect.yml` 을 실행 → 위와 똑같이 `node deploy.mjs <폴더>` (Cloudflare API 토큰 = 저장소 비밀값 `CLOUDFLARE_API_TOKEN`, xim 쪽 = Worker 비밀값 `GITHUB_TOKEN`: webmaker2 저장소 Actions 읽기·쓰기 전용 토큰).
