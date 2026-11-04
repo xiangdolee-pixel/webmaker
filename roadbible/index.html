@@ -127,14 +127,14 @@ header{
 }
 @media (prefers-reduced-motion:reduce){.rh-fill{transition:none}}
 .runhead-btn #rhTitle{
-  font-family:var(--display);font-weight:800;font-size:14px;color:var(--ink);
+  font-family:var(--display);font-weight:800;font-size:17px;color:var(--ink);   /* 14px 의 1.2배 (사용자 지시 2026-11-04) */
   white-space:nowrap;flex:none;   /* 제목은 줄이지 않고 전체 표시(부가정보가 대신 밀림) */
   border-bottom:2px solid var(--gilt);padding-bottom:2px;
 }
 .runhead-btn small{
   font-family:var(--ui);font-weight:400;font-size:11px;color:var(--ink-soft);flex:none;
 }
-.runhead-btn #rhPage{font-size:14px;font-weight:500} /* 제목과 같은 크기, 색은 회색 유지 */
+.runhead-btn #rhPage{font-size:17px;font-weight:500} /* 제목과 같은 크기, 색은 회색 유지 */
 /* 인터넷 끊김 표시 — 러닝헤드 오른쪽(가름끈 자리 왼쪽)에 상시 배지, 연결되면 사라짐 */
 .net-badge{
   position:absolute;left:36px;top:50%;transform:translateY(-50%);z-index:1;
@@ -2839,6 +2839,8 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
       const me=r.ok?await r.json():{guest:true};
       if(!me.login_id){setUser(null);return;}
       setUser(me);
+      /* 로그아웃을 누르기 전까지 로그인이 풀리지 않게: 열 때마다 로그인 기한을 다시 늘린다 */
+      fetch("/xms-api/keep",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:"{}"}).catch(()=>{});
       if(await pull())await push();   // 이 기기에만 있던 것도 서버로
     }catch(e){
       if(!user)st.textContent="(인터넷이 연결되면 로그인 상태를 확인합니다)";

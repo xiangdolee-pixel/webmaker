@@ -82,7 +82,7 @@ export class Cms extends WorkerEntrypoint {
           if (!t) return html('<!doctype html><meta charset="utf-8"><p style="font-family:sans-serif;padding:24px">입장권이 만료됐습니다. xim 에서 "xms" 버튼을 다시 눌러 주세요.</p>', 410);
           // 일반 관리자 로그인과 똑같이: 이 사이트 첫 관리자(등급 1) 계정으로 들어간다 (사용자 지시 — 운영자로 구분하지 않는다). 관리자가 없을 때만 운영자로.
           const adm = await env.DB.prepare("SELECT id FROM members WHERE site = ? AND level = 1 AND status = 'ACTIVE' ORDER BY id LIMIT 1").bind(site).first();
-          const cookie = adm ? await createSession(env.DB, site, 'member', adm.id) : await createSession(env.DB, site, 'staff');
+          const cookie = adm ? await createSession(env.DB, site, 'keep', adm.id) : await createSession(env.DB, site, 'staff');
           return new Response(null, { status: 302, headers: { Location: `${url.origin}/xms/`, 'Set-Cookie': cookie } });
         }
         const res = await asset(env, '/admin/', 'no-cache');

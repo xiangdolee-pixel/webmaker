@@ -77,10 +77,11 @@ export const recordFail = (db, key) => db.prepare('INSERT INTO login_fails (key,
 // ───────── 세션 ─────────
 export const SESS_COOKIE = 'xms_sess';
 // 로그인 유지(kind 'keep', 사용자 지시 2026-11-04 "매번 로그인 안 해도 되게"):
-//   마지막으로 들어온 날부터 90일 동안 로그인이 이어진다(들어올 때마다 늘어남). 쿠키는 브라우저 한도인 400일.
+//   로그아웃을 누르기 전까지 풀리지 않게(사용자 지시 2026-11-04 "내가 로그아웃 안 하는 한"): 서버 · 쿠키 모두 400일(브라우저 한도),
+//   들어올 때마다 늘어난다(서버는 whoAmI 가 하루 한 번, 쿠키는 account.js 가 하루 한 번 /keep).
 //   유지를 끄면(kind 'member') 브라우저를 닫으면 끝나는 쿠키, 서버 쪽도 12시간.
 const MEMBER_SESSION = 12 * 3600000;
-const KEEP_SESSION = 90 * DAY;
+const KEEP_SESSION = 400 * DAY;
 const KEEP_COOKIE_SEC = 400 * 86400;
 const STAFF_SESSION = 8 * 3600000;
 
@@ -108,7 +109,7 @@ export async function whoAmI(db, request, site) {
   if (s.s_kind === 'staff') return { kind: 'staff', level: 1, token, name: '운영자' };
   if (!s.id) return { kind: 'guest', level: 0 };
   const { s_kind, s_exp, ...m } = s;
-  // 로그인 유지: 하루에 한 번만 만료를 다시 90일 뒤로
+  // 로그인 유지: 하루에 한 번만 만료를 다시 400일 뒤로
   if (s_kind === 'keep' && s_exp - now() < KEEP_SESSION - DAY) {
     await db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').bind(now() + KEEP_SESSION, token).run();
   }
