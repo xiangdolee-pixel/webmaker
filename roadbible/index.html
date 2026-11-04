@@ -2756,7 +2756,18 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     if(initial||JSON.stringify([hls,marks,reads])+"|"+Object.keys(qthl).sort().join()!==before){applySettings();render(curPage);}   // 지금 보던 쪽은 유지
   }
 
-  function showMig(){const on=!!user&&!migrated;migRow.hidden=!on;migNote.hidden=!on;}
+  let fbReady=null,asked=false;
+  function showMig(){
+    const on=!!user&&!migrated;migRow.hidden=!on;migNote.hidden=!on;
+    if(on){
+      if(!fbReady)fbReady=loadFb().catch(e=>{fbReady=null;throw e;});   // 누르자마자 구글 창이 뜨게 미리 받아 둔다(늦으면 팝업 차단)
+      /* 로그인하고 아직 안 옮겼으면 한 번 묻는다 — '가져오기'를 누른 그 손길로 구글 창을 연다 */
+      if(!asked){asked=true;setTimeout(async()=>{
+        if(migrated||!user)return;
+        if(await askConfirm("예전에 구글로 쌓은 기록(형광펜·가름끈·읽은 횟수·보기 설정)을\n이 계정으로 가져올까요?",{okText:"가져오기",cancelText:"나중에"}))migrate();
+      },700);}
+    }
+  }
   function setUser(u){
     user=u;
     if(u){
@@ -2817,16 +2828,21 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
   };
 
   /* 예전 구글(Firebase) 기록 한 번 옮겨오기 — 그때만 Firebase 를 받는다 */
-  const loadJs=src=>new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc);});
-  migBtn.onclick=async()=>{
+  function loadJs(src){return new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc);});}
+  async function loadFb(){
+    const V="https://www.gstatic.com/firebasejs/10.12.2/";
+    if(!window.RB_FIREBASE)await loadJs("firebase-config.js");
+    if(!window.firebase)await loadJs(V+"firebase-app-compat.js");
+    if(!firebase.auth)await loadJs(V+"firebase-auth-compat.js");
+    if(!firebase.firestore)await loadJs(V+"firebase-firestore-compat.js");
+    return firebase.apps.length?firebase.app():firebase.initializeApp(window.RB_FIREBASE);
+  }
+  migBtn.onclick=()=>migrate();
+  async function migrate(){
     if(!user)return;
     migBtn.disabled=true;const label=migBtn.textContent;migBtn.textContent="가져오는 중…";
     try{
-      const V="https://www.gstatic.com/firebasejs/10.12.2/";
-      if(!window.RB_FIREBASE)await loadJs("firebase-config.js");
-      if(!window.firebase)await loadJs(V+"firebase-app-compat.js");
-      await loadJs(V+"firebase-auth-compat.js");await loadJs(V+"firebase-firestore-compat.js");
-      const app=firebase.apps.length?firebase.app():firebase.initializeApp(window.RB_FIREBASE);
+      const app=await(fbReady||(fbReady=loadFb()));
       const auth=app.auth();
       const cred=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
       const snap=await app.firestore().collection("users").doc(cred.user.uid).get();
@@ -2837,7 +2853,7 @@ window.addEventListener("online",()=>{updateNet();toast("인터넷 연결됨 —
     }catch(e){
       toast("가져오지 못했습니다"+(e&&e.code?" ("+e.code+")":""));
     }finally{migBtn.disabled=false;migBtn.textContent=label;}
-  };
+  }
 
   start();
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&user)pull().catch(()=>{}); });
