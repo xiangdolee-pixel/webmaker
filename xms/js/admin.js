@@ -1151,6 +1151,7 @@ async function seoPage(qs) {
           <code class="copy" data-copy="sitemap.xml" role="button" tabindex="0" title="눌러서 복사">sitemap.xml</code>
           <span class="url-btns"><button class="btn sm" type="button" data-copy="sitemap.xml">복사</button></span></li>
         ${urlRow(d.rssUrl, 'RSS', '네이버 › 요청 › RSS 제출 — 공개 게시판 최신 글 50개', true)}
+        ${urlRow(`${d.origin}/robots.txt`, 'robots.txt', '네이버 › 검증 › robots.txt · 구글 › 설정 › robots.txt 에서 확인 — 내용은 robots.txt 탭에서 고칩니다', true)}
       </ul>
       <h2 class="gap">웹 페이지 수집 <small class="meta">네이버 › 요청 › 웹 페이지 수집 · 구글 › URL 검사에 하나씩 넣습니다. 사이트맵으로도 들어가므로 <b>빨리 보이게 하고 싶은 화면만</b> 넣어도 됩니다 (네이버는 하루 50개까지)</small></h2>
       <div class="actions"><button class="btn sm" type="button" data-copy-all>전부 복사 (${d.pages.length}개)</button></div>
