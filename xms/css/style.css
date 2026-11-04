@@ -582,7 +582,10 @@ tr.dragging td { background: var(--surface); }
 .count.warn { color: var(--warn); }
 .count.over { color: var(--danger); }
 .input.over, .input.over:focus { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
-code.copy { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--line-2); font-size: 14px; overflow-wrap: anywhere; }
+/* 복사할 주소: 화면 글꼴(Pretendard)로 진하게, 누르면 복사 */
+code.copy { display: inline-block; padding: 7px 12px; border-radius: 8px; background: var(--line-2); font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; cursor: copy; transition: background .15s, color .15s; }
+code.copy:hover { background: var(--brand-soft, #e8ecff); color: var(--brand); }
+code.copy:active { transform: translateY(1px); }
 .url-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
 .url-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
 .url-list li > div { grid-column: 1 / -1; }

@@ -1103,7 +1103,7 @@ async function faviconPage() {
 function urlRow(url, name = '', where = '', big = false) {
   const path = url.replace(/^https?:\/\/[^/]+/, '') || '/';
   return `<li class="${big ? 'big' : ''}">${name ? `<div><b>${esc(name)}</b> <small class="meta-inline">${esc(where)}</small></div>` : ''}
-    <code class="copy">${esc(url)}</code>
+    <code class="copy" data-copy="${esc(url)}" role="button" tabindex="0" title="눌러서 복사">${esc(url)}</code>
     <span class="url-btns"><button class="btn sm" type="button" data-copy="${esc(url)}">복사</button><a class="btn sm" href="${esc(path)}" target="_blank" rel="noopener">열기</a></span></li>`;
 }
 
@@ -1166,9 +1166,14 @@ async function seoPage(qs) {
     });
   });
   const copy = async (text, msg) => { try { await navigator.clipboard.writeText(text); toast(msg); } catch { toast('복사하지 못했습니다. 주소를 직접 골라 복사해 주세요.'); } };
+  // 주소 글자에 초점이 있을 때 Enter · Space 도 복사
+  $('[data-sec=sitemap]').addEventListener('keydown', (e) => {
+    const c = e.target.closest('code[data-copy]');
+    if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.click(); }
+  });
   $('[data-sec=sitemap]').addEventListener('click', (e) => {
     const one = e.target.closest('[data-copy]');
-    if (one) copy(one.dataset.copy, '복사했습니다.');
+    if (one) copy(one.dataset.copy, `복사했습니다 — ${one.dataset.copy}`);
     else if (e.target.closest('[data-copy-all]')) copy(d.pages.join(String.fromCharCode(10)), `주소 ${d.pages.length}개를 한 줄에 하나씩 복사했습니다.`);
   });
   fetch('/robots.txt', { cache: 'no-store' }).then((r) => r.text()).then((t) => { $('[data-now]').textContent = t; }).catch(() => { $('[data-now]').textContent = '지금 나가는 내용을 읽어 오지 못했습니다.'; });
