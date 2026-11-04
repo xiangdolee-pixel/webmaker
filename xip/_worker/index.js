@@ -14,7 +14,8 @@
 //   그 밖(페이지 · /member 회원가입 · 로그인 · /xms 관리)은 xim 공통 사이트 Worker 가 맡는다 → 오른쪽 위 계정 버튼 · 회원
 import { DurableObject } from 'cloudflare:workers';
 import site from '../../xim/_worker/site-worker.js';
-import { cryptoAll } from './crypto.js';
+import { macroAll } from './macro.js';
+import { cryptoAll, cryptoChart } from './crypto.js';
 
 const UA = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
@@ -760,8 +761,11 @@ export class Hub extends DurableObject {
 export class Prefs extends DurableObject {
   async getLayout() { return (await this.ctx.storage.get('layout')) || null; }
   async setLayout(v) { await this.ctx.storage.put('layout', v); }
+  // 그 밖의 작은 저장 (예: xip:macro — 경제지표 원본별 마지막 좋은 값 · 예상치 장부)
+  async getVal(k) { return (await this.ctx.storage.get(`v:${k}`)) ?? null; }
+  async setVal(k, v) { await this.ctx.storage.put(`v:${k}`, v); }
 }
-const BLOCK_IDS = ['hours', 'indices', 'fx', 'cmdty', 'bonds', 'top', 'coins', 'f13'];
+const BLOCK_IDS = ['hours', 'indices', 'fx', 'cmdty', 'bonds', 'macro', 'top', 'coins', 'f13'];
 const LIST_IDS = ['top', 'coins', 'f13'];
 // 화면이 보낸 값을 믿지 않고 다시 만든다: 아는 블록만, 한 번씩, 4칸, 개수는 5·10·15·20
 function cleanLayout(v) {
@@ -817,6 +821,16 @@ export default {
         return json({ ...(await cryptoAll(ctx, swr, usdkrw)), fetchedAt: Date.now() });
       } catch (err) {
         return json({ error: String(err.message || err) }, 502);
+      }
+    }
+    if (pathname === '/api/crypto/chart') {
+      if (!(await memberId(request, env))) return json({ error: '회원 로그인이 필요합니다.' }, 401);
+      const range = url.searchParams.get('range');
+      if (!['1d', '1m', '3m', '1y', 'all'].includes(range)) return json({ error: 'bad range' }, 400);
+      try {
+        return json(await cryptoChart(ctx, swr, url.searchParams.get('k'), url.searchParams.get('code') || '', range));
+      } catch (err) {
+        return json({ error: String(err.message || err) }, /^bad/.test(err.message) ? 400 : 502);
       }
     }
     if (pathname === '/ws' && env.HUB) {
@@ -877,9 +891,26 @@ export default {
           probe('FRED(M2)', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=M2SL'),
           probe('bitcoin-data(MVRV)', 'https://bitcoin-data.com/v1/mvrv-zscore/last'),
           probe('OKX(김프)', 'https://www.okx.com/api/v5/public/time'),
+          probe('NY Fed(기준금리)', 'https://markets.newyorkfed.org/api/rates/unsecured/effr/last/1.json'),
+          probe('연준 FOMC 일정', 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'),
+          probe('BLS(CPI·고용)', 'https://api.bls.gov/publicAPI/v1/timeseries/data/LNS14000000'),
+          probe('DBnomics(PCE)', 'https://api.db.nomics.world/v22/series?series_ids=BEA/NIPA-T20804/DPCERG-M&observations=1&metadata=false'),
+          probe('Forex Factory(예상치)', 'https://nfs.faireconomy.media/ff_calendar_thisweek.json'),
+          probe('Yahoo(연방기금 선물)', 'https://query1.finance.yahoo.com/v8/finance/chart/ZQZ26.CBT?range=1d&interval=1d'),
         ]);
         const cf = request.cf || {};
         return json({ colo: cf.colo, country: cf.country, city: cf.city, at: new Date().toISOString(), upstream: list });
+      }
+      // 미국 경제지표: 연준 금리 · FOMC 확률(선물로 계산) · CPI · PCE · 고용 (누구나, macro.js)
+      if (pathname === '/api/macro') {
+        // POST { bls: [...] } = 서버가 BLS 한도에 걸렸을 때 방문자 브라우저가 BLS 에서 직접 받은 응답 (이 응답에만 쓰고 저장하지 않는다)
+        let opts = {};
+        if (request.method === 'POST') {
+          const text = await request.text();
+          if (text.length > 400000) return json({ error: 'too large' }, 413);
+          try { opts = { blsSeries: JSON.parse(text).bls }; } catch { return json({ error: 'bad json' }, 400); }
+        }
+        return json({ ...(await macroAll(ctx, swr, env, opts)), fetchedAt: Date.now() });
       }
       if (pathname === '/api/13f') {
         const key = url.searchParams.get('m');

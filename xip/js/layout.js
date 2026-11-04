@@ -7,12 +7,12 @@ import { topTabs } from './tabs.js?v=1';
 topTabs(document.getElementById('top-tabs'));
 
 const BLOCKS = {
-  hours: '장 시간', indices: '주요 지수', fx: '환율', cmdty: '원자재', bonds: '미국채 금리',
+  hours: '장 시간', indices: '주요 지수', fx: '환율', cmdty: '원자재', bonds: '미국채 금리', macro: '미국 경제지표',
   top: '거래대금 상위 종목', coins: '코인 시가총액', f13: '13F 매수 종목',
 };
 const LISTS = ['top', 'coins', 'f13'];
 const COUNTS = [5, 10, 15, 20];
-const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'f13']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
+const DEF = { cols: [['hours', 'indices', 'fx', 'cmdty'], ['top'], ['coins'], ['bonds', 'macro', 'f13']], hidden: [], counts: { top: 20, coins: 20, f13: 20 } };
 const KEY = 'xip:layout:v1';
 
 const $ = (id) => document.getElementById(id);
@@ -27,8 +27,13 @@ function clean(v) {
   const out = [0, 1, 2, 3].map((i) => ((v && v.cols && v.cols[i]) || []).filter((id) => BLOCKS[id] && !seen.has(id) && seen.add(id)));
   Object.keys(BLOCKS).forEach((id) => {
     if (seen.has(id)) return;
+    // 새로 생긴 블록(예전에 저장한 모습에 없음): 기본 모습에서 바로 앞 블록 뒤에, 없으면 기본 칸 끝에
     const home = DEF.cols.findIndex((c) => c.includes(id));
-    out[home].push(id);
+    const before = DEF.cols[home][DEF.cols[home].indexOf(id) - 1];
+    const ci = before ? out.findIndex((c) => c.includes(before)) : -1;
+    if (ci >= 0) out[ci].splice(out[ci].indexOf(before) + 1, 0, id);
+    else out[home].push(id);
+    seen.add(id);
   });
   const hidden = ((v && v.hidden) || []).filter((id, i, a) => BLOCKS[id] && a.indexOf(id) === i);
   const counts = {};

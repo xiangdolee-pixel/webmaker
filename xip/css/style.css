@@ -67,6 +67,40 @@ button { font: inherit; color: inherit; }
 .top-edit:hover { background: var(--panel-2); }
 .top-edit svg { width: 16px; height: 16px; }
 .top-flow[hidden], .top-edit[hidden], [data-block][hidden], .col[hidden] { display: none !important; }
+/* 미국 경제지표 (연준 금리 · FOMC 확률 · CPI · PCE · 고용) */
+.sec-macro { flex: none; }
+.mc-card { padding: 12px 14px 4px; }
+.mc-fed { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.mc-k { font-size: 13px; font-weight: 700; color: var(--sub); }
+.mc-rate b { display: block; font-size: 22px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.mc-rate small, .mc-fw-h small { display: block; font-size: 12px; color: var(--sub); line-height: 1.4; }
+.mc-fw-h b { font-size: 13px; }
+.mc-bar { display: flex; height: 10px; margin: 6px 0 5px; border-radius: 999px; overflow: hidden; background: var(--panel-2); }
+.mc-bar i { display: block; height: 100%; }
+.mc-bar .cut { background: var(--down); }
+.mc-bar .hold { background: #a3aab4; }
+.mc-bar .hike { background: var(--up); }
+.mc-leg { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 13px; }
+.mc-leg .cut b { color: var(--down); }
+.mc-leg .hold b { color: var(--sub); }
+.mc-leg .hike b { color: var(--up); }
+.mc-later { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: 12px; color: var(--sub); }
+.mc-later b { color: var(--text); font-weight: 700; }
+.mc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mc-table th, .mc-table td { padding: 7px 4px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); vertical-align: top; }
+.mc-table thead th { font-size: 12px; font-weight: 600; color: var(--sub); padding-top: 8px; }
+.mc-table thead th:first-child, .mc-table tbody th { text-align: left; }
+.mc-table tbody th { white-space: normal; }
+.mc-table tbody th b { font-size: 14px; }
+.mc-table tbody th small { display: block; font-size: 11px; font-weight: 500; color: var(--sub); line-height: 1.35; }
+.mc-table tbody th small.mc-up { color: #b26b00; font-weight: 600; }
+.mc-table tbody tr:last-child > * { border-bottom: 0; }
+.mc-a { font-weight: 800; }
+.mc-a.up { color: var(--up); }
+.mc-a.down { color: var(--down); }
+.mc-table .dim { color: #a3aab4; }
+.mc-wait td { padding: 22px 4px !important; text-align: center !important; color: var(--sub); font-weight: 600; }
+
 /* 목록 줄 수 (화면 편집에서 고름) */
 .lim-5 > li:nth-child(n+6), .lim-10 > li:nth-child(n+11), .lim-15 > li:nth-child(n+16) { display: none; }
 
@@ -79,10 +113,28 @@ button { font: inherit; color: inherit; }
 /* 크립토 탭 */
 .cx main.wrap { padding-top: 8px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--gap); }
-.kpi { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; min-width: 0; }
-.kpi-name { font-size: 14px; font-weight: 700; color: var(--sub); }
-.kpi-v { font-size: 26px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+.kpi { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px 14px; min-width: 0; overflow: hidden; text-align: left; font: inherit; color: inherit;
+  border-top: 3px solid var(--kc, var(--dark)); }
+button.kpi { cursor: pointer; transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
+button.kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(16, 24, 40, .1); }
+.kpi[data-k="dom"] { --kc: #f7931a; }
+.kpi[data-k="fng"] { --kc: #f59e0b; }
+.kpi[data-k="hash"] { --kc: #6366f1; }
+.kpi[data-k="mvrv"] { --kc: #0ea5e9; }
+.kpi[data-k="kimp"] { --kc: #e42939; }
+.kpi[data-k="m2"] { --kc: #0f9d58; }
+.kpi-name { font-size: 15px; font-weight: 700; color: var(--sub); }
+.kpi-v { font-size: 30px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
 .kpi-s { font-size: 13px; color: var(--sub); line-height: 1.4; }
+.spark { display: block; width: 100%; height: 34px; margin-top: auto; padding-top: 8px; }
+.kpi-dom { display: flex; height: 8px; margin-top: auto; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.kpi-dom i { display: block; height: 100%; transition: width .6s var(--ease); }
+.kpi-dom i:first-child { background: #f7931a; }
+.kpi-dom i + i { background: #627eea; }
+.cx-table thead th button { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.cx-table tbody tr[data-chart] { cursor: pointer; }
+.cx-table tbody tr[data-chart]:hover > * { background: #f7f9fc; }
+.cx-scroll { overflow-x: auto; }
 .kpi.na .kpi-s::after { content: "지금 못 받았어요 · 다시 받는 중"; color: var(--warn); }
 .kpi.wait .kpi-v { font-size: 15px; font-weight: 600; color: var(--sub); }
 .kpi.wait .kpi-s::after { content: none; }
@@ -119,6 +171,26 @@ button { font: inherit; color: inherit; }
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cx-2 { grid-template-columns: minmax(0, 1fr); }
+}
+/* 넓은 PC: 시세 탭처럼 화면 가득 (한 화면, 표 줄이 남은 높이를 나눠 갖는다) */
+@media (min-width: 1200px) {
+  .cx .top-in { max-width: none; padding: 0 14px; }
+  .cx main.wrap { max-width: none; padding: 10px 12px 12px; }
+  .cx .foot { margin-top: 10px; }
+  .cx-2 { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 0 12px; }
+  .cx-kpis .sec-head, .cx-sec .sec-head { margin-bottom: 6px; }
+  .cx .sec { margin-top: 12px; }
+  .cx .cx-kpis { margin-top: 0; }
+  .kpi-v { font-size: 32px; }
+}
+@media (min-width: 1200px) and (min-height: 760px) {
+  .cx-dash { display: grid; grid-template-rows: auto minmax(0, 1fr); height: calc(100vh - 51px - 22px); }
+  .cx-2 { min-height: 0; }
+  .cx-sec { display: flex; flex-direction: column; min-height: 0; }
+  .cx-sec .cx-table-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cx-sec .cx-scroll { flex: 1; min-height: 0; overflow: auto; }
+  .cx-sec .cx-table { height: 100%; font-size: 16px; }
+  .cx-locked .cx-dash { height: auto; }
 }
 
 /* 화면 편집 (지금 화면에서 바로) */
@@ -346,7 +418,7 @@ body.editing { padding-bottom: 70px; }
 .ch-tip b { display: block; font-size: 16px; }
 .ch-tip span { opacity: .8; }
 .ch-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 24px; font-size: 16px; color: var(--sub); pointer-events: none; }
-.ch-msg:empty { display: none; }
+.ch-msg:empty, .ch-msg[hidden] { display: none; }
 .ch-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
 .ch-stats div { padding: 12px 14px; border-radius: 12px; background: var(--panel-2); min-width: 0; }
 .ch-stats dt { font-size: 13px; color: var(--sub); }
@@ -529,6 +601,16 @@ body.editing { padding-bottom: 70px; }
 
   /* 표: 20줄이 남은 높이를 나눠 갖는다 */
   .sec-list { flex: 1; display: flex; flex-direction: column; }
+  /* 미국 경제지표: 한 화면 PC 에서는 줄마다 한 줄로 (곁들인 전월비 · 이후 회의 줄은 빼고, 다음 발표 예상만 남긴다) */
+  .mc-card { padding: 8px 12px 2px; }
+  .mc-fed { padding-bottom: 6px; gap: 6px 14px; }
+  .mc-rate b { font-size: 19px; }
+  .mc-later, .sec-macro .list-note { display: none; }
+  .mc-table th, .mc-table td { padding: 4px 3px; font-size: 13px; }
+  .mc-table tbody th small:first-of-type { display: inline; margin-left: 4px; }
+  .mc-table tbody th small:not(:first-of-type):not(.mc-up) { display: none; }
+  /* 13F 줄은 두 줄(종목 + 늘림) — 좁아져도 겹치지 않게, 넘치면 표 안에서 스크롤 */
+  #f13 { grid-auto-rows: minmax(44px, 1fr); }
   /* 표(거래대금 · 코인 · 13F)와 같은 칸에 놓인 지수 · 환율 · 원자재 · 미국채: 줄 높이만큼만, 남은 높이는 표가 갖는다 */
   .col:has(.sec-list:not([hidden])) .sec-tiles { flex: none; }
   .col:has(.sec-list:not([hidden])) .tile-grid { grid-auto-rows: 36px; }
