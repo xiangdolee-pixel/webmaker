@@ -1134,6 +1134,9 @@ async function seoPage(qs) {
     <section class="panel pad gap" data-sec="sitemap"><h2>등록할 주소 <small class="meta">구글 서치콘솔 · 네이버 서치어드바이저에 아래 주소를 넣습니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다</small></h2>
       <ul class="url-list">
         ${urlRow(d.sitemapUrl, '사이트맵', '네이버 › 요청 › 사이트맵 제출 · 구글 › Sitemaps', true)}
+        <li class="big"><div><b>구글 Sitemaps 입력칸용</b> <small class="meta-inline">구글은 앞 주소(${esc(d.origin || '')}/)가 이미 적혀 있어 뒤에 이것만 넣습니다</small></div>
+          <code class="copy" data-copy="sitemap.xml" role="button" tabindex="0" title="눌러서 복사">sitemap.xml</code>
+          <span class="url-btns"><button class="btn sm" type="button" data-copy="sitemap.xml">복사</button></span></li>
         ${urlRow(d.rssUrl, 'RSS', '네이버 › 요청 › RSS 제출 — 공개 게시판 최신 글 50개', true)}
       </ul>
       <h2 class="gap">웹 페이지 수집 <small class="meta">네이버 › 요청 › 웹 페이지 수집 · 구글 › URL 검사에 하나씩 넣습니다. 사이트맵으로도 들어가므로 <b>빨리 보이게 하고 싶은 화면만</b> 넣어도 됩니다 (네이버는 하루 50개까지)</small></h2>
