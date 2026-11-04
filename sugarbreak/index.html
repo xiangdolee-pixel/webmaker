@@ -41,7 +41,7 @@
   .logo-img{height:42px; width:auto; display:block;}
   .logo-text{font-size:21px; font-weight:800; letter-spacing:-.5px; color:var(--text); white-space:nowrap;}
   @media (max-width:380px){ .logo-img{height:36px;} .logo-text{font-size:19px;} .hdr-date{font-size:14px;} .header-right{gap:7px;} }
-  @media (max-width:340px){ .hdr-date{display:none;} }
+  @media (max-width:400px){ .hdr-date{display:none;} }
   .screen{display:none; padding:0 16px 20px; animation:fade .25s ease;}
   .screen.active{display:block;}
   @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
@@ -178,6 +178,10 @@
   .hdr-btn:active{background:#e3f4ec;}
   .hdr-btn svg{width:23px; height:23px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
   body.on-settings .hdr-btn{color:var(--accent2); background:#e3f6ed;}
+  /* 계정(사람 모양) 버튼 — 누르면 내 정보 · 관리 · 로그아웃 */
+  .hdr-acc{--xa-bg:#e3f4ec; --xa-fg:#0e9d6a;}
+  .hdr-acc .xa-avatar{width:34px; height:34px;}
+  .hdr-acc .xa-login{font-size:14px; font-weight:700; color:var(--accent2); text-decoration:none; white-space:nowrap;}
   .back-home{display:inline-flex; align-items:center; gap:4px; margin:2px 0 12px; padding:8px 12px 8px 6px; border:0; border-radius:12px; background:none; color:var(--accent2); font-size:16px; font-weight:700; font-family:inherit; cursor:pointer;}
   .back-home:active{background:#e3f6ed;}
 
@@ -220,6 +224,7 @@
     <div class="header-right">
       <span class="hdr-date" id="todayStr"></span>
       <span class="sync" id="syncDot" title="클라우드 저장 상태"></span>
+      <span class="hdr-acc" data-xms-account></span>
       <button class="hdr-btn" id="setBtn" type="button" aria-label="설정" onclick="toggleSettings()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </header>
@@ -321,7 +326,6 @@
       <h3>☁️ 데이터 보관</h3>
       <div class="small" id="syncInfo"></div>
       <div class="small muted" id="acctInfo" style="margin-top:12px"></div>
-      <span data-xms-account hidden></span>
     </div>
     <div class="card acc">
       <h3 class="acc-head" onclick="toggleCard(this)"><span>🎯 내 목표 · 나의 "왜"</span><span class="acc-arrow">▾</span></h3>
