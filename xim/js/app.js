@@ -64,7 +64,7 @@ function showApp() {
   $('#app').hidden = false;
   if (!navReady) {
     navReady = true;
-    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['monitor', '감시'], ['security', '보안'], ['audit', '관리 로그']], tab, (v) => {
+    pillTabs($('#nav'), [['sites', '사이트'], ['customers', '고객'], ['requests', '수정요청'], ['monitor', '감시'], ['security', '보안'], ['audit', '관리 로그'], ['pricing', '요금제']], tab, (v) => {
       tab = v;
       if (reqOpen && !(v === 'requests' && /^#req-\d+$/.test(location.hash))) { reqOpen = 0; if (location.hash) history.replaceState(null, '', location.pathname); }
       render();
@@ -152,6 +152,7 @@ function render() {
     if (tab === 'security') tasks.push(renderSecurity());
     if (tab === 'monitor') tasks.push(renderMonitor());
     if (tab === 'audit') tasks.push(renderAudit());
+    if (tab === 'pricing') renderPricing();
     await Promise.all(tasks);
   });
 }
@@ -728,6 +729,73 @@ const AUDIT_ACTIONS = {
   REQUEST_REPLY: '수정요청 답변', REQUEST_STATUS: '수정요청 상태', REQUEST_DELETE: '수정요청 삭제', CONNECT: 'GitHub에서 연결',
 };
 let auditPage = 1;
+// ───────── Cloudflare 요금제 (사용자 지시 2026-11-04) ─────────
+//   공식 문서 값을 옮겨 적은 것 — 바뀌면 여기를 고친다. 확인한 날: PRICE_CHECKED
+const PRICE_CHECKED = '2026-11-04';
+const PRICE_DOCS = {
+  workers: 'https://developers.cloudflare.com/workers/platform/pricing/',
+  d1: 'https://developers.cloudflare.com/d1/platform/pricing/',
+  r2: 'https://developers.cloudflare.com/r2/pricing/',
+};
+const PRICING = [
+  {
+    key: 'workers', title: '컴퓨트 · Workers', use: '모든 사이트 · xim · xms 가 돌아가는 서버 코드. 사이트 하나 = Worker 하나',
+    rows: [
+      ['월 요금', '0원', '<b>$5</b> (계정당 최소)'],
+      ['요청 수', '하루 10만 건', '월 1,000만 건 포함 · 넘으면 100만 건당 $0.30'],
+      ['CPU 시간', '요청 1번에 10ms 까지', '월 3,000만 ms 포함 · 넘으면 100만 ms 당 $0.02 · 요청 1번 최대 5분'],
+      ['정적 파일(html · css · 그림)', '무료 · 무제한', '무료 · 무제한'],
+      ['데이터 전송량', '무료', '무료'],
+    ],
+  },
+  {
+    key: 'd1', title: 'DB · D1', use: 'xim · xms(회원 · 글 · 메뉴 · 설정) · 올리브바스켓 · 슈가브레이크 기록',
+    rows: [
+      ['읽은 줄', '하루 500만 줄', '월 250억 줄 포함 · 넘으면 100만 줄당 $0.001'],
+      ['쓴 줄', '하루 10만 줄', '월 5,000만 줄 포함 · 넘으면 100만 줄당 $1.00'],
+      ['저장 용량', '계정 전체 5GB', '5GB 포함 · 넘으면 GB당 월 $0.75 (계정 최대 1TB)'],
+      ['DB 하나 최대 크기', '500MB', '10GB'],
+      ['DB 개수', '10개', '10만 개 포함'],
+      ['한 요청에서 쿼리', '50번', '1,000번'],
+    ],
+    note: '무료 요금제는 하루 한도를 넘으면 한국 시간 오전 9시(UTC 0시)까지 DB 를 못 씁니다.',
+  },
+  {
+    key: 'r2', title: '파일 저장 · R2', use: '게시판 사진 · 첨부파일 (작은 사진은 DB 에도 둔다)',
+    rows: [
+      ['저장 용량', '월 10GB 무료', '넘으면 GB당 월 $0.015'],
+      ['쓰기 · 목록 (Class A)', '월 100만 번 무료', '넘으면 100만 번당 $4.50'],
+      ['읽기 (Class B)', '월 1,000만 번 무료', '넘으면 100만 번당 $0.36'],
+      ['내려받기(전송량)', '무료', '무료'],
+    ],
+    note: '무료 한도는 요금제와 상관없이 매달 똑같이 적용됩니다.',
+  },
+  {
+    key: 'workers', title: '그 밖 · Durable Objects', use: '길성경 기록 동기화 · xip 화면 구성 · 시세 저장',
+    rows: [
+      ['요청 수', '하루 10만 건', '월 100만 건 포함 · 넘으면 100만 건당 $0.15'],
+      ['실행 시간', '하루 13,000 GB·초', '월 40만 GB·초 포함 · 넘으면 100만 GB·초 당 $12.50'],
+      ['저장(SQLite) 읽은 줄', '하루 500만 줄', '월 250억 줄 포함 · 넘으면 100만 줄당 $0.001'],
+      ['저장(SQLite) 쓴 줄', '하루 10만 줄', '월 5,000만 줄 포함 · 넘으면 100만 줄당 $1.00'],
+      ['저장 용량', '5GB', '5GB 포함 · 넘으면 GB당 월 $0.20'],
+    ],
+  },
+];
+function renderPricing() {
+  view.innerHTML = `
+    <div class="bar"><h2>Cloudflare 요금제</h2></div>
+    <p class="meta mon-rule">xiangdolee 계정의 사이트가 쓰는 Cloudflare 서비스별 <b>무료 한도</b>와 <b>유료(Workers Paid, 월 $5)</b> 기준입니다. 위 '전체 사용량'은 유료 기준으로 계산합니다. 공식 문서에서 ${PRICE_CHECKED} 에 확인한 값이라, 바뀌었을 수 있으니 정확한 값은 각 칸의 공식 문서를 보세요.</p>
+    ${PRICING.map((g) => `<section class="card item price-card">
+      <div class="price-head"><h3>${g.title}</h3><a class="btn sm" href="${PRICE_DOCS[g.key]}" target="_blank" rel="noopener">공식 문서</a></div>
+      <p class="meta">${g.use}</p>
+      <div class="tbl-wrap"><table class="tbl price-tbl"><thead><tr><th>항목</th><th>무료</th><th>유료 (월 $5)</th></tr></thead><tbody>
+        ${g.rows.map(([k, f, p]) => `<tr><td data-l="항목"><b>${k}</b></td><td data-l="무료">${f}</td><td data-l="유료">${p}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${g.note ? `<p class="meta price-note">${g.note}</p>` : ''}
+    </section>`).join('')}
+    <p class="meta">달러 요금은 한 달 단위로 쌓여 다음 달에 청구됩니다. 포함량 안에서만 쓰면 유료 요금제는 매달 $5 만 나갑니다.</p>`;
+}
+
 async function renderAudit() {
   const d = await api(`/audit?page=${auditPage}`);
   if (tab !== 'audit') return;

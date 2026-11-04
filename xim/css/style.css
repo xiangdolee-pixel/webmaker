@@ -346,3 +346,17 @@ dialog::backdrop { background: rgba(16, 20, 32, .45); backdrop-filter: blur(2px)
   .sr-name { flex-wrap: nowrap !important; white-space: nowrap; }
   .sr-name .site-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* Cloudflare 요금제 */
+.price-card { margin-bottom: 12px; }
+.price-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.price-head h3 { margin: 0; font-size: 17px; }
+.price-tbl td:first-child { white-space: nowrap; }
+.price-tbl td:nth-child(3) { color: var(--ink); }
+.price-note { margin-top: 8px; }
+@media (max-width: 640px) {
+  .price-tbl thead { display: none; }
+  .price-tbl tr { display: grid; gap: 2px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .price-tbl td { display: block; border: 0; padding: 0; white-space: normal !important; }
+  .price-tbl td[data-l]:not(:first-child)::before { content: attr(data-l) ' · '; color: var(--mute); font-size: 12px; }
+}
