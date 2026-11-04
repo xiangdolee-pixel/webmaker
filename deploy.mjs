@@ -115,7 +115,7 @@ function registerInXim(slug) {
   fs.writeFileSync(ximSql, `INSERT INTO sites (slug, name, customer_id, domain, status, quota_mb, memo, created_at)
 SELECT ${q(c.slug)}, ${q(c.name)}, NULL, '', 'active', 500, '배포할 때 자동 등록', ${t}
 WHERE NOT EXISTS (SELECT 1 FROM sites WHERE slug = ${q(c.slug)});
-UPDATE sites SET static_mb = ${Math.round((c.static_bytes || 0) / 104857.6) / 10} WHERE slug = ${q(c.slug)};\n`);
+UPDATE sites SET static_mb = ${Math.round((c.static_bytes || 0) / 104857.6) / 10}, site_favicon = ${q(c.favicon || '')} WHERE slug = ${q(c.slug)};\n`);
   const lines = [`CREATE TABLE IF NOT EXISTS site_import (site TEXT PRIMARY KEY, imported_at INTEGER NOT NULL);`];
   if (c.menus.length) {
     const rows = c.menus.map((m, i) => `SELECT ${q(c.slug)} AS site, NULL AS parent_id, ${q(m.title)} AS title, ${q(m.type)} AS menu_type, ${q(m.path)} AS path, NULL AS board_id, ${i + 1} AS sort, 1 AS visible, NULL AS read_levels, 1 AS allow_guest_read`).join('\nUNION ALL ');

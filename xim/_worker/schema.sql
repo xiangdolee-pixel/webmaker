@@ -149,3 +149,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(created_at);
+
+-- 2026-11-04 사이트가 원래 쓰는 파비콘 주소(배포할 때 index.html 에서 읽음, xim 카드에 표시 — xms 에서 올린 파비콘이 먼저). 한 번만:
+--   ALTER TABLE sites ADD COLUMN site_favicon TEXT NOT NULL DEFAULT '';

@@ -174,6 +174,22 @@ function menusFrom(html) {
   return out;
 }
 
+// 사이트가 원래 쓰는 파비콘 주소 (xim 사이트 카드에 보인다 — xms 에서 파비콘을 올리면 그것이 먼저)
+//   32px png → 그 밖의 icon → apple-touch-icon → 폴더의 favicon.ico 순서. 사이트 기준 절대 경로(/…)로.
+function faviconFrom(html) {
+  const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => {
+    const tag = m[0];
+    const attr = (n) => (tag.match(new RegExp(`\\b${n}\\s*=\\s*["']([^"']*)["']`, 'i')) || [])[1] || '';
+    return { rel: attr('rel').toLowerCase(), href: attr('href').trim(), sizes: attr('sizes') };
+  }).filter((l) => l.href && /(^|\s)(icon|apple-touch-icon)(\s|$)/.test(l.rel) && !/^(data:|https?:|\/\/)/i.test(l.href));
+  const pick = links.find((l) => /(^|\s)icon(\s|$)/.test(l.rel) && l.sizes === '32x32')
+    || links.find((l) => /(^|\s)icon(\s|$)/.test(l.rel) && !/\.ico(\?|$)/i.test(l.href))
+    || links.find((l) => /(^|\s)icon(\s|$)/.test(l.rel))
+    || links.find((l) => l.rel.includes('apple-touch-icon'));
+  if (pick) return `/${pick.href.replace(/^\.?\//, '')}`.slice(0, 200);
+  return fs.existsSync(path.join(OUT, 'favicon.ico')) ? '/favicon.ico' : '';
+}
+
 if (CONNECT) {
   let marked = 0;
   (function walk(dir) {
@@ -188,7 +204,7 @@ if (CONNECT) {
   })(OUT);
   const index = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8');
   const title = textOf((index.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '') || slug;
-  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), static_bytes: bytes, menus: menusFrom(index) }, null, 2));
+  fs.writeFileSync(CONNECT_FILE, JSON.stringify({ slug: name, name: title.slice(0, 80), static_bytes: bytes, favicon: faviconFrom(index), menus: menusFrom(index) }, null, 2));
   config.main = './xim/_worker/site-worker.js';
   config.assets.binding = 'ASSETS';
   config.assets.run_worker_first = true;
