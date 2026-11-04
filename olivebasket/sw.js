@@ -1,4 +1,4 @@
-const CACHE = 'olivebasket-v27';
+const CACHE = 'olivebasket-v28';
 const SHELL = [
   './',
   'basket',
