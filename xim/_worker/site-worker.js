@@ -165,6 +165,12 @@ async function handle(request, env) {
     if (XMS_PATHS.test(pathname)) return forward(env.XMS, request, env);
     if (request.method === 'GET' && looksHtml(pathname)) {
       const [res, data] = await Promise.all([env.ASSETS.fetch(request), siteHead(request, env, isHome(pathname))]);
+      // xms 메뉴 권한으로 이 방문자가 볼 수 없는 페이지 → 사이트 틀 안에 '로그인이 필요합니다' / '볼 수 없는 곳입니다'
+      if (Array.isArray(data?.blocked) && data.blocked.includes(pagePath(pathname))) {
+        const u = new URL('/member/denied', url.origin);
+        u.searchParams.set('next', pathname + url.search);
+        return embedPage(new Request(u, request), env);
+      }
       return withXms(res, request, env, data);
     }
     return cacheStatic(await env.ASSETS.fetch(request), pathname);
@@ -257,6 +263,13 @@ function accountHtml(me, url) {
 }
 
 const attr = (v) => escHtml(v);
+// 주소 비교용 (xms public.js pagePath 와 같게): /about.html · /about · /about/ 을 같은 것으로
+const pagePath = (p) => {
+  let s = String(p || '').split(/[?#]/)[0];
+  try { s = decodeURIComponent(s); } catch { /* 그대로 */ }
+  s = s.replace(/\/index\.html?$/i, '/').replace(/\.html?$/i, '').replace(/(.)\/+$/, '$1');
+  return s || '/';
+};
 const isHome = (p) => p === '/' || p === '/index.html' || p === '/index';
 
 // 모든 html 페이지:

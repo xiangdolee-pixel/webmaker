@@ -5,7 +5,7 @@
 //   주인: post_id > 0 = 그 글, post_id < 0 = 수정 요청(-요청번호), NULL = 아직 저장 안 한 글쓰기 중.
 //         프로필 사진 = AVATAR_BASE − 회원번호 (아주 작은 음수 — 수정 요청 번호와 겹치지 않고, 하루 지난 파일 정리에도 안 걸린다)
 //   지우기(저장 공간 아끼기, 사용자 지시 2026-11-03): 글에서 빼거나 글을 지우면 파일(R2)도 지운다. 저장 안 하고 하루 지난 것도 지운다.
-import { now, bad, forbidden, notFound, json, randomHex, HttpError, canBy } from './lib.js';
+import { now, bad, forbidden, notFound, json, randomHex, HttpError, canBy, whoAmI } from './lib.js';
 
 const D1_MAX = 1400000;
 export const AVATAR_BASE = -2000000000;
@@ -31,7 +31,7 @@ export async function uploadApi(ctx) {
     if (me.level !== 1) throw forbidden('관리자만 올릴 수 있습니다.');
   } else {
     const board = await env.DB.prepare('SELECT * FROM boards WHERE site = ? AND slug = ? AND deleted_at IS NULL').bind(site, url.searchParams.get('board') || '').first();
-    if (!board) throw notFound('없는 게시판입니다.');
+    if (!board || (!board.visible && me.level !== 1)) throw notFound('없는 게시판입니다.');
     if (!canBy(board.write_levels, board.allow_guest_write, me, true)) throw forbidden('이 게시판에 글을 쓸 수 없습니다.');
   }
   if (me.kind === 'guest') throw new HttpError(401, '사진과 파일은 로그인한 뒤 올릴 수 있습니다.');
@@ -131,9 +131,29 @@ export async function claimForRequest(env, site, requestId, ids) {
 }
 
 // GET /xms/upload/<id>[?dl=1]
-export async function serveUpload(env, site, id, download) {
+//   글에 붙은 파일은 그 글을 볼 수 있는 사람만: 사진은 목록을 볼 수 있으면(카드 · 썸네일), 그 밖의 파일은 글 읽기 권한.
+//   비밀글은 쓴 사람 · 관리자만, 숨김 · 예약 글은 관리자만. 아무나 볼 수 없는 파일은 공용 캐시에 남기지 않는다.
+export async function serveUpload(env, site, id, download, request) {
   const u = await env.DB.prepare('SELECT * FROM uploads WHERE id = ? AND site = ?').bind(id, site).first();
   if (!u) throw notFound();
+  let cache = 'public, max-age=86400';
+  if (u.post_id > 0) {
+    const p = await env.DB.prepare(`SELECT p.writer_id, p.is_secret, p.is_hidden, p.published_at, p.deleted_at, b.visible, b.deleted_at AS b_deleted,
+      b.list_levels, b.read_levels, b.allow_guest_list, b.allow_guest_read FROM posts p JOIN boards b ON b.id = p.board_id WHERE p.id = ? AND p.site = ?`).bind(u.post_id, site).first();
+    if (p) {
+      const image = u.kind === 'IMAGE' || (u.kind === 'INLINE' && /^image\//.test(u.mime));
+      const open = !p.deleted_at && !p.b_deleted && p.visible && !p.is_hidden && p.published_at <= now();
+      const may = (me) => (image ? canBy(p.list_levels, p.allow_guest_list, me) || canBy(p.read_levels, p.allow_guest_read, me) : canBy(p.read_levels, p.allow_guest_read, me));
+      if (!(open && !p.is_secret && may({ kind: 'guest', level: 0 }))) {
+        cache = 'private, max-age=3600';
+        const me = await whoAmI(env.DB, request, site);
+        const mine = me.kind === 'member' && p.writer_id === me.member.id;
+        if (!(me.level === 1 || (open && (!p.is_secret || mine) && may(me)))) {
+          return new Response('볼 수 없는 파일입니다.', { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+        }
+      }
+    }
+  }
   let body;
   if (u.r2_key && env.FILES) {
     const o = await env.FILES.get(u.r2_key);
@@ -149,7 +169,7 @@ export async function serveUpload(env, site, id, download) {
       'Content-Type': inline ? u.mime : 'application/octet-stream',
       'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(u.name)}`,
       'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': cache,
     },
   });
 }

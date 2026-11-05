@@ -18,7 +18,17 @@ async function siteInfo(env, site) {
 }
 
 // 이 방문자에게 보이는 메뉴 트리
-export async function visibleMenus(db, site, me) {
+export async function visibleMenus(db, site, me) { return (await menuAccess(db, site, me)).menu; }
+// 주소 비교용: /about.html · /about · /about/ 을 같은 것으로 (물음표 · # 뒤는 뺀다). xim site-worker.js 의 pagePath 와 같게.
+export const pagePath = (p) => {
+  let s = String(p || '').split(/[?#]/)[0];
+  try { s = decodeURIComponent(s); } catch { /* 그대로 */ }
+  s = s.replace(/\/index\.html?$/i, '/').replace(/\.html?$/i, '').replace(/(.)\/+$/, '$1');
+  return s || '/';
+};
+// 메뉴 트리 + 이 방문자가 볼 수 없는 사이트 안 페이지 주소(blocked) — 사이트 Worker 가 그 주소로 바로 들어와도 막는다.
+//   위 메뉴를 못 보면 그 아래 메뉴의 페이지도 못 본다. 숨긴 메뉴(visible=0)는 권한이 아니라 막지 않는다.
+export async function menuAccess(db, site, me) {
   const { results } = await db.prepare(`SELECT m.*, b.slug AS board_slug, b.list_levels, b.allow_guest_list, b.guest_menu, b.visible AS board_visible
     FROM menus m LEFT JOIN boards b ON b.id = m.board_id AND b.deleted_at IS NULL WHERE m.site = ? ORDER BY m.sort, m.id`).bind(site).all();
   const can = (m) => {
@@ -38,7 +48,11 @@ export async function visibleMenus(db, site, me) {
     external: m.menu_type === 'LINK',
     children: m.menu_type === 'LINK' ? [] : build(m.id),
   }));
-  return build(null);
+  const allowed = (m) => m.menu_type === 'BOARD' || can({ ...m, visible: 1 }); // 권한만 본다 (게시판은 게시판 권한이 따로 막음)
+  const byId = new Map(results.map((m) => [m.id, m]));
+  const locked = (m) => { for (let c = m, g = 0; c && g++ < 30; c = byId.get(c.parent_id)) if (!allowed(c)) return true; return false; };
+  const blocked = me.level === 1 ? [] : [...new Set(results.filter((m) => m.menu_type === 'PAGE' && /^\//.test(m.path) && locked(m)).map((m) => pagePath(m.path)))];
+  return { menu: build(null), blocked };
 }
 
 function navHtml(items, depth = 0) {
@@ -473,6 +487,11 @@ export async function publicPage(ctx) {
   if (p === '/member/welcome') return welcomePage(ctx);
   if (p === '/member/terms') return docPage(ctx, 'TERMS');
   if (p === '/member/privacy') return docPage(ctx, 'PRIVACY');
+  // 메뉴 권한으로 막힌 페이지 (사이트 Worker 가 이 화면을 그 주소에 끼워 보여 줌)
+  if (p === '/member/denied') {
+    const back = String(ctx.url.searchParams.get('next') || '/');
+    return ctx.me.level ? noRight(ctx) : needLogin(ctx, back.startsWith('/') && !back.startsWith('//') ? back : '/');
+  }
   const m = p.match(/^\/board\/([a-z0-9-]+)(?:\/(\d+|write)(?:\/(edit))?)?$/);
   if (m) {
     const b = await loadBoard(ctx.env.DB, ctx.site, m[1]);
@@ -654,7 +673,7 @@ export async function publicApi(ctx) {
   // 글
   if ((m = path.match(/^\/boards\/([a-z0-9-]+)\/posts$/)) && method === 'POST') {
     const b = await loadBoard(db, site, m[1]);
-    if (!b) throw notFound('없는 게시판입니다.');
+    if (!b || (!b.visible && me.level !== 1)) throw notFound('없는 게시판입니다.');
     if (!canWrite(b, me)) throw forbidden('이 게시판에 글을 쓸 수 없습니다.');
     const raw = await body(request);
     const v = await postValues(b, me, raw, null);
@@ -670,6 +689,7 @@ export async function publicApi(ctx) {
     if (!p) throw notFound('없는 글입니다.');
     if (!(me.level === 1 || isMine(p, me))) throw forbidden('쓴 사람과 관리자만 고칠 수 있습니다.');
     const b = await db.prepare('SELECT * FROM boards WHERE id = ?').bind(p.board_id).first();
+    if (me.level !== 1 && (!b || b.deleted_at || !b.visible)) throw forbidden('지금은 이 게시판의 글을 고칠 수 없습니다.');
     if (method === 'PUT') {
       const raw = await body(request);
       const v = await postValues({ ...b, opt: boardOptions(JSON.parse(b.options || '{}')) }, me, raw, p);
@@ -688,9 +708,11 @@ export async function publicApi(ctx) {
     const p = await db.prepare('SELECT * FROM posts WHERE id = ? AND site = ? AND deleted_at IS NULL').bind(+m[1], site).first();
     if (!p) throw notFound('없는 글입니다.');
     const b = await db.prepare('SELECT * FROM boards WHERE id = ? AND deleted_at IS NULL').bind(p.board_id).first();
-    if (!b || !b.use_comment) throw forbidden('댓글을 쓸 수 없는 게시판입니다.');
+    if (!b || !b.use_comment || (!b.visible && me.level !== 1)) throw forbidden('댓글을 쓸 수 없는 게시판입니다.');
     if (me.kind === 'guest') throw new HttpError(401, '로그인하면 댓글을 남길 수 있습니다.');
     if (!canComment(b, me)) throw forbidden('댓글을 쓸 수 있는 등급이 아닙니다.');
+    // 읽을 수 없는 글(읽기 권한 · 비밀글 · 숨김 · 예약)에는 댓글도 못 단다
+    if (me.level !== 1 && (!canRead(b, me) || (p.is_secret && !isMine(p, me)) || p.is_hidden || p.published_at > now())) throw forbidden('이 글에는 댓글을 남길 수 없습니다.');
     const text = str((await body(request)).body, 2000);
     if (!text) throw bad('댓글 내용을 넣어 주세요.');
     const name = me.kind === 'staff' ? '관리자' : (me.member.nickname || me.member.name);

@@ -12,7 +12,7 @@
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { fail, whoAmI, now, createSession, html, verOf } from './lib.js';
 import { adminApi } from './admin-api.js';
-import { publicApi, publicPage, visibleMenus } from './public.js';
+import { publicApi, publicPage, menuAccess } from './public.js';
 import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
 import { uploadApi, serveUpload, avatarOf } from './uploads.js';
@@ -67,7 +67,7 @@ export class Cms extends WorkerEntrypoint {
       let fm = p.match(/^\/xms\/file\/(favicon-(?:32|180|192|512)|og|popup-\d+)(?:\.png)?$/);
       if (fm) return await serveFile(env, site, fm[1]);
       const um = p.match(/^[/]xms[/]upload[/]([0-9a-f]{32})$/);
-      if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1');
+      if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1', request);
       if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': url.searchParams.has('v') ? 'public, max-age=31536000, immutable' : 'public, max-age=60' } });
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
@@ -112,12 +112,12 @@ export class Cms extends WorkerEntrypoint {
         const key = `${site}:${me.level}:${home ? 1 : 0}`;
         let data = me.level === 1 ? null : headCache.get(key);
         if (!data || Date.now() - data.at > 15000) {
-          const [menu, head, popups] = await Promise.all([visibleMenus(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
-          data = { at: Date.now(), menu, head, popups };
+          const [ma, head, popups] = await Promise.all([menuAccess(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
+          data = { at: Date.now(), menu: ma.menu, blocked: ma.blocked, head, popups };
           if (me.level !== 1) headCache.set(key, data);
         }
         const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1, avatar: avatarOf(me.member) };
-        return new Response(JSON.stringify({ menu: data.menu, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
+        return new Response(JSON.stringify({ menu: data.menu, blocked: data.blocked, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await timed(uploadApi(ctx));
