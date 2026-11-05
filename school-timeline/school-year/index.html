@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>초등학교 입학년도·학년 계산기 — 몇 년생 몇 학년 | 스쿨타임라인</title>
+<meta name="description" content="생년월일로 법정 초등학교 입학년도, 기준일의 학년, 초1~고3 학년도를 계산해요. 조기입학·입학연기·실제 입학년도와 빠른 년생 예외도 설명합니다.">
+<link rel="canonical" href="/school-year/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="스쿨타임라인">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="초등학교 입학년도 · 학년 계산기">
+<meta property="og:description" content="생년월일로 법정 초등학교 입학년도, 기준일의 학년, 초1~고3 학년도를 계산해요. 조기입학·입학연기·실제 입학년도와 빠른 년생 예외도 설명합니다.">
+<meta property="og:image" content="/img/og-default.png">
+<meta name="theme-color" content="#1f2f4a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/icon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/img/icon-180.png">
+<link rel="preload" href="/fonts/st-sans.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/style.css">
+<script type="module" src="/js/app.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","name":"초등학교 입학년도 · 학년 계산기","inLanguage":"ko-KR","isPartOf":{"@type":"WebSite","name":"스쿨타임라인"}}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">본문 바로가기</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/" aria-label="스쿨타임라인 첫 화면"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1f2f4a"/><path d="M8 16h16" stroke="#9fb8a5" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="16" r="3" fill="#fff"/><circle cx="16" cy="16" r="3" fill="#fff"/><circle cx="23" cy="16" r="3" fill="#9fb8a5"/></svg>스쿨타임라인</a>
+    <nav class="gnb" id="gnb" aria-label="주 메뉴" data-xms-menu>
+      <a href="/school-year/" aria-current="page" data-xms-item>학년 계산기</a>
+      <a href="/admission/2027/" data-xms-item>2027 입학 준비</a>
+      <a href="/methodology/" data-xms-item>계산 기준</a>
+    </nav>
+    <span class="gnb-account" data-xms-account></span>
+    <button class="nav-toggle" type="button" aria-controls="gnb" aria-expanded="false" aria-label="메뉴 열기"><span></span><span></span></button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">학년 계산기</span>
+          <h1>초등학교 입학년도 · 학년 계산기</h1>
+          <p class="lead">생년월일을 넣으면 법정 입학년도, 기준일의 학년, 초1부터 고3까지의 학년도를 계산해요. 조기입학 · 입학연기나 실제 입학년도도 반영할 수 있어요.</p>
+          <ul class="notes">
+            <li>로그인 없이 무료로 써요.</li>
+            <li>입력한 생년월일은 서버로 보내지 않고, 주소창에도 남기지 않아요.</li>
+            <li>결과 화면을 그대로 인쇄할 수 있어요.</li>
+          </ul>
+        </div>
+        <div>
+          <form class="card calc" id="calc" novalidate autocomplete="off" aria-labelledby="calc-title">
+            <h2 id="calc-title" class="sr-only">학년 계산기</h2>
+            <div class="field">
+              <label for="dob">생년월일</label>
+              <input class="input" id="dob" type="text" inputmode="numeric" placeholder="예) 2020-03-15" maxlength="14" aria-describedby="dob-help dob-err" required>
+              <p class="help" id="dob-help">숫자 8자리(20200315)로 넣어도 돼요. 입력한 날짜는 이 기기 안에서만 계산하고 어디에도 보내지 않아요.</p>
+              <p class="err" id="dob-err" hidden></p>
+            </div>
+            <fieldset class="field">
+              <legend>입학 방식</legend>
+              <div class="seg" data-seg>
+                <span class="seg-ind" aria-hidden="true"></span>
+                <label><input type="radio" name="mode" value="normal" checked>정상<small>법정 기준</small></label>
+                <label><input type="radio" name="mode" value="early">조기입학<small>1년 빨리</small></label>
+                <label><input type="radio" name="mode" value="late">입학연기<small>1년 늦게</small></label>
+              </div>
+            </fieldset>
+            <details class="more">
+              <summary>실제 입학년도 · 기준일 바꾸기 <span class="opt">선택</span></summary>
+              <div class="more-body">
+                <div class="field">
+                  <label for="actual">실제 초등학교 입학년도 <span class="opt">이미 입학했다면</span></label>
+                  <input class="input" id="actual" type="text" inputmode="numeric" maxlength="4" placeholder="예) 2026" aria-describedby="actual-help actual-err">
+                  <p class="help" id="actual-help">넣으면 입학 방식보다 이 연도를 먼저 써요.</p>
+                  <p class="err" id="actual-err" hidden></p>
+                </div>
+                <div class="field">
+                  <label for="refdate">기준일</label>
+                  <input class="input" id="refdate" type="text" inputmode="numeric" maxlength="14" placeholder="오늘" aria-describedby="refdate-help refdate-err">
+                  <p class="help" id="refdate-help">이날 몇 학년인지 봅니다. 비워 두면 오늘(한국 시간)이에요.</p>
+                  <p class="err" id="refdate-err" hidden></p>
+                </div>
+              </div>
+            </details>
+            <button class="btn btn-primary" type="submit">계산하기</button>
+            <noscript><p class="err">계산기는 자바스크립트가 켜져 있어야 동작해요. 계산 방법은 아래 설명을 참고하세요.</p></noscript>
+          </form>
+        </div>
+      </div>
+      <p id="calc-status" class="sr-only" role="status" aria-live="polite"></p>
+      <section id="result" class="result" hidden aria-label="계산 결과"></section>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap prose">
+      <h2>계산 규칙</h2>
+      <div class="table-scroll">
+        <table class="src-table">
+          <thead><tr><th scope="col">항목</th><th scope="col">계산</th></tr></thead>
+          <tbody>
+            <tr><td>정상 입학년도</td><td>출생연도 + 7 (태어난 달 · 날과 상관없음)</td></tr>
+            <tr><td>1년 조기입학</td><td>정상 입학년도 − 1</td></tr>
+            <tr><td>1년 입학연기</td><td>정상 입학년도 + 1</td></tr>
+            <tr><td>실제 입학년도를 넣은 경우</td><td>넣은 연도를 그대로 씀 (입학 방식보다 우선)</td></tr>
+            <tr><td>기준일의 학년도</td><td>3월 1일 이후면 그 해, 1 · 2월이면 전년도</td></tr>
+            <tr><td>초1 · 초6</td><td>입학년도 · 입학년도 + 5</td></tr>
+            <tr><td>중1 · 중3</td><td>입학년도 + 6 · 입학년도 + 8</td></tr>
+            <tr><td>고1 · 고3</td><td>입학년도 + 9 · 입학년도 + 11</td></tr>
+            <tr><td>고등학교 졸업 · 다음 진학</td><td>입학년도 + 12 (그 해 2월 무렵 졸업)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>예시</h2>
+      <dl class="faq">
+        <dt>2020년 1월 1일생과 2020년 12월 31일생</dt>
+        <dd>둘 다 2027년에 초등학교에 입학해요. 중학교 진학은 2033년, 고등학교 진학은 2036년, 고3은 2038학년도예요.</dd>
+        <dt>2020년 12월 31일생이 조기입학 · 입학연기를 하면</dt>
+        <dd>조기입학이면 2026년, 입학연기면 2028년에 입학해요.</dd>
+        <dt>2019년 1월 1일생의 2027년 2월과 3월</dt>
+        <dd>2027년 2월 28일에는 아직 2026학년도 1학년이고, 3월 1일부터 2027학년도 2학년이에요.</dd>
+      </dl>
+
+      <h2>계산에 넣지 않는 것</h2>
+      <ul>
+        <li>취학 유예 · 면제, 휴학 · 자퇴 · 복학</li>
+        <li>조기진급 · 조기졸업</li>
+        <li>해외 학교 · 대안학교 학력 인정, 검정고시</li>
+        <li>학교별 학사 일정(입학식 · 방학 · 졸업식 날짜)</li>
+      </ul>
+      <p>이런 경우는 '실제 입학년도'를 넣거나, 학교 · 관할 교육지원청에 확인하세요.</p>
+
+      <h2>이른바 '빠른 년생'</h2>
+      <p>1월생부터 12월생까지 같은 해에 입학하는 지금 기준은 2009학년도 입학생, 즉 2002년생부터 적용됐어요. 그 전에는 1 · 2월생이 한 해 먼저 입학하는 경우가 많았어요. 2001년 이전 1 · 2월생이라면 '실제 입학년도'를 넣어 계산해 보세요.</p>
+
+      <h2>자주 묻는 질문</h2>
+      <dl class="faq">
+        <dt>학년도와 연도는 어떻게 달라요?</dt>
+        <dd>학년도는 3월 1일에 시작해 다음 해 2월 말일에 끝나요(초·중등교육법 제24조). 그래서 2027년 1월은 2026학년도예요.</dd>
+        <dt>1년 늦게 입학할 수 있나요?</dt>
+        <dd>법은 7세가 된 해의 다음 해에 입학할 수 있도록 하고 있어요(초·중등교육법 제13조). 신청은 6세가 되는 해 10월 1일부터 12월 31일까지 읍·면·동 주민센터에 해요. 자세한 절차는 주민센터나 관할 교육지원청에 확인하세요.</dd>
+        <dt>입력한 생년월일은 저장되나요?</dt>
+        <dd>아니요. 계산은 이 기기의 브라우저 안에서만 하고, 서버 · 분석 도구 · 공유 주소로 보내지 않아요. <a href="/privacy/">개인정보처리방침</a>을 참고하세요.</dd>
+        <dt>해외에서 살다 왔는데 몇 학년으로 가나요?</dt>
+        <dd>학년 배정은 학력 인정 · 편입학 절차에 따라 달라 이 계산기로 정할 수 없어요. 관할 교육지원청에 문의하세요.</dd>
+      </dl>
+      <p><a href="/methodology/">계산 기준 · 출처 보기</a> · <a href="/admission/2027/">2027 입학 준비 보기</a></p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <p class="footer-brand">스쿨타임라인</p>
+      <p class="footer-note">생년월일로 초·중·고 12년 학사 일정을 계산하고 초등 취학 일정을 정리한 무료 안내 서비스입니다. 법령상 일반 기준을 안내하며, 실제 일정은 관할 교육청과 학교 공지를 따릅니다.</p>
+    </div>
+    <ul class="footer-links">
+      <li><a href="/about/">소개</a></li>
+      <li><a href="/methodology/">계산 기준 · 출처</a></li>
+      <li><a href="/privacy/">개인정보처리방침</a></li>
+      <li><a href="/contact/">문의</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

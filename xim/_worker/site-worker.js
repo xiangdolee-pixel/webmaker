@@ -320,6 +320,13 @@ async function withXms(res, request, env, data) {
       if ((k === 'image' || k === 'url') && c && !/^[a-z][a-z0-9+.-]*:/i.test(c)) { try { el.setAttribute('content', new URL(c, url).href); } catch { /* 이상한 주소는 그대로 */ } }
     },
   });
+  // 대표 주소(canonical)도 전체 주소로 — 사이트는 도메인을 몰라도 되게 "/school-year/" 처럼 써 둔다
+  rw = rw.on('link[rel="canonical"]', {
+    element(el) {
+      const c = el.getAttribute('href') || '';
+      if (c.startsWith('/') && !c.startsWith('//')) { try { el.setAttribute('href', new URL(c, url).href); } catch { /* 그대로 */ } }
+    },
+  });
   rw = rw.on('meta[name="description"]', { element(el) { hasDesc = true; if (home && h.description) el.setAttribute('content', h.description); } });
   if (ogDesc) rw = rw.on('meta[property="og:description"], meta[name="twitter:description"]', { element(el) { el.remove(); } });
   if (ogImage) rw = rw.on('meta[property="og:image"], meta[name="twitter:image"]', { element(el) { el.remove(); } });

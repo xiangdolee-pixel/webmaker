@@ -33,7 +33,7 @@ const SRC = path.join(ROOT, slug);
 if (!fs.existsSync(SRC) || !fs.statSync(SRC).isDirectory()) fail(`폴더가 없습니다: ${slug}`);
 
 // 웹에 올리지 않는 것: 숨김 파일 · 작업 메모(.md) · 배포/스크립트 설정 · 원본 문서 · Pages Functions
-const SKIP_DIRS = new Set(['node_modules', 'functions', '_src', 'uploads', '_worker']);
+const SKIP_DIRS = new Set(['node_modules', 'functions', '_src', 'uploads', '_worker', '_dev']); // _dev = 테스트 · 개발 도구(웹에 안 올림)
 const SKIP_FILE = /\.(md|ps1|bat|sh|docx?|log)$|^wrangler\.(toml|json|jsonc)$|^package(-lock)?\.json$/i;
 
 fs.rmSync(OUT, { recursive: true, force: true });

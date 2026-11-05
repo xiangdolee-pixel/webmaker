@@ -12,6 +12,7 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 - sugarbreak/ — 슈가브레이크 (예전 Pages `blood` · `sugarbreak`, blood.plators.com) · xim 연결됨 · 관리자(레벨1)만 쓰는 건강 기록, 예전 D1 `sugarbreak` 그대로. 원본이던 E:wsblood 는 이제 안 씀
 - plators/ — plators.com (Worker plators, 사용자 도메인) 한 장짜리 페이지(가운데 master@plators.com) · xim 연결됨
 - portfolio/ — 포트폴리오 (portfolio.plators.com) · xim 연결됨 · 접속할 때마다 비밀번호(Worker 비밀값 PORTFOLIO_PASSWORD, 리포에 없음) · 카드 목록 = xim 사이트 줄의 '포트폴리오' 스위치를 켠 사이트, 이름 · 설명 · 그림 = 각 사이트 xms(검색엔진 제목 · 카톡 미리보기)
+- school-timeline/ — 스쿨타임라인 (초등학교 입학년도 · 학년 계산기, 2027 초등 취학 준비) · xim 연결됨 · 빌드 없는 HTML/JS, 테스트는 폴더 안 _dev/ (npm test · npm run test:e2e)
 - xim/ — 고객 사이트 통합 관리(고객·사이트·정지·용량·수정요청). https://xim.xiangdolee.workers.dev , 자세한 건 xim/README.md
 - xms/ — 업체별 홈페이지 관리(회원·게시판·메뉴). 각 사이트주소/admin/ , 자세한 건 xms/README.md
 

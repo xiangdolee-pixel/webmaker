@@ -1,0 +1,20 @@
+{
+  "name": "school-timeline",
+  "private": true,
+  "type": "module",
+  "description": "스쿨타임라인 — 개발 도구 전용(웹에 올라가지 않음). 사이트 자체는 빌드 없이 그대로 열리는 HTML/CSS/JS.",
+  "scripts": {
+    "dev": "node _dev/serve.mjs",
+    "build": "node _dev/check-site.mjs && node ../build.mjs school-timeline",
+    "test": "tsc -p _dev/jsconfig.json && vitest run --config _dev/vitest.config.mjs",
+    "test:e2e": "playwright test --config _dev/playwright.config.mjs",
+    "font": "node _dev/subset-font.mjs",
+    "icons": "node _dev/make-icons.mjs",
+    "deploy": "node ../deploy.mjs school-timeline"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
