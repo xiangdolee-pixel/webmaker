@@ -642,7 +642,7 @@ main{
 
 /* ── 토스트 ─────────────────────────── */
 .toast{
-  position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));z-index:50;
+  position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));z-index:70;   /* 확인창(60) 위에서도 보이게 */
   transform:translateX(-50%) translateY(8px);
   background:var(--ink);color:var(--paper);
   font-family:var(--ui);font-size:13px;
@@ -669,6 +669,8 @@ main{
 .cfm-cancel:active{background:#ececf0}
 .cfm-ok{border:1px solid rgba(186,45,34,.5);background:rgba(186,45,34,.08);color:var(--red2)}
 .cfm-ok:active{background:rgba(186,45,34,.16)}
+.cfm-ok.pos{border-color:#5f7a2e;background:#5f7a2e;color:#fff}   /* 올리브 담기 등 — 위험이 아닌 선택 */
+.cfm-ok.pos:active{background:#4c6324}
 </style>
 </head>
 <body>
@@ -1316,58 +1318,89 @@ function hlRun(book,chap,v){
   const out=[];for(let n=a;n<=b;n++)out.push(n);
   return out;
 }
-/* 형광펜이 이어져 있으면 한 덩어리로 복사한다 — "1절 2절 본문"요1:1-2 */
-function copyVerse(book,chap,v){
+/* 형광펜이 이어져 있으면 한 덩어리로 — "1절 2절 본문"요1:1-2
+   clip = { t: 본문, ref: "요1:1-2", head: 복사 맨 위 'N일차' 줄 } (복사 · 올리브 담기 공용) */
+function verseClip(book,chap,v){
   const t0=TEXT[book+"/"+chap]||[];
   const vs=hlRun(book,chap,v).filter(n=>((t0[n-1]||"").replace(/⟪|⟫/g,"")));
-  if(!vs.length)return Promise.resolve(false);
+  if(!vs.length)return null;
   const t=vs.map(n=>(t0[n-1]||"").replace(/⟪|⟫/g,"")).join(" ");
   const last=vs[vs.length-1];
   const ref=(ABBR[book]||book)+chap+":"+vs[0]+(last>vs[0]?"-"+last:"");
-  return copyText(planDayLine({book:book,chap:chap,v:vs[0]})+'"'+t+'"'+ref);
+  return {t,ref,head:planDayLine({book:book,chap:chap,v:vs[0]})};
 }
+const copyClip=c=>c?copyText(c.head+'"'+c.t+'"'+c.ref):Promise.resolve(false);
 /* 꾹 누르기: 본문 복사·형광펜 삭제·가름끈 삭제 모두 같은 0.5초, 손가락이 10px 넘게 움직이면 취소 */
 const LP_MS=500;
-/* 누르고 있는 그 자리에서 바로 복사하고 곧장 안내한다.
-   다만 타이머 안 복사를 사용자 제스처로 인정하지 않는 기기가 있어(그래서 예전엔 두 번째부터 실패했다),
-   그때는 손을 뗄 때 진짜 입력 이벤트 안에서 한 번 더 시도한다. */
-let lpTimer=null,lpFired=false,lpX=0,lpY=0,lpCopy=null,lpDown=false;
+/* 형광펜 절을 꾹 누르면 [복사] · [올리브 담기] 를 고르는 창.
+   복사는 그 버튼을 누른 입력 안에서 바로 한다(손가락을 누른 채 타이머로 복사하면 막히는 기기가 있었음). */
+let lpTimer=null,lpFired=false,lpX=0,lpY=0;
 function cancelLp(){if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}}
 const copyDone=okd=>toast(okd?"본문이 복사되었습니다.":"복사에 실패했습니다.");
 readArea.addEventListener("pointerdown",e=>{
-  lpFired=false;lpCopy=null;lpDown=true;cancelLp();
+  lpFired=false;cancelLp();
   const p=e.target.closest(".verse");
   if(!p)return;
   const v=+p.dataset.v;
-  let doCopy;
-  if(qtMode){                                      // 큐티: 형광펜 칠한 절만 복사 대상
+  let getClip;
+  if(qtMode){                                      // 큐티: 형광펜 칠한 절만
     const id=qtIdOf(v-1);
     if(!id||!qthl[id])return;
-    doCopy=()=>copyQtVerse(v-1);
+    getClip=()=>qtClip(v-1);
   }else{
     const key=cur.book+"/"+cur.chap;
-    if(!(hls[key]&&hls[key].indexOf(v)>=0))return;  // 형광펜 칠해진 절만 복사 대상
-    doCopy=()=>copyVerse(cur.book,cur.chap,v);
+    if(!(hls[key]&&hls[key].indexOf(v)>=0))return;  // 형광펜 칠해진 절만
+    getClip=()=>verseClip(cur.book,cur.chap,v);
   }
   lpX=e.clientX;lpY=e.clientY;
   lpTimer=setTimeout(()=>{
     lpTimer=null;lpFired=true;                       // 뒤따르는 click(형광펜 토글) 무시
     if(navigator.vibrate)try{navigator.vibrate(15)}catch(e){}
-    doCopy().then(okd=>{                             // 누른 채로 바로 복사 → 즉시 안내
-      if(okd)copyDone(true);
-      else if(lpDown)lpCopy=doCopy;                  // 이 기기에선 막힘 → 손 뗄 때 재시도(안내도 그때)
-      else copyDone(false);
-    });
+    clipMenu(getClip());
   },LP_MS);
 },{passive:true});
 readArea.addEventListener("pointermove",e=>{
-  if(lpTimer){const dx=e.clientX-lpX,dy=e.clientY-lpY;if(dx*dx+dy*dy>100){cancelLp();lpCopy=null;}}
+  if(lpTimer){const dx=e.clientX-lpX,dy=e.clientY-lpY;if(dx*dx+dy*dy>100)cancelLp();}
 },{passive:true});
-readArea.addEventListener("pointerup",()=>{
-  lpDown=false;cancelLp();
-  if(lpCopy){const f=lpCopy;lpCopy=null;f().then(copyDone);}
-},{passive:true});
-readArea.addEventListener("pointercancel",()=>{lpDown=false;cancelLp();lpCopy=null;},{passive:true});
+readArea.addEventListener("pointerup",cancelLp,{passive:true});
+readArea.addEventListener("pointercancel",cancelLp,{passive:true});
+
+/* ── 올리브바스켓에 담기 ─────────────────
+   같은 기기(브라우저)에서 올리브바스켓에 로그인돼 있으면 그 쿠키로 바로 담는다
+   (bible · olivebasket 은 같은 plators.com 이라 쿠키가 함께 간다. 올리브바스켓 Worker 가 이 주소를 허락해 둠) */
+const OLIVE="https://olivebasket.plators.com";
+function openOlive(path){
+  const w=window.open(OLIVE+path,"_blank");
+  if(!w)location.href=OLIVE+path;
+}
+async function clipMenu(c){
+  if(!c)return;
+  const pick=await askConfirm(c.ref?c.ref+" 구절을":"이 구절을",{
+    cancelText:"복사",okText:"올리브 담기",okClass:"pos",dismiss:null,
+    onPick:v=>{if(v===false)copyClip(c).then(copyDone);}   // 누른 그 입력 안에서 바로 복사
+  });
+  if(pick===true)addOlive(c);
+}
+let oliveBusy=false;
+async function addOlive(c){
+  if(oliveBusy)return;
+  oliveBusy=true;
+  let r=null;
+  try{
+    r=await fetch(OLIVE+"/api/items",{method:"POST",credentials:"include",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({text:c.t,source:c.ref,stars:1})});
+  }catch(e){r=null}
+  oliveBusy=false;
+  if(r&&r.status===401){
+    askConfirm("올리브바스켓에 로그인돼 있지 않습니다.\n이 기기에서 로그인한 뒤 다시 담아 주세요.",{
+      cancelText:"닫기",okText:"로그인하기",okClass:"pos",onPick:v=>{if(v)openOlive("/member/login")}});
+    return;
+  }
+  if(!r||!r.ok){toast("올리브바스켓에 담지 못했습니다");return;}
+  toast("올리브바스켓에 담았습니다");
+  askConfirm("성경을 계속 읽을까요,\n올리브바스켓으로 갈까요?",{
+    cancelText:"계속 읽기",okText:"올리브바스켓",okClass:"pos",onPick:v=>{if(v)openOlive("/basket")}});
+}
 
 /* 하단 메뉴를 좌우로 스와이프 → 버튼 순서 반전 (저장됨) */
 const bar=document.querySelector(".bar");
@@ -1949,11 +1982,19 @@ function toggleQtHl(p,i){
   }
   saveQtHl();
 }
-function copyQtVerse(i){
-  const v=(qtData&&qtData.verses||[])[i];
-  if(!v||!v.t)return Promise.resolve(false);
-  const refs=qtVerseRefs(),r=refs&&refs[i];
-  return copyText(planDayLine(r&&{book:r.book,chap:r.chap,v:r.v})+'"'+v.t+'"'+bibleRefText(r));
+/* 큐티도 이어 칠한 절은 한 덩어리로 — 꾹 누른 절에서 위 · 아래로 이어진 형광펜 */
+function qtClip(i){
+  const vs=(qtData&&qtData.verses)||[];
+  const on=k=>{const id=qtIdOf(k);return !!(id&&qthl[id]&&vs[k]&&vs[k].t)};
+  if(!on(i))return null;
+  let a=i,b=i;
+  while(a>0&&on(a-1))a--;
+  while(b<vs.length-1&&on(b+1))b++;
+  const t=vs.slice(a,b+1).map(v=>v.t).join(" ");
+  const refs=qtVerseRefs(),r1=refs&&refs[a],r2=refs&&refs[b];
+  let ref=bibleRefText(r1);
+  if(r1&&r2&&(r2.chap!==r1.chap||r2.v!==r1.v))ref+="-"+(r2.chap!==r1.chap?r2.chap+":":"")+r2.v;
+  return {t,ref,head:planDayLine(r1&&{book:r1.book,chap:r1.chap,v:r1.v})};
 }
 let qtReturnPage=0;   // 큐티 들어오기 직전에 읽던 쪽 — 뒤로가기로 복귀할 때 사용(책·장은 cur가 그대로 유지)
 /* 큐티에서 뒤로가기 → 직전에 읽던 본문 그 쪽으로 */
@@ -2600,6 +2641,9 @@ function askConfirm(msg,opt){
   const noBackdrop=opt&&opt.noBackdropClose;   // 바깥 탭으로 안 닫히게(연타가 배경에 꽂혀 닫히는 것 방지)
   $("cfmCancel").textContent=(opt&&opt.cancelText)||"취소";   // 질문 성격에 따라 '취소' 대신 '아니오' 등
   $("cfmOk").textContent=(opt&&opt.okText)||"확인";
+  $("cfmOk").classList.toggle("pos",!!(opt&&opt.okClass==="pos"));   // 지우기 같은 위험 확인(붉은색)이 아닌 선택
+  const dismiss=opt&&"dismiss" in opt?opt.dismiss:false;   // 바깥을 눌러 닫을 때 돌려줄 값
+  const onPick=opt&&opt.onPick;   // 누른 그 입력 안에서 바로 해야 하는 일(복사 · 새 창) — 약속(then)으로 미루면 막히는 기기가 있다
   const guardMs=(opt&&opt.guardMs)||0;         // 여는 직후 이 시간(ms) 동안은 어떤 탭도 무시(연타가 버튼에 꽂혀 닫히는 것 방지)
   const openAt=Date.now();
   const live=()=>Date.now()-openAt>=guardMs;
@@ -2616,11 +2660,12 @@ function askConfirm(msg,opt){
       scrim.classList.remove("open");
       scrim.removeEventListener("pointerdown",arm);
       ok.onclick=cancel.onclick=scrim.onclick=null;
+      if(onPick)try{onPick(v)}catch(e){}
       res(v);
     };
     ok.onclick=()=>{if(ready&&live())done(true);};
     cancel.onclick=()=>{if(ready&&live())done(false);};
-    scrim.onclick=e=>{if(!noBackdrop&&ready&&live()&&e.target===scrim)done(false);};   // 바깥 탭하면 취소(창 위에서 누른 경우만; noBackdrop·가드시간이면 무시)
+    scrim.onclick=e=>{if(!noBackdrop&&ready&&live()&&e.target===scrim)done(dismiss);};   // 바깥 탭하면 취소(창 위에서 누른 경우만; noBackdrop·가드시간이면 무시)
   });
 }
 

@@ -15,6 +15,17 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
 });
 const MODES = ['random', 'recent', 'stars', 'short', 'long'];
+// 다른 사이트에서 담기 — 길 성경통독(bible.plators.com)의 형광펜 '올리브 담기'. 같은 plators.com 이라 xms_sess 쿠키가 함께 온다
+const PARTNERS = ['https://bible.plators.com'];
+const partner = (request) => { const o = request.headers.get('Origin'); return o && PARTNERS.includes(o) ? o : null; };
+function withCors(res, origin) {
+  if (!origin) return res;
+  const out = new Response(res.body, res);
+  out.headers.set('Access-Control-Allow-Origin', origin);
+  out.headers.set('Access-Control-Allow-Credentials', 'true');
+  out.headers.append('Vary', 'Origin');
+  return out;
+}
 
 // 지금 로그인한 xms 회원 { email, admin } | null
 const seen = new Map(); // 세션 쿠키 → { me, at }
@@ -76,7 +87,7 @@ async function api(request, env, url) {
   if (!me) return json({ error: '로그인이 필요합니다.' }, 401);
   if (request.method !== 'GET') {
     const origin = request.headers.get('Origin');
-    if (origin && origin !== url.origin) return json({ error: 'bad origin' }, 403);
+    if (origin && origin !== url.origin && !(PARTNERS.includes(origin) && path === '/api/items' && request.method === 'POST')) return json({ error: 'bad origin' }, 403);
   }
   const uid = await userId(db, me.email);
   const body = async () => { try { return await request.json(); } catch { return {}; } };
@@ -137,7 +148,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
-      try { return await api(request, env, url); } catch (e) { return json({ error: String(e.message || e) }, 500); }
+      const po = partner(request);
+      if (request.method === 'OPTIONS') {
+        if (!po) return new Response(null, { status: 403 });
+        return new Response(null, { status: 204, headers: {
+          'Access-Control-Allow-Origin': po, 'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400', Vary: 'Origin',
+        } });
+      }
+      let res;
+      try { res = await api(request, env, url); } catch (e) { res = json({ error: String(e.message || e) }, 500); }
+      return withCors(res, po);
     }
     // 예전 담기 화면 주소(/admin)를 홈 화면에 저장해 둔 경우
     if (url.pathname === '/admin.html') return Response.redirect(`${url.origin}/basket`, 302);

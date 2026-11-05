@@ -13,7 +13,6 @@ const UPSTREAM_TIMEOUT_MS = 15000;  // 업스트림이 이보다 느리면 포�
 
 // 모듈 전역 메모리 캐시(같은 isolate 내 요청끼리 공유; Cloudflare가 isolate를 재사용)
 let MEM = null;   // { data, at }
-let REFRESHING = false;
 
 function clean(s) {
   return (s || "")
@@ -88,41 +87,50 @@ async function edgePut(data, at) {
   } catch (e) { /* 무시 */ }
 }
 
-async function refresh() {
-  if (REFRESHING) return;
-  REFRESHING = true;
-  try {
-    const at = Date.now();
-    const data = await fetchQt();
-    MEM = { data, at };
-    await edgePut(data, at);
-  } catch (e) { /* 갱신 실패는 무시 — 기존 캐시 유지 */ }
-  finally { REFRESHING = false; }
+// 같은 isolate 안의 갱신은 하나만(여럿이 동시에 눌러도 업스트림은 한 번)
+let REFRESH_P = null;
+let LAST_TRY = 0;
+function refresh() {
+  if (REFRESH_P) return REFRESH_P;
+  LAST_TRY = Date.now();
+  REFRESH_P = (async () => {
+    try {
+      const at = Date.now();
+      const data = await fetchQt();
+      MEM = { data, at };
+      await edgePut(data, at);
+      return data;
+    } catch (e) { return null; /* 갱신 실패 — 기존 캐시 유지 */ }
+    finally { REFRESH_P = null; }
+  })();
+  return REFRESH_P;
 }
 
+// 한국 날짜 "YYYY.MM.DD" — 본문 날짜("2026.11.05 (목)")와 맞춰 본다
+function todayKst() {
+  const d = new Date(Date.now() + 9 * 3600 * 1000);
+  return `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+const isToday = (data) => !!(data && data.date && data.date.startsWith(todayKst()));
+
+/* 캐시가 오늘 것이면 즉시 답하고(오래됐으면 뒤에서 갱신),
+   어제 것이면 새로 받을 때까지 기다린다 — 예전엔 어제 것을 먼저 주고 뒤에서만 갱신해서
+   Q 를 처음 누르면 어제 본문이, 한참 뒤 다시 눌러야 오늘 본문이 나왔다(2026-11-05 고침).
+   다만 업스트림이 아직 어제 것을 주는 자정 직후엔 1분에 한 번만 다시 받아 본다. */
 async function handleQt(ctx) {
   const now = Date.now();
-  // 1) 메모리(같은 isolate) — 가장 빠름
-  if (MEM) {
+  if (!MEM) {
+    const edge = await edgeGet();   // 같은 콜로의 다른 isolate 가 채워 둔 것
+    if (edge) MEM = edge;
+  }
+  if (MEM && isToday(MEM.data)) {
     if (now - MEM.at >= FRESH_MS) ctx.waitUntil(refresh());
     return clientJson(MEM.data);
   }
-  // 2) 엣지 캐시(같은 콜로의 다른 isolate가 채워둠)
-  const edge = await edgeGet();
-  if (edge) {
-    MEM = edge;                                          // 이 isolate 메모리에도 올려둠
-    if (now - edge.at >= FRESH_MS) ctx.waitUntil(refresh());
-    return clientJson(edge.data);
-  }
-  // 3) 둘 다 없을 때만 업스트림을 기다린다(콜로 첫 요청)
-  try {
-    const data = await fetchQt();
-    MEM = { data, at: now };
-    ctx.waitUntil(edgePut(data, now));
-    return clientJson(data);
-  } catch (e) {
-    return clientJson({ error: String(e) });
-  }
+  if (MEM && now - LAST_TRY < 60000 && !REFRESH_P) return clientJson(MEM.data);
+  const data = await refresh();
+  if (data) return clientJson(data);
+  return clientJson(MEM ? MEM.data : { error: 'upstream' });
 }
 
 
