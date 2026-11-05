@@ -2,7 +2,7 @@
   "version_metadata": { "binding": "VER" },
   "send_email": [{ "name": "EMAIL", "remote": true }],
   "vars": { "MAIL_FROM": "noreply@plators.com" },
-  "placement": { "mode": "smart" },
+  "placement": { "region": "aws:ap-northeast-2" },
   "d1_databases": [
     { "binding": "DB", "database_name": "xms", "database_id": "0fd9af7c-f214-4fee-80bb-1e8b94099bda" },
     { "binding": "XIM_DB", "database_name": "xim", "database_id": "a0f671ad-6602-46bf-8e76-043cdbdf250d" }

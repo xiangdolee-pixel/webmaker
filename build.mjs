@@ -266,6 +266,11 @@ if (CONNECT) {
     { binding: 'XIM', service: 'xim', entrypoint: 'Engine' },
     { binding: 'XMS', service: 'xms', entrypoint: 'Cms' },
   ];
+  // 사이트 Worker 를 xim · xms DB(D1, APAC) 가까이에서 돌린다. 국내 통신사가 무료 요금제 사이트를 LAX 로 보내면
+  //   LAX 의 Worker 가 DB 를 읽을 때마다 태평양을 왕복했다. xms 는 서비스 바인딩으로 불려 부른 쪽 자리에서 돌기 때문에
+  //   (xms 자신의 placement 는 이 길에 안 먹음) 사이트 Worker 쪽을 옮긴다. bindings.json 의 placement 가 있으면 그것.
+  //   2026-11-05 sjccc 게시판으로 재 봄 (xms 안 시간): LAX 450ms · 싱가포르 300 · 도쿄 120 · 서울(ap-northeast-2) 25ms → 서울.
+  config.placement = { region: 'aws:ap-northeast-2' };
   console.log(`[build] xim · xms 자동 연결: 공통 사이트 Worker + 로그인 버튼 · 메뉴 표시${marked ? ` (html ${marked}개에 표시를 넣음)` : ''}`);
 }
 

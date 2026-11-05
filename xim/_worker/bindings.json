@@ -1,5 +1,5 @@
 {
-  "placement": { "mode": "smart" },
+  "placement": { "region": "aws:ap-northeast-2" },
   "version_metadata": { "binding": "VER" },
   "assets": { "run_worker_first": ["/", "/index.html", "/js/*", "/css/*"] },
   "d1_databases": [
