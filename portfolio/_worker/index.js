@@ -2,14 +2,15 @@
 //   비밀번호는 리포에 두지 않는다(공개 리포): Worker 비밀값 PORTFOLIO_PASSWORD
 //     node deploy.mjs --wrangler secret put PORTFOLIO_PASSWORD --name portfolio
 //   접속할 때마다(새로고침 포함) 비밀번호를 묻는다:
-//     맞게 넣으면 한 번 쓰는 표(pf_once, 30초)로 페이지를 딱 한 번 열고, 그 응답에서 표를 지운다.
-//     이미지 · 그 밖의 파일은 따로 짧은 표(pf_ok, 10분)로 통과. 표는 비밀번호로 서명 → 비밀번호를 바꾸면 무효.
+//     맞게 넣으면 그 POST 응답에 바로 페이지를 담아 보여 준다(리다이렉트 · 한 번 쓰는 쿠키 없음 —
+//     폰 · 카톡 같은 앱 안 브라우저는 리다이렉트 응답의 쿠키를 다음 요청에 못 싣는 일이 있어 안 열렸다).
+//     페이지 주소는 history.replaceState 로 원래 주소로 바꿔 두어 새로고침하면 GET → 다시 비밀번호.
+//     이미지 · 그 밖의 파일은 짧은 표(pf_ok, 10분)로 통과. 표는 비밀번호로 서명 → 비밀번호를 바꾸면 무효.
 //   카드의 사이트명 · 설명 · 이미지는 각 사이트 xms 설정을 읽어 채운다(5분 캐시):
 //     사이트명 = 검색엔진 제목, 설명 = 카톡 미리보기 설명, 이미지 = 카톡 미리보기 그림. 비어 있으면 index.html 에 적힌 그대로.
 //   그 밖(페이지 · /xms 관리 · /member)은 xim 공통 사이트 Worker 가 맡는다.
 import site from '../../xim/_worker/site-worker.js';
 
-const ONCE = 'pf_once', ONCE_AGE = 30;   // 페이지 한 번 열기
 const FILES = 'pf_ok', FILES_AGE = 600;  // 이미지 등
 // 비밀번호 없이 열리는 것: 관리 화면 · 회원(자체 로그인), 파비콘 · CSS(비밀번호 화면이 씀)
 const OPEN = /^\/(xms|xms-api|member)(\/|$)|^\/(icon-\d+\.png|favicon\.ico|robots\.txt)$|^\/css\//;
@@ -127,6 +128,17 @@ async function fillCards(res, env, ctx) {
     .transform(new Response(html, res));
 }
 
+// 비밀번호 뒤의 내용 꺼내기 — 첫 화면이면 카드를 채우고, 브라우저 · 중간 캐시에 남기지 않는다
+async function page(request, env, ctx, url) {
+  let res = await (env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request));
+  const isHtml = (res.headers.get('Content-Type') || '').includes('text/html');
+  if (isHtml && /^\/(index\.html)?$/.test(url.pathname)) res = await fillCards(res, env, ctx);
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'private, no-store');
+  out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return out;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -141,27 +153,27 @@ export default {
         await new Promise((r) => setTimeout(r, 800)); // 연달아 맞혀 보기 늦추기
         return lockPage(true, next);
       }
-      const h = new Headers({ Location: next, 'Cache-Control': 'no-store' });
-      h.append('Set-Cookie', cookie(ONCE, await ticket(secret, 'once', ONCE_AGE), ONCE_AGE));
-      h.append('Set-Cookie', cookie(FILES, await ticket(secret, 'files', FILES_AGE), FILES_AGE));
-      return new Response(null, { status: 303, headers: h });
+      const target = new URL(next, url);
+      const hdr = new Headers(request.headers);
+      hdr.delete('Content-Type'); hdr.delete('Content-Length');
+      hdr.set('Accept', 'text/html');
+      const res = await page(new Request(target, { method: 'GET', headers: hdr }), env, ctx, target);
+      const dir = target.pathname.replace(/[^/]*$/, '');
+      const out = new HTMLRewriter()
+        .on('head', { element(e) {
+          e.prepend(`${dir !== '/' ? `<base href="${escHtml(dir)}">` : ''}<script>history.replaceState(null,'',${JSON.stringify(target.pathname + target.search)})</script>`, { html: true });
+        } })
+        .transform(res);
+      out.headers.append('Set-Cookie', cookie(FILES, await ticket(secret, 'files', FILES_AGE), FILES_AGE));
+      out.headers.append('Set-Cookie', 'pf_once=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax'); // 예전 표 정리
+      return out;
     }
 
     if (!OPEN.test(url.pathname)) {
-      const isPage = request.method === 'GET' && (request.headers.get('Accept') || '').includes('text/html');
-      const ok = isPage ? await valid(secret, 'once', cookieOf(request, ONCE)) : await valid(secret, 'files', cookieOf(request, FILES));
-      if (!ok) {
-        if (isPage) return lockPage(false, url.pathname + url.search);
-        return new Response('Unauthorized', { status: 401, headers: { 'Cache-Control': 'no-store' } });
-      }
-      let res = await (env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request));
-      if (isPage && /^\/(index\.html)?$/.test(url.pathname) && (res.headers.get('Content-Type') || '').includes('text/html')) res = await fillCards(res, env, ctx);
-      // 비밀번호 뒤의 내용은 브라우저 · 중간 캐시에 남기지 않는다
-      const out = new Response(res.body, res);
-      out.headers.set('Cache-Control', 'private, no-store');
-      out.headers.set('X-Robots-Tag', 'noindex, nofollow');
-      if (isPage) out.headers.append('Set-Cookie', cookie(ONCE, '', 0)); // 한 번 썼으면 지움 → 다음 접속 · 새로고침은 다시 비밀번호
-      return out;
+      // 페이지는 늘 비밀번호 화면(맞게 넣으면 /__unlock 응답에 바로 담김), 파일은 짧은 표로
+      if (request.method === 'GET' && (request.headers.get('Accept') || '').includes('text/html')) return lockPage(false, url.pathname + url.search);
+      if (!(await valid(secret, 'files', cookieOf(request, FILES)))) return new Response('Unauthorized', { status: 401, headers: { 'Cache-Control': 'no-store' } });
+      return page(request, env, ctx, url);
     }
     return env.XMS ? site.fetch(request, env, ctx) : env.ASSETS.fetch(request);
   },
