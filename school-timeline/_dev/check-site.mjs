@@ -52,9 +52,8 @@ for (const f of htmls) {
     if ((html.match(/<h1[\s>]/g) || []).length !== 1) bad(name, 'h1 이 하나가 아님');
     if (!/<main id="main">/.test(html)) bad(name, '<main id="main"> 없음');
   } else if (/rel="canonical"/.test(html)) bad(name, '틀 · 404 에는 canonical 을 두지 않는다');
-  // 애드센스: 404 를 뺀 모든 페이지 머리에 코드 (빈 페이지 · 오류 페이지에는 광고 금지)
-  const ad = html.includes('adsbygoogle.js?client=ca-pub-9330691551438387');
-  if (name === '404.html' ? ad : !ad) bad(name, name === '404.html' ? '404 에 광고 코드' : '애드센스 코드 없음');
+  // 애드센스 코드는 html 에 직접 두지 않는다 — xms 검색엔진 화면의 게시자 ID 로 공통 사이트 Worker 가 넣는다 (ads.txt 도 xms, 404 는 빼고)
+  if (html.includes('adsbygoogle.js')) bad(name, '광고 코드를 html 에 직접 넣음 — xms 검색엔진 화면에서 넣는다');
   if (/\sstyle="/.test(html)) bad(name, '인라인 style="" — css/style.css 로');
   for (const m of html.matchAll(/(?:href|src)="(\/[^"]*)"/g)) if (!exists(m[1])) bad(name, `없는 주소 ${m[1]}`);
   // 생년월일 입력이 폼 전송으로 주소창에 실리지 않게 — 입력란에 name 을 두지 않는다

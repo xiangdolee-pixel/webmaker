@@ -13,7 +13,7 @@ import { WorkerEntrypoint } from 'cloudflare:workers';
 import { fail, whoAmI, now, createSession, html, verOf } from './lib.js';
 import { adminApi } from './admin-api.js';
 import { publicApi, publicPage, menuAccess } from './public.js';
-import { serveFile, serveRobots, serveSitemap, serveRss, headData } from './site-meta.js';
+import { serveFile, serveRobots, serveSitemap, serveRss, serveAdsTxt, headData } from './site-meta.js';
 import { livePopups } from './popups.js';
 import { uploadApi, serveUpload, avatarOf } from './uploads.js';
 import { embedCss } from './css-scope.js';
@@ -70,6 +70,7 @@ export class Cms extends WorkerEntrypoint {
       if (um) return await serveUpload(env, site, um[1], url.searchParams.get('dl') === '1', request);
       if (p === '/xms/css/embed.css') return new Response(await embedCss(env), { headers: { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': url.searchParams.has('v') ? 'public, max-age=31536000, immutable' : 'public, max-age=60' } });
       if (p === '/robots.txt') return await serveRobots(env, site, url.origin);
+      if (p === '/ads.txt') return await serveAdsTxt(env, site);
       if (p === '/sitemap.xml') return await serveSitemap(env, site, url.origin);
       if (p === '/rss.xml') return await serveRss(env, site, url.origin);
       // 관리자 화면 = /xms/ (예전 주소 /admin/ 은 넘긴다)

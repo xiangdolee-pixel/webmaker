@@ -13,16 +13,16 @@ export async function getSeo(db, site) {
   const r = await db.prepare('SELECT * FROM site_seo WHERE site = ?').bind(site).first();
   return {
     title: r?.title || '', description: r?.description || '', verify: JSON.parse(r?.verify || '{}'),
-    robots: r?.robots || '', share_description: r?.share_description || '', updated_at: r?.updated_at || 0,
+    robots: r?.robots || '', share_description: r?.share_description || '', adsense: r?.adsense || '', updated_at: r?.updated_at || 0,
   };
 }
 async function saveSeo(db, site, patch) {
   const cur = await getSeo(db, site);
   const n = { ...cur, ...patch };
-  await db.prepare(`INSERT INTO site_seo (site, title, description, verify, robots, share_description, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+  await db.prepare(`INSERT INTO site_seo (site, title, description, verify, robots, share_description, adsense, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(site) DO UPDATE SET title = excluded.title, description = excluded.description, verify = excluded.verify,
-    robots = excluded.robots, share_description = excluded.share_description, updated_at = excluded.updated_at`)
-    .bind(site, n.title, n.description, JSON.stringify(n.verify), n.robots, n.share_description, now()).run();
+    robots = excluded.robots, share_description = excluded.share_description, adsense = excluded.adsense, updated_at = excluded.updated_at`)
+    .bind(site, n.title, n.description, JSON.stringify(n.verify), n.robots, n.share_description, n.adsense, now()).run();
 }
 const fileInfo = async (db, site) => {
   const { results } = await db.prepare('SELECT kind, updated_at, length(data) AS len FROM site_files WHERE site = ?').bind(site).all();
@@ -38,6 +38,15 @@ function verifyValue(raw) {
   if (v && !/^[A-Za-z0-9_\-=.:+/]{4,200}$/.test(v)) throw bad('소유권 확인 값에 쓸 수 없는 글자가 있습니다. 검색엔진이 준 태그나 값을 그대로 붙여 넣어 주세요.');
   return v;
 }
+// 구글 애드센스: 코드 · ads.txt 줄 · ID 무엇을 붙여 넣어도 게시자 ID(ca-pub-숫자)만 꺼낸다. 비우면 광고를 뺀다
+export function adsenseValue(raw) {
+  const v = str(raw, 2000).trim();
+  if (!v) return '';
+  const m = v.match(/(?:ca-)?pub-(\d{10,20})/);
+  if (!m) throw bad('애드센스 게시자 ID 를 찾지 못했습니다. 애드센스가 준 코드를 통째로 붙여 넣거나 ca-pub- 로 시작하는 값을 넣어 주세요.');
+  return `ca-pub-${m[1]}`;
+}
+
 // data:image/…;base64,… → { mime, b64 }
 function dataUrl(v, mimes, maxBytes, label) {
   const m = String(v || '').match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
@@ -96,7 +105,7 @@ export async function settingsApi(ctx, path, method) {
     const raw = await body(request);
     const verify = {};
     for (const k of Object.keys(ENGINES)) { const v = verifyValue(raw.verify?.[k]); if (v) verify[k] = v; }
-    await saveSeo(db, site, { title: str(raw.title, 70), description: str(raw.description, 300), verify });
+    await saveSeo(db, site, { title: str(raw.title, 70), description: str(raw.description, 300), verify, adsense: adsenseValue(raw.adsense) });
     await audit(db, site, me, request, 'SEO_UPDATE', '검색엔진');
     return json({ ok: true });
   }
@@ -140,6 +149,13 @@ export async function serveFile(env, site, kind) {
   if (!f) throw notFound();
   const bin = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0));
   return new Response(bin, { headers: { 'Content-Type': f.mime, 'Cache-Control': 'public, max-age=300', ETag: `"${f.updated_at}"` } });
+}
+
+// ads.txt: 애드센스 게시자 ID 가 있을 때만 (구글 인증 판매자 한 줄)
+export async function serveAdsTxt(env, site) {
+  const { adsense } = await getSeo(env.DB, site);
+  if (!adsense) throw notFound();
+  return new Response(`google.com, ${adsense.replace(/^ca-/, '')}, DIRECT, f08c47fec0942fa0\n`, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
 }
 
 export async function serveRobots(env, site, origin) {
@@ -190,6 +206,7 @@ export async function headData(env, site) {
     verify: Object.entries(seo.verify).map(([k, v]) => ({ name: ENGINES[k]?.meta, content: v })).filter((x) => x.name),
     favicon: fv ? FAV_SIZES.map((n) => ({ size: n, href: `/xms/file/favicon-${n}.png?v=${fv}` })) : null,
     og_image: files.og ? `/xms/file/og?v=${files.og.updated_at}` : null,
+    adsense: seo.adsense,
   };
 }
 

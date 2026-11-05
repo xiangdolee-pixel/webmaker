@@ -1142,6 +1142,11 @@ async function seoPage(qs) {
           <input class="input" name="v_${k}" value="${esc(d.verify[k] || '')}" placeholder='&lt;meta name="…" content="여기 값" /&gt;' autocomplete="off">
           <small><a href="${href}" target="_blank" rel="noopener">${name}</a> › ${where}에서 받습니다.</small></label>`).join('')}
       </section>
+      <section class="panel pad"><h2>구글 애드센스 <small class="meta">광고 코드와 ads.txt 를 사이트에 자동으로 넣습니다</small></h2>
+        <label class="field"><span>게시자 ID</span>
+          <input class="input" name="adsense" value="${esc(d.adsense || '')}" placeholder="ca-pub-0000000000000000 — 애드센스가 준 코드를 통째로 붙여 넣어도 됩니다" autocomplete="off">
+          <small><a href="https://adsense.google.com" target="_blank" rel="noopener">구글 애드센스</a> › 사이트 › 사이트 추가에서 받은 코드를 그대로 붙여 넣으면 저장할 때 ID 만 꺼냅니다. 저장하면 <b>모든 페이지 머리에 광고 코드</b>가 들어가고(없는 주소 화면 제외), <a href="/ads.txt" target="_blank" rel="noopener">ads.txt</a> 도 자동으로 나옵니다. 비우고 저장하면 광고 코드가 빠집니다. 애드센스에는 최상위 도메인(예: plators.com)으로만 사이트를 등록할 수 있습니다.</small></label>
+      </section>
       ${saveBar('검색엔진 설정을 고치는 중입니다.', '')}
     </form>
     <section class="panel pad gap" data-sec="sitemap"><h2>등록할 주소 <small class="meta">구글 서치콘솔 · 네이버 서치어드바이저에 아래 주소를 넣습니다. 새 글과 새 메뉴는 저절로 들어가므로 <b>등록은 한 번뿐</b>입니다</small></h2>
@@ -1178,7 +1183,7 @@ async function seoPage(qs) {
     e.preventDefault();
     const f = formData(fr);
     busy(fr.querySelector('[type=submit]'), null, async () => {
-      await api('/settings/seo', { method: 'PUT', data: { title: f.title, description: f.description, verify: { naver: f.v_naver, google: f.v_google, bing: f.v_bing } } });
+      await api('/settings/seo', { method: 'PUT', data: { title: f.title, description: f.description, verify: { naver: f.v_naver, google: f.v_google, bing: f.v_bing }, adsense: f.adsense } });
       dirty = false; toast('검색엔진 설정을 저장했습니다.'); go('#/seo?tab=result');
     });
   });

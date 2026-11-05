@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS site_seo (
   verify            TEXT NOT NULL DEFAULT '{}',   -- { naver, google, bing } 소유권 확인 값
   robots            TEXT NOT NULL DEFAULT '',     -- 비우면 기본 robots.txt
   share_description TEXT NOT NULL DEFAULT '',     -- 비우면 description
+  adsense           TEXT NOT NULL DEFAULT '',     -- 구글 애드센스 게시자 ID (ca-pub-…) — 있으면 모든 페이지에 광고 코드 · /ads.txt
   updated_at        INTEGER NOT NULL DEFAULT 0
 );
 

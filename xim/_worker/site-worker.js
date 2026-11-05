@@ -16,7 +16,7 @@
 
 const STATUS_TTL = 30000;
 let statusCache = { at: 0, value: 'active' };
-const XMS_PATHS = /^\/(admin|xms|xms-api|member|board)(\/|$)|^\/(robots\.txt|sitemap\.xml|rss\.xml)$/;
+const XMS_PATHS = /^\/(admin|xms|xms-api|member|board)(\/|$)|^\/(robots\.txt|sitemap\.xml|rss\.xml|ads\.txt)$/;
 
 // 정지 여부: 이 Worker 메모리(30초) → Cloudflare 가장자리 캐시(30초, 도메인 주소에서) → xim 순서로 묻는다
 async function siteStatus(env, request) {
@@ -317,6 +317,10 @@ async function withXms(res, request, env, data) {
       .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', h.title); } });
   }
   rw = rw.on('title', { text(t) { pageTitle += t.text; } });
+  // 구글 애드센스: xms 검색엔진 화면의 게시자 ID → 정상 페이지(200)에만 광고 코드 (페이지에 이미 있으면 두 번 넣지 않음)
+  const adClient = /^ca-pub-\d{10,20}$/.test(h.adsense || '') && res.status === 200 ? h.adsense : '';
+  let hasAd = false;
+  if (adClient) rw = rw.on('script[src*="adsbygoogle.js"]', { element() { hasAd = true; } });
   rw = rw.on('meta[property^="og:"]', {
     element(el) {
       const k = (el.getAttribute('property') || '').slice(3);
@@ -369,6 +373,7 @@ async function withXms(res, request, env, data) {
         if (!og.url) add.push(`<meta property="og:url" content="${attr(url.origin + url.pathname)}">`);
         if (!og.site_name && h.site_name) add.push(`<meta property="og:site_name" content="${attr(h.site_name)}">`);
         if (!ogDesc && !og.description && h.description) add.push(`<meta property="og:description" content="${attr(h.description)}">`);
+        if (adClient && !hasAd) add.push(`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${attr(adClient)}" crossorigin="anonymous"></script>`);
         if (add.length) end.before(add.join('\n'), { html: true });
       });
     },

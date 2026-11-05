@@ -167,9 +167,8 @@ test('인쇄 화면: 폼 · 머리 · 꼬리는 숨김', async ({ page }) => {
   await expect(page.locator('#result')).toBeVisible();
 });
 
-test('404 는 404 상태, ads.txt 있음', async ({ request }) => {
+test('404 는 404 상태', async ({ request }) => {
   expect((await request.get('/nope/')).status()).toBe(404);
-  expect(await (await request.get('/ads.txt')).text()).toContain('pub-9330691551438387, DIRECT');
 });
 
 test('일정마다 구글 캘린더 링크 (확인된 기한만)', async ({ page }) => {
