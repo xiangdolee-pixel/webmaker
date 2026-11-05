@@ -70,9 +70,9 @@ textarea.input { min-height: 120px; resize: vertical; }
 .err { min-height: 22px; margin: 8px 0 0; color: var(--danger); font-size: 14px; }
 
 /* ── 틀: 왼쪽 메뉴 + 본문 ── */
-.shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); min-height: 100vh; }
 .shell[hidden] { display: none; }
-.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 16px; padding: 18px 12px; border-right: 1px solid var(--line); background: rgba(243, 244, 247, .9); }
+.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 16px; padding: 18px 10px; border-right: 1px solid var(--line); background: rgba(243, 244, 247, .9); }
 .side .brand { padding: 2px 12px; font-size: 26px; }
 .side-out { margin-top: auto; align-self: flex-start; }
 .tabs.side-nav { flex-direction: column; padding: 0; border-radius: 12px; background: none; overflow: visible; }
