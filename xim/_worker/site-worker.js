@@ -373,6 +373,8 @@ async function withXms(res, request, env, data) {
         if (!og.url) add.push(`<meta property="og:url" content="${attr(url.origin + url.pathname)}">`);
         if (!og.site_name && h.site_name) add.push(`<meta property="og:site_name" content="${attr(h.site_name)}">`);
         if (!ogDesc && !og.description && h.description) add.push(`<meta property="og:description" content="${attr(h.description)}">`);
+        // 애드센스 소유권 확인은 코드 · 메타 태그 · ads.txt 셋 중 무엇으로 보든 맞게 둘 다 넣는다
+        if (adClient) add.push(`<meta name="google-adsense-account" content="${attr(adClient)}">`);
         if (adClient && !hasAd) add.push(`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${attr(adClient)}" crossorigin="anonymous"></script>`);
         if (add.length) end.before(add.join('\n'), { html: true });
       });
