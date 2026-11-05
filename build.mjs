@@ -262,6 +262,19 @@ if (CONNECT) {
     || 'index.html';
   const shell = /^index\.html?$/i.test(shellFile) ? '/' : `/${shellFile.replace(/\.html?$/i, '')}`;
   config.vars = { XIM_SITE: name, XIM_SHELL: shell };
+  // 옛 주소 영구 이동: 폴더의 .xim-redirect (한 줄에 "옛호스트 새호스트", 웹에 안 올라감) → 공통 사이트 Worker 가 301
+  const redirectFile = path.join(SRC, '.xim-redirect');
+  if (fs.existsSync(redirectFile)) {
+    const map = {};
+    for (const line of fs.readFileSync(redirectFile, 'utf8').split(/\r?\n/)) {
+      const [from, to] = line.replace(/#.*/, '').trim().split(/\s+/);
+      if (from && to && /^[a-z0-9.-]+$/i.test(from) && /^[a-z0-9.-]+$/i.test(to)) map[from.toLowerCase()] = to.toLowerCase();
+    }
+    if (Object.keys(map).length) {
+      config.vars.XIM_REDIRECT = JSON.stringify(map);
+      console.log(`[build] 주소 이동: ${Object.entries(map).map(([a, b]) => `${a} → ${b}`).join(', ')}`);
+    }
+  }
   config.services = [
     { binding: 'XIM', service: 'xim', entrypoint: 'Engine' },
     { binding: 'XMS', service: 'xms', entrypoint: 'Cms' },

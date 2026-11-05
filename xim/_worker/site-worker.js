@@ -97,6 +97,12 @@ export default {
   async fetch(request, env, ctx) {
     const ip = request.headers.get('CF-Connecting-IP') || '';
     const url = new URL(request.url);
+    // 옛 주소 → 새 주소로 영구 이동 (폴더의 .xim-redirect, build.mjs 가 XIM_REDIRECT 로 넣음). 검색엔진 기록이 새 주소로 이어진다
+    if (env.XIM_REDIRECT) {
+      let to = '';
+      try { to = JSON.parse(env.XIM_REDIRECT)[url.hostname] || ''; } catch { /* 잘못된 값은 무시 */ }
+      if (to) return Response.redirect(`https://${to}${url.pathname}${url.search}`, 301);
+    }
     if (ip && env.XIM) {
       if (await isBlocked(env, request, ip)) return blockedPage();
       // 주소 부분은 공격 주소 목록으로, 물음표 뒤(검색어 등)는 경로 거슬러 오르기만 본다 (검색어 'abc.php' 같은 건 막지 않게)

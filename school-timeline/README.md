@@ -2,7 +2,7 @@
 
 생년월일로 초등학교 입학년도 · 지금 학년 · 초1~고3 학년도를 계산하고, 2027학년도 초등 취학 법정 일정 · 체크리스트 · 인쇄 · 일정 파일(.ics)을 제공하는 한국어 안내 사이트. 기획 원문은 `PRD.md`, 작업 지침은 `CLAUDE.md`.
 
-- 주소: https://school-timeline.xiangdolee.workers.dev (사용자 도메인 연결 전)
+- 주소: https://plators.com (2026-11-06 부터. 옛 주소 school-timeline.plators.com 은 `.xim-redirect` 로 301 이동)
 - xim · xms 연결 사이트 (공통 사이트 Worker · 로그인 버튼 · 메뉴 · robots · sitemap)
 
 ## 구조
