@@ -664,6 +664,15 @@ main{
 .cfm-msg{font-family:var(--ui);font-size:15px;line-height:1.65;text-align:center;
   white-space:pre-line;color:var(--panel-ink);margin-bottom:18px}
 .cfm-btns{display:flex;gap:10px}
+/* 올리브 담기 별 개수(1~3) */
+.cfm-stars{display:flex;justify-content:center;gap:6px;margin:-6px 0 18px}
+.cfm-stars[hidden]{display:none}
+.cfm-stars button{width:52px;height:52px;font-size:34px;line-height:1;color:#d6d2c8;border-radius:12px;transition:color .15s,transform .15s}
+.cfm-stars button.on{color:#e0a020}
+.cfm-stars button:active{transform:scale(.9)}
+@media (prefers-reduced-motion:reduce){.cfm-stars button{transition:none}}
+.cfm-btns.stack{flex-direction:column}   /* 복사 · 올리브 담기 — 위아래로 */
+.cfm-btns.stack button{flex:none}
 .cfm-btns button{flex:1;height:46px;border-radius:12px;font-family:var(--ui);font-size:15px;font-weight:600}
 .cfm-cancel{border:1px solid var(--gilt-soft);background:#fff;color:var(--panel-ink)}
 .cfm-cancel:active{background:#ececf0}
@@ -842,7 +851,8 @@ main{
 <div class="cfm-scrim" id="cfmScrim">
   <div class="cfm-box" role="alertdialog" aria-modal="true" aria-labelledby="cfmMsg">
     <div class="cfm-msg" id="cfmMsg"></div>
-    <div class="cfm-btns">
+    <div class="cfm-stars" id="cfmStars" hidden><button data-s="1" aria-label="별 1개">★</button><button data-s="2" aria-label="별 2개">★</button><button data-s="3" aria-label="별 3개">★</button></div>
+    <div class="cfm-btns" id="cfmBtns">
       <button class="cfm-cancel" id="cfmCancel">취소</button>
       <button class="cfm-ok" id="cfmOk">확인</button>
     </div>
@@ -1376,19 +1386,23 @@ function openOlive(path){
 async function clipMenu(c){
   if(!c)return;
   const pick=await askConfirm(c.ref?c.ref+" 구절을":"이 구절을",{
-    cancelText:"복사",okText:"올리브 담기",okClass:"pos",dismiss:null,
+    cancelText:"복사",okText:"올리브 담기",okClass:"pos",stack:true,dismiss:null,
     onPick:v=>{if(v===false)copyClip(c).then(copyDone);}   // 누른 그 입력 안에서 바로 복사
   });
-  if(pick===true)addOlive(c);
+  if(pick!==true)return;
+  let st=+store.get("oliveStars")||1;   // 지난번에 고른 별 개수부터
+  if(!await askConfirm("별을 몇 개 줄까요?",{stars:Math.min(3,Math.max(1,st)),cancelText:"취소",okText:"담기",okClass:"pos"}))return;
+  st=cfmStarVal;store.set("oliveStars",String(st));
+  addOlive(c,st);
 }
 let oliveBusy=false;
-async function addOlive(c){
+async function addOlive(c,stars){
   if(oliveBusy)return;
   oliveBusy=true;
   let r=null;
   try{
     r=await fetch(OLIVE+"/api/items",{method:"POST",credentials:"include",
-      headers:{"Content-Type":"application/json"},body:JSON.stringify({text:c.t,source:c.ref,stars:1})});
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({text:c.t,source:c.ref,stars:stars||1})});
   }catch(e){r=null}
   oliveBusy=false;
   if(r&&r.status===401){
@@ -1994,7 +2008,7 @@ function qtClip(i){
   const refs=qtVerseRefs(),r1=refs&&refs[a],r2=refs&&refs[b];
   let ref=bibleRefText(r1);
   if(r1&&r2&&(r2.chap!==r1.chap||r2.v!==r1.v))ref+="-"+(r2.chap!==r1.chap?r2.chap+":":"")+r2.v;
-  return {t,ref,head:planDayLine(r1&&{book:r1.book,chap:r1.chap,v:r1.v})};
+  return {t,ref,head:""};   // 큐티 복사엔 'N일차 읽었습니다' 줄을 넣지 않는다(사용자 지시 2026-11-05)
 }
 let qtReturnPage=0;   // 큐티 들어오기 직전에 읽던 쪽 — 뒤로가기로 복귀할 때 사용(책·장은 cur가 그대로 유지)
 /* 큐티에서 뒤로가기 → 직전에 읽던 본문 그 쪽으로 */
@@ -2637,10 +2651,20 @@ $("resetReadsBtn").onclick=async()=>{
 };
 
 /* ── 확인창 (네이티브 confirm 대체 — 도메인 안 보임) ── */
+let cfmStarVal=1;
 function askConfirm(msg,opt){
   const noBackdrop=opt&&opt.noBackdropClose;   // 바깥 탭으로 안 닫히게(연타가 배경에 꽂혀 닫히는 것 방지)
   $("cfmCancel").textContent=(opt&&opt.cancelText)||"취소";   // 질문 성격에 따라 '취소' 대신 '아니오' 등
   $("cfmOk").textContent=(opt&&opt.okText)||"확인";
+  const starBox=$("cfmStars");   // opt.stars 가 있으면 별 1~3 고르기(고른 값은 cfmStarVal)
+  starBox.hidden=!(opt&&opt.stars);
+  if(opt&&opt.stars){
+    cfmStarVal=opt.stars;
+    const paint=()=>starBox.querySelectorAll("button").forEach(b=>b.classList.toggle("on",+b.dataset.s<=cfmStarVal));
+    paint();
+    starBox.onclick=e=>{const b=e.target.closest("button");if(b){cfmStarVal=+b.dataset.s;paint();}};
+  }
+  $("cfmBtns").classList.toggle("stack",!!(opt&&opt.stack));   // 버튼을 위아래로
   $("cfmOk").classList.toggle("pos",!!(opt&&opt.okClass==="pos"));   // 지우기 같은 위험 확인(붉은색)이 아닌 선택
   const dismiss=opt&&"dismiss" in opt?opt.dismiss:false;   // 바깥을 눌러 닫을 때 돌려줄 값
   const onPick=opt&&opt.onPick;   // 누른 그 입력 안에서 바로 해야 하는 일(복사 · 새 창) — 약속(then)으로 미루면 막히는 기기가 있다
