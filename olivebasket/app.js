@@ -30,7 +30,7 @@ async function loadItems() {
   const [ri, rs] = await Promise.all([fetch('/api/items', opt), fetch('/api/settings', opt)]);
   if (ri.status === 401) {
     token = ''; items = [];
-    try { localStorage.removeItem('ob_authed'); localStorage.removeItem('ob_items'); } catch {}
+    try { localStorage.removeItem('ob_authed'); localStorage.removeItem('ob_items'); localStorage.removeItem('ob_basket'); } catch {}
     return;
   }
   if (!ri.ok) throw new Error('items ' + ri.status);

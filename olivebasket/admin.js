@@ -21,13 +21,13 @@ async function api(method, url, body) {
 
 // 로그인 화면으로 (사이트 회원 로그인 — 로그인하면 이 화면으로 돌아온다)
 function toLogin() {
-  try { localStorage.removeItem('ob_authed'); } catch {}
+  try { localStorage.removeItem('ob_authed'); localStorage.removeItem('ob_basket'); } catch {}
   location.href = '/member/login?next=/basket';
 }
 
 async function logout() {
   try { await fetch('/xms-api/logout', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {}
-  try { localStorage.removeItem('ob_authed'); } catch {}
+  try { localStorage.removeItem('ob_authed'); localStorage.removeItem('ob_basket'); } catch {}
   location.href = './';
 }
 
@@ -95,6 +95,7 @@ let page = 1;
 
 async function loadList() {
   try { items = await api('GET', '/api/items'); } catch { return; }
+  try { localStorage.setItem('ob_basket', JSON.stringify(items)); } catch {}
   renderList();
 }
 
@@ -203,14 +204,17 @@ document.querySelectorAll('#modePick button').forEach(b =>
     catch { showMode(prev); }
   }));
 
-// 시작: 목록을 받아 보며 로그인 확인 (안 돼 있으면 api 가 로그인 화면으로 보냄)
+// 시작: 기다리지 않고 바로 보여 준다 — 폼은 곧장, 목록은 지난번 받아 둔 것부터.
+//   로그인 확인 · 목록 · 보기 방식은 한꺼번에 받는다 (로그인이 안 돼 있으면 api 가 로그인 화면으로 보냄)
+try { const saved = JSON.parse(localStorage.getItem('ob_basket') || 'null'); if (Array.isArray(saved)) { items = saved; renderList(); } } catch {}
+try { if (localStorage.getItem('ob_authed')) setView(true); } catch {}
 api('GET', '/api/me').then(me => {
   if (!me.email) return toLogin();
   $('who').textContent = me.email;
   setView(true);
-  loadList();
-  loadMode();
 }).catch(() => {});
+loadList();
+loadMode();
 
 // iOS 사파리 핀치 확대 차단 (viewport user-scalable=no 를 무시함)
 ['gesturestart', 'gesturechange'].forEach(t =>
