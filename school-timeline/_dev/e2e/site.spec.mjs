@@ -111,7 +111,7 @@ test('모바일 메뉴: 열고 닫기, 넘침 없음', async ({ page, isMobile }
   await expect(nav).toBeHidden();
   await page.getByRole('button', { name: '메뉴 열기' }).click();
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole('link', { name: '2027 입학 준비' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: '초등 입학 준비' })).toBeVisible();
   await noHScroll(page);
   await page.keyboard.press('Escape');
   await expect(nav).toBeHidden();
@@ -130,10 +130,10 @@ test('320px 에서도 넘침 없음', async ({ page }) => {
   await noHScroll(page);
 });
 
-test('2027 입학 준비: 일정 파일에는 확인된 법정 기한만, 체크리스트', async ({ page }) => {
+test('초등 입학 준비: 일정 파일에는 확인된 법정 기한만, 체크리스트', async ({ page }) => {
   await page.goto('/admission/2027/');
   await expect(page.locator('[data-item="district-notice"] .tag-check')).toHaveText('확인 필요');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /일정 파일/ }).click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /캘린더에 넣기/ }).click()]);
   const chunks = [];
   for await (const c of await dl.createReadStream()) chunks.push(c);
   const ics = Buffer.concat(chunks).toString('utf8');
@@ -166,4 +166,30 @@ test('인쇄 화면: 폼 · 머리 · 꼬리는 숨김', async ({ page }) => {
 
 test('404 는 404 상태', async ({ request }) => {
   expect((await request.get('/nope/')).status()).toBe(404);
+});
+
+test('일정마다 구글 캘린더 링크 (확인된 기한만)', async ({ page }) => {
+  await page.goto('/admission/2027/');
+  await expect(page.locator('.sched-add a')).toHaveCount(6);
+  await expect(page.locator('[data-item="district-notice"] .sched-add')).toHaveCount(0);
+  const href = await page.locator('[data-item="notice"] .sched-add a').getAttribute('href');
+  expect(href).toContain('dates=20261220%2F20261221');
+});
+
+test('해가 바뀌면: 학년표는 그 학년도로, 2027 안내는 지난 일정 알림', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2027-03-05T10:00:00+09:00'));
+  await page.goto('/');
+  await expect(page.locator('[data-grade-title]')).toHaveText('2027학년도 학년표');
+  await expect(page.locator('[data-grade-table] tbody tr').nth(1)).toContainText('2020년생');
+  await expect(page.locator('[data-grade-table] tbody tr').nth(1)).toContainText('초등학교 1학년');
+  await page.goto('/admission/2027/');
+  await expect(page.locator('[data-past-notice]')).toBeVisible();
+});
+
+test('지금 날짜(2026-11)에는 알림 없음', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-06T10:00:00+09:00'));
+  await page.goto('/admission/2027/');
+  await expect(page.locator('[data-past-notice]')).toBeHidden();
+  await page.goto('/');
+  await expect(page.locator('[data-grade-title]')).toHaveText('2026학년도 학년표');
 });

@@ -17,7 +17,8 @@ css/style.css              사이트 전체 CSS 하나
 js/school-year.js          계산 엔진 (순수 함수, 화면 · 네트워크와 무관)
 js/admission-2027.js       2027 일정 데이터 (날짜 · 법정기한/참고 · 확인 상태 · 출처 · 확인일)
 js/calendar-export.js      .ics 만들기
-js/app.js                  화면 동작 (계산기 · 알약 고르기 · 체크리스트 · 인쇄 · 공유)
+js/app.js                  화면 동작 (계산기 · 반원 진행 그래프 · 알약 고르기 · 체크리스트 · 인쇄 · 공유 · 캘린더 추가 · 학년표 자동 갱신)
+img/hero-school.svg        학교 그림 (직접 그린 SVG)
 fonts/st-sans.woff2        Pretendard(OFL)에서 사이트 글자만 남기고 이름을 바꾼 글꼴 (fonts/OFL.txt)
 img/                       아이콘 · 공유 그림(og-default.png)
 _dev/                      테스트 · 점검 · 글꼴/아이콘 도구 (웹에 올라가지 않음)
@@ -80,6 +81,7 @@ build.mjs 가 이 폴더만 모아(`.md` · `package.json` · `_dev/` · `node_m
 - **확인 필요 항목**: 시행령 제16조(11월 30일 입학기일 · 통학구역 통보)는 원문을 아직 확인하지 못했다 → 확인하면 `status: 'verified'`, `verifiedAt` 을 넣는다(그러면 .ics 에도 들어감).
 - **예비소집일 · 배정 학교 · 정부24 온라인 발급일**: 공식 공지를 확인하기 전에는 날짜를 넣지 않는다.
 - **2028학년도**: 법령 · 공지를 새로 확인한 뒤 `admission/2028/` 과 `js/admission-2028.js` 를 손으로 만든다. 연도 숫자만 바꿔 복제하지 않는다.
-- **첫 화면 학년표**는 '2026학년도' 기준이다. 2027. 3. 1. 이 지나면 2027학년도 표로 바꾼다.
+- **첫 화면 학년표**: html 에는 2026학년도 표가 들어 있고, 브라우저가 오늘이 속한 학년도로 다시 그린다(js/app.js initGradeTable). 해가 바뀌면 검색엔진용 html 도 그 학년도로 고쳐 두면 좋다.
+- **2027 입학 준비 페이지**: 2027. 3. 1. 이 지나면 위에 '지난 일정' 알림이 자동으로 뜬다(initPastNotice). 메뉴 이름은 연도 없는 '초등 입학 준비'(xms 메뉴) — 2028 페이지를 만들면 xms 에서 메뉴 주소만 /admission/2028/ 로 바꾼다. **2028 페이지는 2027년 9~10월(10/1 취학아동명부 조사 전)에 법령을 다시 확인하고 만든다.**
 - **글이 바뀌어 새 글자가 생기면** 글꼴을 다시 만든다: `pip install fonttools brotli` → `node _dev/subset-font.mjs <PretendardVariable.woff2> [python]` (원본: npm `pretendard@1.3.9` `dist/web/variable/woff2/`).
 - 아이콘 · 공유 그림: `node _dev/make-icons.mjs`.

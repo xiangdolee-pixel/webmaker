@@ -1,8 +1,8 @@
 // @ts-check
 // 스쿨타임라인 화면 동작 — 생년월일은 이 브라우저 안에서만 계산한다(서버 · 주소창 · 분석 도구로 보내지 않음).
-import { calculate, normalizeDateInput, todayInSeoul, STAGE_NAME, STAGE_SHORT, MODE_NAME } from './school-year.js';
+import { calculate, normalizeDateInput, todayInSeoul, parseYmd, academicYearOf, gradeIn, daysInMonth, STAGE_NAME, STAGE_SHORT, MODE_NAME } from './school-year.js';
 import { ITEMS, SOURCES } from './admission-2027.js';
-import { buildIcs, icsStamp } from './calendar-export.js';
+import { buildIcs, icsStamp, nextDay } from './calendar-export.js';
 
 const $ = (/** @type {string} */ s, /** @type {ParentNode} */ root = document) => /** @type {HTMLElement | null} */ (root.querySelector(s));
 const $$ = (/** @type {string} */ s, /** @type {ParentNode} */ root = document) => /** @type {HTMLElement[]} */ ([...root.querySelectorAll(s)]);
@@ -96,12 +96,24 @@ function resultHtml(r) {
     '실제 입학식 · 졸업식 날짜는 학교마다 달라요.',
     ...r.notes,
   ];
+  // 12년 중 어디쯤인지 반원 그래프 (입학 전 0%, 고3 100%)
+  const pct = Math.round(Math.min(Math.max((curIdx + 1) / 12, 0), 1) * 100);
+  const short = r.status.stage === 'before' ? '입학 전' : r.status.stage === 'graduated' ? '졸업 후' : `${STAGE_SHORT[r.status.stage]}${r.status.grade}`;
+  const LEN = 270.2;
   return `
     <div class="result-head">
-      <p class="result-from">${r.birthYear}년생</p>
-      <p class="result-big"><b>${r.entryYear}년 3월</b> 초등학교 입학</p>
-      <span class="tag">${esc(basisTag)}</span>
-      ${diff}
+      <div class="arc" aria-hidden="true">
+        <svg viewBox="0 0 200 112"><path d="M14 100A86 86 0 0 1 186 100" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="16" stroke-linecap="round"/>
+        <path class="arc-fill" d="M14 100A86 86 0 0 1 186 100" fill="none" stroke="#ffd25a" stroke-width="16" stroke-linecap="round" stroke-dasharray="${LEN}" stroke-dashoffset="${LEN}" data-off="${(LEN * (1 - pct / 100)).toFixed(1)}"/></svg>
+        <span class="arc-pct">${pct}%</span>
+        <span class="arc-label">${esc(short)}</span>
+      </div>
+      <div>
+        <p class="result-from">${r.birthYear}년생</p>
+        <p class="result-big"><b>${r.entryYear}년 3월</b> 초등학교 입학</p>
+        <span class="tag">${esc(basisTag)}</span>
+        ${diff}
+      </div>
     </div>
     <div class="card">
       <div class="now">
@@ -185,6 +197,8 @@ function initCalc(form) {
     result.classList.remove('show');
     void result.offsetWidth;
     result.classList.add('show');
+    const fill = /** @type {SVGPathElement | null} */ (result.querySelector('.arc-fill'));
+    if (fill) requestAnimationFrame(() => requestAnimationFrame(() => fill.setAttribute('stroke-dashoffset', fill.dataset.off || '0')));
     status.textContent = `${r.birthYear}년생, ${r.entryYear}년 초등학교 입학. ${r.status.academicYear}학년도 기준 ${r.status.label}. 중학교 ${r.milestones.middle}년, 고등학교 ${r.milestones.high}년 진학.`;
     const top = result.getBoundingClientRect().top;
     if (top > window.innerHeight * 0.7 || top < 0) result.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
@@ -242,6 +256,61 @@ function initIcs() {
   });
 }
 
+/** 일정마다 '구글 캘린더에 추가' — 확인된 법정 기한만, 개인 정보 없음 */
+function initGcal() {
+  const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg>';
+  for (const it of ITEMS) {
+    const li = $(`[data-item="${it.id}"]`);
+    if (!li || it.status !== 'verified' || !it.start || !it.end) continue;
+    const end = nextDay(it.end);
+    const q = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: `[2027 취학] ${it.title}`,
+      dates: `${it.start.replace(/-/g, '')}/${end}`,
+      details: `${it.note}\n법령상 기한이며 실제 관공서 · 학교 일정과 다를 수 있습니다.`,
+      ctz: 'Asia/Seoul',
+    });
+    li.insertAdjacentHTML('beforeend', `<p class="sched-add no-print"><a href="https://calendar.google.com/calendar/render?${q}" target="_blank" rel="noopener">${ICON}구글 캘린더에 추가</a></p>`);
+  }
+}
+
+/** 입학일이 지나면 안내 — 다음 학년도 안내는 법령을 다시 확인한 뒤 따로 만든다 */
+function initPastNotice() {
+  const el = $('[data-past-notice]');
+  if (!el) return;
+  const entry = ITEMS.find((it) => it.id === 'entry');
+  if (!entry?.start || todayInSeoul() < entry.start) return;
+  el.textContent = '2027학년도 입학 일정은 끝났어요. 다음 학년도 안내는 법령과 공식 공지를 다시 확인한 뒤 올릴게요. 지금 학년은 학년 계산기에서 확인하세요.';
+  el.hidden = false;
+}
+
+/** 첫 화면 학년표: 오늘이 속한 학년도로 다시 그린다 (html 에는 만든 때의 학년도가 들어 있음) */
+function initGradeTable() {
+  const table = $('[data-grade-table]');
+  if (!table) return;
+  const today = /** @type {import('./school-year.js').Ymd} */ (parseYmd(todayInSeoul()));
+  const ay = academicYearOf(today);
+  const title = $('[data-grade-title]');
+  if (!title || title.textContent?.startsWith(`${ay}학년도`)) return;
+  title.textContent = `${ay}학년도 학년표`;
+  const range = $('[data-grade-range]');
+  if (range) range.textContent = `${ay}. 3. 1. ~ ${ay + 1}. 2. ${daysInMonth(ay + 1, 2)}. 기준 · 정상 입학(출생연도 + 7년에 초등 입학)을 가정했어요.`;
+  const cls = { elementary: 'e', middle: 'm', high: 'h' };
+  const rows = [];
+  for (let by = ay - 6; by >= ay - 18; by--) {
+    const entryYear = by + 7;
+    const st = gradeIn(entryYear, ay);
+    const start = st.stage !== 'before' && st.grade === 1 ? ' class="stage-start"' : '';
+    const dot = st.stage === 'before' || st.stage === 'graduated' ? '' : `<span class="dot ${cls[st.stage]}" aria-hidden="true"></span>`;
+    const label = st.stage === 'before' ? `초등학교 입학 전 (${entryYear}년 입학)` : st.label;
+    rows.push(`<tr${start}><th scope="row">${dot}${by}년생</th><td>${label}</td><td class="n">${entryYear}</td></tr>`);
+  }
+  const body = table.querySelector('tbody');
+  if (body) body.innerHTML = rows.join('');
+  const cap = table.querySelector('caption');
+  if (cap) cap.textContent = `${ay}학년도 출생연도별 학년`;
+}
+
 function initShare() {
   for (const btn of $$('[data-share]')) {
     btn.addEventListener('click', async () => {
@@ -270,4 +339,7 @@ if (calcForm) initCalc(calcForm);
 initChecklist();
 markPast();
 initIcs();
+initGcal();
+initPastNotice();
+initGradeTable();
 initShare();

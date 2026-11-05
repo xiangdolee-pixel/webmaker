@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280" role="img" aria-label="구름 아래 학교 건물과 등굣길">
+  <defs>
+    <linearGradient id="hill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ad98a"/><stop offset="1" stop-color="#6cc06a"/></linearGradient>
+  </defs>
+  <!-- 해 -->
+  <circle cx="352" cy="58" r="26" fill="#ffd25a"/>
+  <circle cx="352" cy="58" r="36" fill="#ffd25a" opacity=".25"/>
+  <!-- 구름 -->
+  <g fill="#fff">
+    <path d="M40 92c0-12 10-20 21-20 6-11 22-14 32-6 10-2 20 6 20 16 8 1 13 7 13 13H40z" opacity=".95"/>
+    <path d="M262 46c0-9 8-15 16-15 5-8 17-10 24-4 8-1 15 5 15 12 6 1 10 5 10 10h-65z" opacity=".9"/>
+    <path d="M312 128c0-7 6-12 12-12 4-6 13-8 18-3 6-1 11 4 11 9 5 0 8 4 8 8h-49z" opacity=".85"/>
+  </g>
+  <!-- 언덕 -->
+  <ellipse cx="210" cy="238" rx="206" ry="38" fill="url(#hill)"/>
+  <!-- 나무 -->
+  <rect x="70" y="190" width="7" height="30" rx="3" fill="#a8784f"/>
+  <circle cx="73" cy="180" r="22" fill="#5fb85f"/>
+  <circle cx="62" cy="186" r="13" fill="#7cc77a"/>
+  <rect x="352" y="196" width="6" height="24" rx="3" fill="#a8784f"/>
+  <circle cx="355" cy="188" r="17" fill="#5fb85f"/>
+  <!-- 학교 -->
+  <g>
+    <rect x="126" y="132" width="170" height="86" rx="6" fill="#fff8ea"/>
+    <path d="M118 136l93-34 93 34z" fill="#ff8a3d"/>
+    <rect x="186" y="90" width="50" height="128" rx="5" fill="#fffdf6"/>
+    <path d="M180 94l31-26 31 26z" fill="#f2733a"/>
+    <circle cx="211" cy="112" r="12" fill="#fff" stroke="#14a8b8" stroke-width="4"/>
+    <path d="M211 105v8l5 3" stroke="#2d3f6b" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+    <!-- 깃발 -->
+    <path d="M211 68V42" stroke="#2d3f6b" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M212 43h20l-5 6 5 6h-20z" fill="#14a8b8"/>
+    <!-- 창문 -->
+    <g fill="#9fdcf0">
+      <rect x="140" y="150" width="20" height="18" rx="3"/><rect x="164" y="150" width="16" height="18" rx="3"/>
+      <rect x="242" y="150" width="16" height="18" rx="3"/><rect x="262" y="150" width="20" height="18" rx="3"/>
+      <rect x="140" y="180" width="20" height="18" rx="3"/><rect x="164" y="180" width="16" height="18" rx="3"/>
+      <rect x="242" y="180" width="16" height="18" rx="3"/><rect x="262" y="180" width="20" height="18" rx="3"/>
+      <rect x="198" y="136" width="26" height="16" rx="3"/>
+    </g>
+    <!-- 문 -->
+    <path d="M196 218v-40a15 15 0 0130 0v40z" fill="#14a8b8"/>
+    <path d="M211 178v40" stroke="#0e8c99" stroke-width="2"/>
+  </g>
+  <!-- 등굣길 -->
+  <path d="M211 218c-4 14-20 30-48 52 18 3 36 4 52 3 6-20 5-40-4-55z" fill="#f3e3c3"/>
+  <path d="M207 230c-3 9-10 18-22 28" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 9" fill="none"/>
+  <!-- 꽃 -->
+  <g><circle cx="110" cy="236" r="4" fill="#ff8a3d"/><circle cx="300" cy="232" r="4" fill="#ffd25a"/><circle cx="318" cy="244" r="3.5" fill="#ff8a3d"/><circle cx="96" cy="250" r="3.5" fill="#ffd25a"/></g>
+</svg>
