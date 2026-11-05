@@ -53,9 +53,16 @@ describe('PRD 9절 계산 사례', () => {
     expect(r.ok).toBe(false);
     expect(r.errors[0].field).toBe('birthDate');
   });
-  it('미래 출생일: 입력 오류, 계산하지 않음', () => {
-    expect(calc({ birthDate: '2026-11-06' }).ok).toBe(false);
-    expect(calc({ birthDate: '2026-11-05' }).ok).toBe(true); // 오늘 태어난 아이는 계산 가능
+  it('아직 태어나지 않은 아이(출산 예정일)도 계산, 10년 넘게 먼 날짜는 오류 (사용자 지시 2026-11-05: PRD 의 미래 출생일 금지를 바꿈)', () => {
+    const r = ok({ birthDate: '2027-04-10' });
+    expect(r.entryYear).toBe(2034);
+    expect(r.status.stage).toBe('before');
+    expect(r.notes.some((n) => n.includes('출산 예정일'))).toBe(true);
+    expect(ok({ birthDate: '2026-11-05' }).notes.some((n) => n.includes('출산 예정일'))).toBe(false); // 오늘은 미래 아님
+    expect(calc({ birthDate: '2036-12-31' }).ok).toBe(true);
+    const far = calc({ birthDate: '2037-01-01' });
+    expect(far.ok).toBe(false);
+    expect(far.errors[0].field).toBe('birthDate');
   });
 });
 

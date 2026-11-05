@@ -68,7 +68,7 @@ test('입학 방식 · 실제 입학년도 · 기준일', async ({ page }) => {
   await expect(page.locator('.result-head .tag')).toHaveText('실제 입학년도');
 });
 
-test('입력 오류: 없는 날짜 · 미래 날짜는 계산하지 않음', async ({ page }) => {
+test('입력 오류: 없는 날짜 · 너무 먼 날짜는 계산하지 않음', async ({ page }) => {
   await page.goto('/');
   for (const v of ['2020-02-30', '2099-01-01', '']) {
     await page.fill('#dob', v);
@@ -193,4 +193,14 @@ test('지금 날짜(2026-11)에는 알림 없음', async ({ page }) => {
   await expect(page.locator('[data-past-notice]')).toBeHidden();
   await page.goto('/');
   await expect(page.locator('[data-grade-title]')).toHaveText('2026학년도 학년표');
+});
+
+test('출산 예정일(아직 오지 않은 날짜)도 계산', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-06T10:00:00+09:00'));
+  await page.goto('/');
+  await page.fill('#dob', '2027-04-10');
+  await page.getByRole('button', { name: '계산하기' }).click();
+  await expect(page.locator('.result-big')).toContainText('2034년');
+  await expect(page.locator('.notes')).toContainText('출산 예정일');
+  await expect(page.locator('#dob-err')).toBeHidden();
 });

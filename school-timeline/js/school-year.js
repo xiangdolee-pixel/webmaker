@@ -44,6 +44,8 @@
 /** @typedef {{ ok: false, errors: { field: string, message: string }[] }} CalcFail */
 
 export const MIN_BIRTH = '1900-01-01';
+/** 출산 예정일도 받되, 오타를 막으려고 오늘부터 몇 년 뒤까지만 */
+export const MAX_FUTURE_YEARS = 10;
 /** 2009학년도(2002년생)부터 1~12월생이 같은 해에 입학 — 그 전에는 1·2월생이 한 해 먼저 입학했다 */
 export const CALENDAR_YEAR_RULE_FROM = 2002;
 
@@ -160,7 +162,8 @@ export function calculate(input) {
   if (!rawBirth) errors.push({ field: 'birthDate', message: '생년월일을 입력해 주세요.' });
   else if (!birth) errors.push({ field: 'birthDate', message: '없는 날짜이거나 형식이 맞지 않아요. 예) 2020-03-15' });
   else if (compareYmd(birth, /** @type {Ymd} */ (parseYmd(MIN_BIRTH))) < 0) errors.push({ field: 'birthDate', message: '1900년 1월 1일 이후 날짜만 계산할 수 있어요.' });
-  else if (compareYmd(birth, today) > 0) errors.push({ field: 'birthDate', message: '아직 오지 않은 날짜예요. 생년월일을 다시 확인해 주세요.' });
+  // 아직 태어나지 않은 아이(출산 예정일)도 계산한다 — 오타를 막으려고 10년 뒤까지만
+  else if (birth.y > today.y + MAX_FUTURE_YEARS) errors.push({ field: 'birthDate', message: `너무 먼 날짜예요. ${today.y + MAX_FUTURE_YEARS}년까지 넣을 수 있어요.` });
 
   const mode = input.mode ?? 'normal';
   if (!['normal', 'early', 'late'].includes(mode)) errors.push({ field: 'mode', message: '입학 방식을 다시 골라 주세요.' });
@@ -195,6 +198,7 @@ export function calculate(input) {
   const entryYear = actual ?? entryYearFor(birth.y, /** @type {EntryMode} */ (mode));
   const basis = actual !== null ? 'actual' : /** @type {EntryMode} */ (mode);
   const notes = [];
+  if (compareYmd(birth, today) > 0) notes.push('아직 오지 않은 날짜라 출산 예정일 기준으로 계산했어요. 태어난 해가 바뀌면 입학년도도 달라져요.');
   if (birth.y < CALENDAR_YEAR_RULE_FROM && birth.m <= 2 && actual === null) {
     notes.push('2001년 이전 1·2월생은 당시 기준에 따라 한 해 먼저 입학한 경우가 많아요. 실제 입학년도를 넣으면 더 정확해요.');
   }
