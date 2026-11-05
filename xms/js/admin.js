@@ -1143,9 +1143,9 @@ async function seoPage(qs) {
           <small><a href="${href}" target="_blank" rel="noopener">${name}</a> › ${where}에서 받습니다.</small></label>`).join('')}
       </section>
       <section class="panel pad"><h2>구글 애드센스 <small class="meta">광고 코드와 ads.txt 를 사이트에 자동으로 넣습니다</small></h2>
-        <label class="field"><span>게시자 ID</span>
-          <input class="input" name="adsense" value="${esc(d.adsense || '')}" placeholder="ca-pub-0000000000000000 — 애드센스가 준 코드를 통째로 붙여 넣어도 됩니다" autocomplete="off">
-          <small><a href="https://adsense.google.com" target="_blank" rel="noopener">구글 애드센스</a> › 사이트 › 사이트 추가에서 받은 코드를 그대로 붙여 넣으면 저장할 때 ID 만 꺼냅니다. 저장하면 <b>모든 페이지 머리에 광고 코드</b>가 들어가고(없는 주소 화면 제외), <a href="/ads.txt" target="_blank" rel="noopener">ads.txt</a> 도 자동으로 나옵니다. 비우고 저장하면 광고 코드가 빠집니다. 애드센스에는 최상위 도메인(예: plators.com)으로만 사이트를 등록할 수 있습니다.</small></label>
+        <label class="field"><span>애드센스 코드 스니펫</span>
+          <input class="input" name="adsense" value="${esc(d.adsense || '')}" placeholder="애드센스 › 사이트 › 소유권 확인의 &lt;script async src=…adsbygoogle.js?client=ca-pub-…&gt; 를 그대로 붙여 넣으세요" autocomplete="off">
+          <small><a href="https://adsense.google.com" target="_blank" rel="noopener">구글 애드센스</a> › 사이트 › 사이트 소유권 확인의 <b>애드센스 코드 스니펫</b>을 복사해 그대로 붙여 넣으세요(게시자 ID ca-pub-… 만 넣어도 됩니다). 저장하면 그 안의 게시자 ID 를 꺼내 씁니다. 저장하면 <b>모든 페이지 머리에 광고 코드</b>가 들어가고(없는 주소 화면 제외), <a href="/ads.txt" target="_blank" rel="noopener">ads.txt</a> 도 자동으로 나옵니다. 비우고 저장하면 광고 코드가 빠집니다. 애드센스에는 최상위 도메인(예: plators.com)으로만 사이트를 등록할 수 있습니다.</small></label>
       </section>
       ${saveBar('검색엔진 설정을 고치는 중입니다.', '')}
     </form>
