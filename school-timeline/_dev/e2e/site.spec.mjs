@@ -5,6 +5,8 @@ const noHScroll = async (page) => {
   const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
   expect(w[0], `가로 넘침 ${w}`).toBeLessThanOrEqual(w[1]);
 };
+// 테스트에서는 광고 스크립트를 받지 않는다 (밖으로 나가는 요청 없이 같은 결과)
+test.beforeEach(async ({ page }) => { await page.route(/googlesyndication|doubleclick|googleads/, (r) => r.abort()); });
 const calcBtn = (page) => page.getByRole('button', { name: '계산하기' });
 
 test('모든 페이지: 정적 본문 · 가로 스크롤 없음', async ({ page, request }) => {
@@ -165,8 +167,9 @@ test('인쇄 화면: 폼 · 머리 · 꼬리는 숨김', async ({ page }) => {
   await expect(page.locator('#result')).toBeVisible();
 });
 
-test('404 는 404 상태', async ({ request }) => {
+test('404 는 404 상태, ads.txt 있음', async ({ request }) => {
   expect((await request.get('/nope/')).status()).toBe(404);
+  expect(await (await request.get('/ads.txt')).text()).toContain('pub-9330691551438387, DIRECT');
 });
 
 test('일정마다 구글 캘린더 링크 (확인된 기한만)', async ({ page }) => {
