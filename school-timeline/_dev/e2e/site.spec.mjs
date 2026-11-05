@@ -28,7 +28,8 @@ test('계산: 2020-12-31 정상 → 2027 입학, 주소 · 네트워크에 생�
   await expect(result).toContainText('2027년 3월');
   await expect(result.locator('.miles')).toContainText('2033');
   await expect(result.locator('.miles')).toContainText('2036');
-  await expect(result.locator('tbody tr').last()).toContainText('2038학년도');
+  await expect(result.locator('.stage.h .grades li').last()).toContainText('2038학년도');
+  await expect(result.locator('.stage-end')).toContainText('2039');
   await expect(page.locator('#calc-status')).toContainText('2027년 초등학교 입학');
   await expect(page.locator('#dob')).toHaveValue('2020-12-31');
   expect(page.url()).not.toContain('?');

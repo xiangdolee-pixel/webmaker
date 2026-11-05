@@ -85,10 +85,27 @@ function resultHtml(r) {
       .map(({ row, i }) => `<span class="bar-cell${i < curIdx ? ' past' : ''}${i === curIdx ? ' cur' : ''}" title="${row.year}학년도 ${STAGE_NAME[st]} ${row.grade}학년">${row.grade}</span>`).join('');
     return `<div class="bar-stage ${cls[st]}"><b>${STAGE_NAME[st]}</b><div class="bar-cells">${cells}</div></div>`;
   }).join('');
-  const rows = r.timeline.map((row, i) => `<tr class="${i === curIdx ? 'cur' : ''}${i === 6 || i === 9 ? ' stage-start' : ''}">
-      <th scope="row"><span class="dot ${cls[row.stage]}" aria-hidden="true"></span>${STAGE_SHORT[row.stage]}${row.grade}</th>
-      <td class="n">${row.year}학년도${i === curIdx ? ' <span class="tag tag-ok">지금</span>' : ''}</td>
-      <td class="n period">${row.year}. 3. ~ ${row.year + 1}. 2.</td></tr>`).join('');
+  // 학교마다 카드 하나 — 학년이 징검다리처럼 이어진다
+  const ICONS = {
+    elementary: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+    middle: '<path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"/><path d="M4 20.5A2.5 2.5 0 016.5 18H20v3H6.5"/>',
+    high: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/><path d="M22 9v6"/>',
+  };
+  const stageCards = stages.map((st) => {
+    const list = r.timeline.map((row, i) => ({ row, i })).filter(({ row }) => row.stage === st);
+    const first = list[0].row.year;
+    const last = list[list.length - 1].row.year;
+    const items = list.map(({ row, i }) => `<li class="${i < curIdx ? 'past' : ''}${i === curIdx ? ' cur' : ''}">
+        <span class="g-dot">${row.grade}</span>
+        <div class="g-text"><b>${row.grade}학년 <span>${row.year}학년도</span></b><small>${row.year}. 3. ~ ${row.year + 1}. 2.</small></div>
+        ${i === curIdx ? '<em class="g-now">지금</em>' : ''}</li>`).join('');
+    const end = st === 'high' ? `<p class="stage-end">졸업 · 다음 진학 ${r.milestones.graduation}년</p>` : '';
+    return `<section class="stage ${cls[st]}">
+      <header><span class="stage-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[st]}</svg></span>
+        <div><b>${STAGE_NAME[st]}</b><small>${list.length}년 · ${first} ~ ${last}학년도</small></div></header>
+      <ol class="grades">${items}</ol>${end}
+    </section>`;
+  }).join('');
   const link2027 = r.entryYear === 2027
     ? '<a class="btn" href="/admission/2027/">2027 입학 준비 체크리스트</a>' : '';
   const notes = [
@@ -130,13 +147,7 @@ function resultHtml(r) {
     <div class="card">
       <h3>12년 한눈에 보기</h3>
       <div class="bar-wrap"><div class="bar" aria-hidden="true">${bar}</div></div>
-      <div class="table-scroll">
-        <table class="ytable">
-          <caption class="sr-only">학년별 학년도</caption>
-          <thead><tr><th scope="col">학년</th><th scope="col">학년도</th><th scope="col" class="period">기간</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
+      <div class="stages">${stageCards}</div>
     </div>
     <ul class="notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
     <div class="btn-row no-print">
