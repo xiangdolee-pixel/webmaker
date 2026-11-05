@@ -671,6 +671,13 @@ main{
 .cfm-stars button.on{color:#e0a020}
 .cfm-stars button:active{transform:scale(.9)}
 @media (prefers-reduced-motion:reduce){.cfm-stars button{transition:none}}
+/* 담는 중 — 버튼 없이 글자 + 도는 동그라미 */
+.cfm-box.busy .cfm-msg{margin-bottom:4px}
+.cfm-box.busy .cfm-msg::before{content:"";display:block;width:26px;height:26px;margin:0 auto 12px;
+  border:3px solid rgba(95,122,46,.22);border-top-color:#5f7a2e;border-radius:50%;animation:cfmSpin .8s linear infinite}
+@keyframes cfmSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.cfm-box.busy .cfm-msg::before{animation:none}}
+.cfm-btns[hidden]{display:none}
 .cfm-btns.stack{flex-direction:column}   /* 복사 · 올리브 담기 — 위아래로 */
 .cfm-btns.stack button{flex:none}
 .cfm-btns button{flex:1;height:46px;border-radius:12px;font-family:var(--ui);font-size:15px;font-weight:600}
@@ -849,7 +856,7 @@ main{
 </div>
 
 <div class="cfm-scrim" id="cfmScrim">
-  <div class="cfm-box" role="alertdialog" aria-modal="true" aria-labelledby="cfmMsg">
+  <div class="cfm-box" id="cfmBox" role="alertdialog" aria-modal="true" aria-labelledby="cfmMsg">
     <div class="cfm-msg" id="cfmMsg"></div>
     <div class="cfm-stars" id="cfmStars" hidden><button data-s="1" aria-label="별 1개">★</button><button data-s="2" aria-label="별 2개">★</button><button data-s="3" aria-label="별 3개">★</button></div>
     <div class="cfm-btns" id="cfmBtns">
@@ -1399,12 +1406,14 @@ let oliveBusy=false;
 async function addOlive(c,stars){
   if(oliveBusy)return;
   oliveBusy=true;
+  showBusy("올리브바스켓에 담는 중…");
   let r=null;
   try{
     r=await fetch(OLIVE+"/api/items",{method:"POST",credentials:"include",
       headers:{"Content-Type":"application/json"},body:JSON.stringify({text:c.t,source:c.ref,stars:stars||1})});
   }catch(e){r=null}
   oliveBusy=false;
+  hideBusy();
   if(r&&r.status===401){
     askConfirm("올리브바스켓에 로그인돼 있지 않습니다.\n이 기기에서 로그인한 뒤 다시 담아 주세요.",{
       cancelText:"닫기",okText:"로그인하기",okClass:"pos",onPick:v=>{if(v)openOlive("/member/login")}});
@@ -1413,7 +1422,7 @@ async function addOlive(c,stars){
   if(!r||!r.ok){toast("올리브바스켓에 담지 못했습니다");return;}
   toast("올리브바스켓에 담았습니다");
   askConfirm("성경을 계속 읽을까요,\n올리브바스켓으로 갈까요?",{
-    cancelText:"계속 읽기",okText:"올리브바스켓",okClass:"pos",onPick:v=>{if(v)openOlive("/basket")}});
+    cancelText:"계속 읽기",okText:"올리브바스켓",okClass:"pos",stack:true,onPick:v=>{if(v)openOlive("/basket")}});
 }
 
 /* 하단 메뉴를 좌우로 스와이프 → 버튼 순서 반전 (저장됨) */
@@ -2652,6 +2661,15 @@ $("resetReadsBtn").onclick=async()=>{
 
 /* ── 확인창 (네이티브 confirm 대체 — 도메인 안 보임) ── */
 let cfmStarVal=1;
+/* 기다리는 동안 같은 창에 '…하는 중' (버튼 없음, 바깥 눌러도 안 닫힘). 다음 askConfirm 이 그대로 이어받는다 */
+function showBusy(msg){
+  $("cfmMsg").textContent=msg;
+  $("cfmStars").hidden=true;$("cfmBtns").hidden=true;
+  $("cfmBox").classList.add("busy");
+  $("cfmScrim").onclick=null;
+  $("cfmScrim").classList.add("open");
+}
+function hideBusy(){$("cfmScrim").classList.remove("open");$("cfmBox").classList.remove("busy");$("cfmBtns").hidden=false;}
 function askConfirm(msg,opt){
   const noBackdrop=opt&&opt.noBackdropClose;   // 바깥 탭으로 안 닫히게(연타가 배경에 꽂혀 닫히는 것 방지)
   $("cfmCancel").textContent=(opt&&opt.cancelText)||"취소";   // 질문 성격에 따라 '취소' 대신 '아니오' 등
@@ -2664,6 +2682,7 @@ function askConfirm(msg,opt){
     paint();
     starBox.onclick=e=>{const b=e.target.closest("button");if(b){cfmStarVal=+b.dataset.s;paint();}};
   }
+  $("cfmBox").classList.remove("busy");$("cfmBtns").hidden=false;   // '담는 중' 창에서 이어질 때
   $("cfmBtns").classList.toggle("stack",!!(opt&&opt.stack));   // 버튼을 위아래로
   $("cfmOk").classList.toggle("pos",!!(opt&&opt.okClass==="pos"));   // 지우기 같은 위험 확인(붉은색)이 아닌 선택
   const dismiss=opt&&"dismiss" in opt?opt.dismiss:false;   // 바깥을 눌러 닫을 때 돌려줄 값
