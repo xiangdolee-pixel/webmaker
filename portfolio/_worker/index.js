@@ -6,7 +6,7 @@
 //     폰 · 카톡 같은 앱 안 브라우저는 리다이렉트 응답의 쿠키를 다음 요청에 못 싣는 일이 있어 안 열렸다).
 //     페이지 주소는 history.replaceState 로 원래 주소로 바꿔 두어 새로고침하면 GET → 다시 비밀번호.
 //     이미지 · 그 밖의 파일은 짧은 표(pf_ok, 10분)로 통과. 표는 비밀번호로 서명 → 비밀번호를 바꾸면 무효.
-//   카드의 사이트명 · 설명 · 이미지는 각 사이트 xms 설정을 읽어 채운다(5분 캐시):
+//   카드의 사이트명 · 설명 · 이미지는 각 사이트 xms 설정을 열 때마다 읽어 채운다:
 //     사이트명 = 검색엔진 제목, 설명 = 카톡 미리보기 설명, 이미지 = 카톡 미리보기 그림. 비어 있으면 index.html 에 적힌 그대로.
 //   그 밖(페이지 · /xms 관리 · /member)은 xim 공통 사이트 Worker 가 맡는다.
 import site from '../../xim/_worker/site-worker.js';
@@ -76,21 +76,14 @@ function lockPage(error, next) {
 // ── 각 사이트의 xms 설정 읽기 ──
 //   사이트 주소로 직접 가져오면 같은 계정 Worker 끼리는 Cloudflare 가 막는 곳이 있어(오류 1014, 올리브바스켓)
 //   xms 에 서비스 바인딩으로 바로 묻는다 — 사이트 Worker 가 html 머리를 채울 때 쓰는 그 값(/xms-api/site-head).
-const OG_TTL = 300;
-async function readSite(env, ctx, slug, origin) {
-  const key = new Request(`https://portfolio-og.cache/${encodeURIComponent(slug)}`);
-  const hit = await caches.default.match(key).catch(() => null);
-  if (hit) return hit.json();
-  let out = {};
+// 캐시하지 않는다 — xms 에서 고치면 다음 접속에 바로 보이게 (xms 쪽도 15초만 기억)
+async function readSite(env, slug, origin) {
   try {
     const r = await env.XMS.fetch(new Request(`${origin}/xms-api/site-head`, { headers: { 'X-Xim-Site': slug } }));
-    if (r.ok) {
-      const h = (await r.json()).head || {};
-      out = { name: h.title || '', desc: h.share_description || '', image: h.og_image ? new URL(h.og_image, origin).href : '' };
-      ctx.waitUntil(caches.default.put(key, new Response(JSON.stringify(out), { headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${OG_TTL}` } })).catch(() => {}));
-    }
-  } catch { /* 못 읽으면 index.html 에 적힌 그대로 */ }
-  return out;
+    if (!r.ok) return {};
+    const h = (await r.json()).head || {};
+    return { name: h.title || '', desc: h.share_description || '', image: h.og_image ? new URL(h.og_image, origin).href : '' };
+  } catch { return {}; } // 못 읽으면 index.html 에 적힌 그대로
 }
 // 카드 목록 = xim 에서 "포트폴리오" 를 켜 둔 사이트 (만든 차례).
 //   글 · 그림은 그 사이트 xms 값, 비어 있으면 index.html 에 미리 적어 둔 같은 사이트 카드(data-xim) 값, 그것도 없으면 xim 사이트 이름.
@@ -121,7 +114,7 @@ async function fillCards(res, env, ctx) {
   try { if (env.XIM) sites = await env.XIM.portfolio(); } catch { sites = null; }
   if (!sites || !env.XMS) return new Response(html, res);
   const st = staticCards(html);
-  const info = await Promise.all(sites.map((s) => readSite(env, ctx, s.slug, new URL(s.url).origin)));
+  const info = await Promise.all(sites.map((s) => readSite(env, s.slug, new URL(s.url).origin)));
   const list = sites.map((s, i) => cardHtml(s, info[i] || {}, st[s.slug] || {})).join('\n');
   return new HTMLRewriter()
     .on('ul.grid', { element(e) { e.setInnerContent(list || '<li class="none">아직 올린 사이트가 없습니다.</li>', { html: true }); } })
