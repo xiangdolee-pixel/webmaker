@@ -9,6 +9,7 @@ import { settingsApi } from './site-meta.js';
 import { usageOf } from './usage.js';
 import { popupsApi } from './popups.js';
 import { statsApi } from './visits.js';
+import { adminCourses, featureOn } from './courses.js';
 
 const PAGE = 20;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -48,7 +49,13 @@ export async function adminApi(ctx) {
       site: { slug: site, name: s?.name || site, domain: s?.domain || '', quota_mb: s?.quota_mb ?? 0, used_mb: Math.round((u.files / 1048576) * 10) / 10, status: s?.status },
       me: me.kind === 'staff' ? { staff: true, name: '운영자' } : { staff: false, name: me.member.name, login_id: me.member.login_id },
       levelNames,
+      features: { courses: await featureOn(db, site, 'courses') },
     });
+  }
+  // 강의 (기능을 켠 사이트만)
+  if (path.startsWith('/courses')) {
+    const r = await adminCourses(ctx, path, method);
+    if (r) return r;
   }
 
   if (path === '/usage' && method === 'GET') return json(await usageOf(env, site));

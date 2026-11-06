@@ -867,3 +867,35 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
 .crop-zoom input { flex: 1; accent-color: var(--brand); }
 .crop-acts { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .crop-cover { animation: none; } }
+
+/* ───────── 강의 관리 (강의 → 섹션 → 차시) ───────── */
+.c-thumb { display: inline-grid; place-items: center; width: 92px; height: 52px; border-radius: 8px; background: #7a0e0e; color: #fff; font-size: 12px; font-weight: 800; text-align: center; padding: 4px; line-height: 1.2; }
+.c-thumb.t-black { background: #16140f; }
+.c-thumb.t-split { background: linear-gradient(90deg, #7a0e0e 50%, #16140f 50%); }
+.c-sw { display: inline-block; width: 18px; height: 18px; border-radius: 5px; vertical-align: -4px; margin-right: 4px; background: #7a0e0e; }
+.c-sw.t-black { background: #16140f; }
+.c-sw.t-split { background: linear-gradient(90deg, #7a0e0e 50%, #16140f 50%); }
+.cs-list { display: grid; gap: 14px; margin: 14px 0; }
+.cs-box { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 12px; }
+.cs-box.dragging { box-shadow: 0 18px 40px -12px rgba(20, 26, 40, .35); background: var(--surface); }
+.cs-head { display: flex; align-items: center; gap: 8px; }
+.cs-head .cs-t { flex: 1; min-width: 0; font-weight: 700; }
+.cl-list { display: grid; gap: 6px; margin: 10px 0; }
+.cl-row { display: grid; grid-template-columns: auto minmax(0, 1.3fr) minmax(0, 1.6fr) 84px auto auto; gap: 6px; align-items: center; padding: 6px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line-2); }
+.cl-row.dragging { box-shadow: 0 14px 30px -10px rgba(20, 26, 40, .3); }
+.cl-row .cl-d { text-align: center; font-variant-numeric: tabular-nums; }
+.cl-row .cl-f { white-space: nowrap; font-size: 14px; }
+.cl-add { margin-left: 34px; }
+@media (max-width: 760px) {
+  .cl-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .cl-row .cl-t { grid-column: 2 / 4; }
+  .cl-row .cl-v { grid-column: 2 / 4; }
+  .cl-row .cl-d { grid-column: 2; width: 90px; }
+  .cl-row .cl-f { grid-column: 2; justify-self: end; }
+  .cl-row .cl-x { grid-column: 3; grid-row: 1; }
+  .cl-row .handle { grid-row: 1 / 4; }
+  .cl-row .cl-t { grid-column: 2; grid-row: 1; }
+  .cl-row .cl-v { grid-row: 2; }
+  .cl-row .cl-d, .cl-row .cl-f { grid-row: 3; }
+  .cl-add { margin-left: 0; }
+}

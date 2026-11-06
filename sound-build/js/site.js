@@ -1,8 +1,9 @@
-/* 영소립 Sound & Build — 사이트 공통 스크립트 (시안: 진도는 이 브라우저에만 저장, 2단계에서 xms 서버 저장으로) */
+/* 영소립 English Sound & Build — 사이트 공통 스크립트
+   강의 · 진도 · 노트는 xms 강의 기능(/xms-api/courses …)에서 온다. 관리 화면 /xms/ → 강의 관리 에서 고친다.
+   로컬 미리보기(서버 없음)에서는 data.js 의 예시 강의로 보여 준다. */
 (function () {
   'use strict';
   var SB = window.SB = window.SB || {};
-  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   SB.$ = $; SB.$$ = $$;
@@ -19,6 +20,7 @@
     next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
   };
   SB.IC = IC;
+  var TITLE = '영소립 English Sound & Build';
 
   /* ── 헤더 ── */
   function initHeader() {
@@ -52,7 +54,7 @@
       if (instant) ind.style.transition = 'none';
       ind.style.width = on.offsetWidth + 'px';
       ind.style.transform = 'translateX(' + on.offsetLeft + 'px)';
-      if (instant) { ind.offsetWidth; ind.style.transition = ''; }
+      if (instant) { void ind.offsetWidth; ind.style.transition = ''; }
     }
     btns.forEach(function (b) {
       b.setAttribute('type', 'button');
@@ -70,73 +72,90 @@
     return { place: place, set: function (v) { var b = $('button[data-v="' + v + '"]', el); if (b) b.click(); } };
   };
 
-  /* ── 진도 (시안: localStorage) ── */
-  var KEY = 'sb_progress_v1';
-  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
-  function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
-  SB.prog = {
-    get: load,
-    done: function (cid, lk) { var d = load(); return !!(d.done && d.done[cid] && d.done[cid][lk]); },
-    set: function (cid, lk, on) {
-      var d = load(); d.done = d.done || {}; d.done[cid] = d.done[cid] || {};
-      if (on) d.done[cid][lk] = 1; else delete d.done[cid][lk];
-      save(d);
-    },
-    visit: function (cid, lk) {
-      var d = load(); d.last = { c: cid, l: lk, t: Date.now() };
-      d.days = d.days || []; var today = new Date().toISOString().slice(0, 10);
-      if (d.days.indexOf(today) < 0) d.days.push(today);
-      d.days = d.days.slice(-400); save(d);
-    },
-    rate: function (c) {
-      var n = SB.lessonCount(c); if (!n) return 0;
-      var d = load(), m = (d.done && d.done[c.id]) || {}; return Math.round(Object.keys(m).length / n * 100);
-    },
-    streak: function () {
-      var d = load(), set = {}, n = 0, day = new Date();
-      (d.days || []).forEach(function (x) { set[x] = 1; });
-      if (!set[day.toISOString().slice(0, 10)]) day.setDate(day.getDate() - 1);
-      while (set[day.toISOString().slice(0, 10)]) { n++; day.setDate(day.getDate() - 1); }
-      return n;
+  /* ── 서버 (xms 강의) — 없으면 예시 자료 ── */
+  var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  function api(path, opt) {
+    if (LOCAL) return Promise.resolve(demo(path, opt));
+    opt = opt || {};
+    return fetch('/xms-api' + path, {
+      method: opt.method || 'GET', credentials: 'same-origin', cache: 'no-store',
+      headers: opt.data ? { 'Content-Type': 'application/json' } : undefined,
+      body: opt.data ? JSON.stringify(opt.data) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { var e = new Error(d.error || '불러오지 못했습니다.'); e.status = r.status; throw e; }
+        return d;
+      });
+    });
+  }
+  SB.api = api;
+  // 로컬 미리보기용: data.js 예시 강의를 서버와 같은 모양으로
+  var demoData = null;
+  function demo(path, opt) {
+    if (!demoData) {
+      var lid = 0, thumb = { sound: 'red', build: 'black', real: 'split' };
+      demoData = (SB.courses || []).map(function (c, ci) {
+        return {
+          id: ci + 1, title: c.title, no_label: c.no, track: SB.tracks[c.track], level: c.level, thumb: thumb[c.track], description: c.desc,
+          opened_on: c.date, who: c.who, learn: c.learn, can_view: true,
+          sections: c.sections.map(function (s, si) {
+            return { id: ci * 100 + si, title: s.title, lessons: s.lessons.map(function (l) { lid++; return { id: lid, title: l.t, duration_sec: sec(l.d), is_free: !!l.free, open: true, has_video: !!l.v, v: l.v || '' }; }) };
+          })
+        };
+      });
+      demoData.forEach(function (c) { var ls = flat(c); c.lessons = ls.length; c.total_sec = ls.reduce(function (n, x) { return n + x.l.duration_sec; }, 0); c.done = 0; });
     }
-  };
+    var m;
+    if (path === '/courses') return demoData;
+    if ((m = path.match(/^\/courses\/(\d+)$/))) { var c = demoData[+m[1] - 1] || demoData[0]; return Object.assign({ done: [], last: null, guest: false }, c); }
+    if ((m = path.match(/^\/lessons\/(\d+)$/))) {
+      var hit = null; demoData.forEach(function (c) { flat(c).forEach(function (x) { if (x.l.id === +m[1]) hit = x.l; }); });
+      return { id: +m[1], video_url: hit ? hit.v : '', note: '', member: false };
+    }
+    if (path === '/my/courses') return { done: 0, completed: 0, streak: 0, last: null, courses: [], local: true };
+    return { ok: true };
+  }
+  function sec(d) { var p = String(d || '').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
 
   /* ── 강의 공통 ── */
-  SB.course = function (id) { return SB.courses.filter(function (c) { return c.id === id; })[0]; };
-  SB.lessonCount = function (c) { return c.sections.reduce(function (n, s) { return n + s.lessons.length; }, 0); };
-  SB.flat = function (c) {
+  function flat(c) {
     var out = [];
-    c.sections.forEach(function (s, si) { s.lessons.forEach(function (l, li) { out.push({ s: si, i: li, key: si + '-' + li, l: l, sect: s }); }); });
+    (c.sections || []).forEach(function (s) { s.lessons.forEach(function (l) { out.push({ l: l, sect: s }); }); });
     return out;
-  };
-  function sec(d) { var p = d.split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
-  SB.total = function (c) {
-    var t = SB.flat(c).reduce(function (n, x) { return n + sec(x.l.d); }, 0);
-    var h = Math.floor(t / 3600), m = Math.round(t % 3600 / 60);
-    return (h ? h + '시간 ' : '') + m + '분';
-  };
+  }
+  function total(secs) {
+    var h = Math.floor(secs / 3600), m = Math.round(secs % 3600 / 60);
+    return secs ? (h ? h + '시간 ' : '') + m + '분' : '';
+  }
+  function dur(s) { s = s || 0; return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function rate(c) { return c.lessons ? Math.min(100, Math.round((c.done || 0) / c.lessons * 100)) : 0; }
   SB.thumb = function (c) {
-    var word = c.no.replace(/(\d+|&)/, '<span>$1</span>');
-    return '<div class="thumb t-' + c.track + '"><b class="thumb-word">' + word + '</b><span class="thumb-sub">' + esc(SB.tracks[c.track]) + ' · ' + esc(c.level) + '</span></div>';
+    var word = esc(c.no_label || c.title).replace(/(\d+|&amp;)/, '<span>$1</span>');
+    return '<div class="thumb t-' + esc(c.thumb || 'red') + '"><b class="thumb-word">' + word + '</b><span class="thumb-sub">' + esc([c.track, c.level].filter(Boolean).join(' · ')) + '</span></div>';
   };
+  function tags(c) {
+    return (c.track ? '<span class="badge badge-dark">' + esc(c.track) + '</span>' : '') + (c.level ? '<span class="badge">' + esc(c.level) + '</span>' : '') +
+      (c.hidden ? '<span class="badge badge-r">숨김</span>' : '');
+  }
   SB.card = function (c) {
-    var r = SB.prog.rate(c);
+    var r = rate(c);
     return '<a class="course-card" href="course.html?id=' + c.id + '">' + SB.thumb(c) +
-      '<div class="course-body"><div class="course-tags"><span class="badge badge-dark">' + esc(SB.tracks[c.track]) + '</span><span class="badge">' + esc(c.level) + '</span></div>' +
-      '<h3>' + esc(c.title) + '</h3><p>' + esc(c.desc) + '</p>' +
+      '<div class="course-body"><div class="course-tags">' + tags(c) + '</div>' +
+      '<h3>' + esc(c.title) + '</h3><p>' + esc(c.description) + '</p>' +
       (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') +
-      '<div class="course-meta"><span>' + SB.lessonCount(c) + '강</span><span>' + SB.total(c) + '</span></div></div></a>';
+      '<div class="course-meta"><span>' + (c.lessons || 0) + '강</span><span>' + total(c.total_sec || 0) + '</span></div></div></a>';
   };
-  function curriculum(c, cur, linkAll) {
+  function curriculum(c, curId) {
+    var done = c.done || [];
     return c.sections.map(function (s, si) {
-      var open = cur ? cur.s === si : si === 0;
-      var rows = s.lessons.map(function (l, li) {
-        var k = si + '-' + li, done = SB.prog.done(c.id, k), now = cur && cur.key === k;
-        var ic = done ? IC.check : IC.play;
-        var inner = '<span class="lesson-ic">' + ic + '</span><span class="lesson-t">' + esc(l.t) +
-          (l.free ? ' <span class="badge badge-y">맛보기</span>' : '') + '</span><span class="lesson-d">' + l.d + '</span>';
-        var cls = 'lesson' + (done ? ' done' : '') + (now ? ' now' : '');
-        return '<li><a class="' + cls + '" href="classroom.html?c=' + c.id + '&l=' + k + '"' + (now ? ' aria-current="true"' : '') + '>' + inner + '</a></li>';
+      var open = curId ? s.lessons.some(function (l) { return l.id === curId; }) : si === 0;
+      var rows = s.lessons.map(function (l) {
+        var isDone = done.indexOf(l.id) >= 0, now = l.id === curId;
+        var ic = !l.open ? IC.lock : isDone ? IC.check : IC.play;
+        var inner = '<span class="lesson-ic">' + ic + '</span><span class="lesson-t">' + esc(l.title) +
+          (l.is_free ? ' <span class="badge badge-y">맛보기</span>' : '') + '</span><span class="lesson-d">' + (l.duration_sec ? dur(l.duration_sec) : '') + '</span>';
+        var cls = 'lesson' + (isDone ? ' done' : '') + (now ? ' now' : '') + (l.open ? '' : ' locked');
+        return '<li><a class="' + cls + '" href="classroom.html?c=' + c.id + '&l=' + l.id + '"' + (now ? ' aria-current="true"' : '') + '>' + inner + '</a></li>';
       }).join('');
       return '<div class="sect' + (open ? ' open' : '') + '"><button class="sect-btn" type="button" aria-expanded="' + open + '">' + esc(s.title) +
         '<small>' + s.lessons.length + '강</small></button><div class="sect-body"><ol>' + rows + '</ol></div></div>';
@@ -144,67 +163,86 @@
   }
   function bindSects(root) {
     $$('.sect-btn', root).forEach(function (b) {
-      b.addEventListener('click', function () {
-        var s = b.parentNode, o = s.classList.toggle('open'); b.setAttribute('aria-expanded', o);
-      });
+      b.addEventListener('click', function () { var s = b.parentNode, o = s.classList.toggle('open'); b.setAttribute('aria-expanded', o); });
     });
   }
   function qs(k) { return new URLSearchParams(location.search).get(k); }
+  function loginHref() { return '/member/login?next=' + encodeURIComponent(location.pathname + location.search); }
+  function failBox(el, e) { el.innerHTML = '<div class="empty">' + esc(e.message || '불러오지 못했습니다.') + '</div>'; }
 
   /* ── 홈 ── */
   function initHome() {
-    var g = $('#homeCourses'); if (g) g.innerHTML = SB.courses.slice(0, 3).map(SB.card).join('');
+    var g = $('#homeCourses'); if (!g) return;
+    api('/courses').then(function (list) {
+      g.innerHTML = list.length ? list.slice(0, 3).map(SB.card).join('') : '<div class="empty">곧 강의가 열립니다.</div>';
+    }).catch(function (e) { failBox(g, e); });
   }
 
   /* ── 강의 목록 ── */
   function initCourses() {
     var grid = $('#courseGrid'); if (!grid) return;
-    var st = { track: qs('track') || 'all', level: 'all', sort: 'rec' };
-    var trackSeg = $('#trackSeg');
-    if (st.track !== 'all') $$('button', trackSeg).forEach(function (b) { b.classList.toggle('on', b.dataset.v === st.track); });
+    var st = { track: 'all', level: 'all', sort: 'rec' }, all = [];
     function draw() {
-      var list = SB.courses.filter(function (c) {
-        return (st.track === 'all' || c.track === st.track) && (st.level === 'all' || c.level === st.level);
-      });
-      if (st.sort === 'new') list.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      var list = all.filter(function (c) { return (st.track === 'all' || c.track === st.track) && (st.level === 'all' || c.level === st.level); });
+      if (st.sort === 'new') list.sort(function (a, b) { return a.opened_on < b.opened_on ? 1 : -1; });
       if (st.sort === 'abc') list.sort(function (a, b) { return a.title.localeCompare(b.title, 'ko'); });
       $('#courseCount').innerHTML = '강의 <b>' + list.length + '</b>개';
       grid.innerHTML = list.length ? list.map(SB.card).join('') : '<div class="empty">조건에 맞는 강의가 없습니다.</div>';
     }
-    SB.seg(trackSeg, function (v) { st.track = v; draw(); });
-    SB.seg($('#sortSeg'), function (v) { st.sort = v; draw(); });
-    $$('#levelChips .chip').forEach(function (b) {
-      b.addEventListener('click', function () {
-        $$('#levelChips .chip').forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
-        st.level = b.dataset.v; draw();
+    api('/courses').then(function (list) {
+      all = list;
+      // 분야 탭 · 수준 칩은 강의에 적힌 값으로 만든다 (관리 화면에서 고친 그대로)
+      var uniq = function (k) { var o = []; list.forEach(function (c) { if (c[k] && o.indexOf(c[k]) < 0) o.push(c[k]); }); return o; };
+      var tracks = uniq('track'), levels = uniq('level');
+      $('#trackSeg').innerHTML = '<button data-v="all" class="on">전체</button>' + tracks.map(function (t) { return '<button data-v="' + esc(t) + '">' + esc(t) + '</button>'; }).join('');
+      $('#trackSeg').hidden = tracks.length < 2;
+      $('#levelChips').innerHTML = '<button class="chip on" type="button" data-v="all" aria-pressed="true">모든 수준</button>' +
+        levels.map(function (l) { return '<button class="chip" type="button" data-v="' + esc(l) + '" aria-pressed="false">' + esc(l) + '</button>'; }).join('');
+      $('#levelChips').hidden = levels.length < 2;
+      var want = qs('track');
+      SB.seg($('#trackSeg'), function (v) { st.track = v; draw(); });
+      if (want && tracks.indexOf(want) >= 0) $('#trackSeg button[data-v="' + want + '"]').click();
+      $$('#levelChips .chip').forEach(function (b) {
+        b.addEventListener('click', function () {
+          $$('#levelChips .chip').forEach(function (x) { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+          st.level = b.dataset.v; draw();
+        });
       });
-    });
-    draw();
+      draw();
+    }).catch(function (e) { failBox(grid, e); });
+    SB.seg($('#sortSeg'), function (v) { st.sort = v; draw(); });
   }
 
   /* ── 강의 상세 ── */
   function initDetail() {
     var root = $('#courseDetail'); if (!root) return;
-    var c = SB.course(qs('id')) || SB.courses[0];
     root.classList.add('has-bar');
-    document.title = c.title + ' · 영소립 English, Sound & Build';
-    var flat = SB.flat(c), r = SB.prog.rate(c);
-    var last = SB.prog.get().last, startKey = (last && last.c === c.id) ? last.l : flat[0].key;
-    var free = flat.filter(function (x) { return x.l.free; })[0];
-    $('#dTags').innerHTML = '<span class="badge badge-dark">' + esc(SB.tracks[c.track]) + '</span><span class="badge">' + esc(c.level) + '</span>';
-    $('#dTitle').textContent = c.title;
-    $('#dDesc').textContent = c.desc;
-    $('#dFacts').innerHTML = '<span><b>' + flat.length + '</b>강</span><span>총 <b>' + SB.total(c) + '</b></span><span>섹션 <b>' + c.sections.length + '</b>개</span>';
-    $('#dWho').innerHTML = c.who.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
-    $('#dLearn').innerHTML = c.learn.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
-    $('#dCurriMeta').textContent = c.sections.length + '개 섹션 · ' + flat.length + '강 · ' + SB.total(c);
-    $('#dCurri').innerHTML = curriculum(c, null);
-    bindSects($('#dCurri'));
-    $('#dSide').innerHTML = SB.thumb(c) + '<div class="side-in">' +
-      (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') +
-      '<a class="btn btn-red" href="classroom.html?c=' + c.id + '&l=' + startKey + '">' + IC.play + (r ? '이어서 보기' : '강의실 입장') + '</a>' +
-      (free ? '<a class="btn btn-line" href="classroom.html?c=' + c.id + '&l=' + free.key + '">맛보기 1강</a>' : '') +
-      '<p class="side-note">관리자가 수강 권한을 주면 모든 강의가 열립니다.</p></div>';
+    api('/courses/' + (+qs('id') || 0)).then(function (c) {
+      document.title = c.title + ' · ' + TITLE;
+      var ls = flat(c), r = c.lessons ? Math.round(c.done.length / c.lessons * 100) : 0;
+      var start = c.last || (ls[0] && ls[0].l.id);
+      var free = ls.filter(function (x) { return x.l.is_free; })[0];
+      $('#dTags').innerHTML = tags(c);
+      $('#dTitle').textContent = c.title;
+      $('#dDesc').textContent = c.description;
+      $('#dFacts').innerHTML = '<span><b>' + c.lessons + '</b>강</span>' + (c.total_sec ? '<span>총 <b>' + total(c.total_sec) + '</b></span>' : '') + '<span>섹션 <b>' + c.sections.length + '</b>개</span>';
+      $('#dWho').innerHTML = c.who.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
+      $('#dWho').closest('.box').hidden = !c.who.length;
+      $('#dLearn').innerHTML = c.learn.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
+      $('#dLearn').closest('.box').hidden = !c.learn.length;
+      $('#dCurriMeta').textContent = c.sections.length + '개 섹션 · ' + c.lessons + '강' + (c.total_sec ? ' · ' + total(c.total_sec) : '');
+      $('#dCurri').innerHTML = curriculum(c, null);
+      bindSects($('#dCurri'));
+      var main = c.can_view
+        ? '<a class="btn btn-red" href="classroom.html?c=' + c.id + '&l=' + start + '">' + IC.play + (c.last ? '이어서 보기' : '강의실 입장') + '</a>'
+        : c.guest ? '<a class="btn btn-red" href="' + loginHref() + '">로그인하고 수강하기</a>'
+        : '<span class="btn btn-line" aria-disabled="true">' + IC.lock + '수강 권한이 필요합니다</span>';
+      var note = c.can_view ? '' : c.guest ? '회원은 수강 권한을 받으면 모든 강의를 볼 수 있습니다.' : '관리자가 수강 권한을 주면 모든 강의가 열립니다.';
+      $('#dSide').innerHTML = SB.thumb(c) + '<div class="side-in">' +
+        (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') + main +
+        (free ? '<a class="btn btn-line" href="classroom.html?c=' + c.id + '&l=' + free.l.id + '">맛보기 1강</a>' : '') +
+        (note ? '<p class="side-note">' + note + '</p>' : '') + '</div>';
+    }).catch(function (e) { failBox($('.detail', root) || root, e); });
   }
 
   /* ── 강의실 ── */
@@ -214,88 +252,114 @@
     if (m) return 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0&playsinline=1&modestbranding=1';
     m = url.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([\da-f]+))?(?:.*[?&]h=([\da-f]+))?/);
     if (m) return 'https://player.vimeo.com/video/' + m[1] + '?dnt=1&title=0&byline=0&portrait=0' + ((m[2] || m[3]) ? '&h=' + (m[2] || m[3]) : '');
-    return '';
+    return /^https:\/\//.test(url) ? url : '';
   };
   function initClassroom() {
     var root = $('#classroom'); if (!root) return;
-    var c = SB.course(qs('c')) || SB.courses[0], flat = SB.flat(c);
-    var idx = Math.max(0, flat.map(function (x) { return x.key; }).indexOf(qs('l')));
-    var cur = flat[idx];
-    document.title = cur.l.t + ' · ' + c.no + ' · 영소립 English, Sound & Build';
-    SB.prog.visit(c.id, cur.key);
-    var src = SB.embed(cur.l.v);
-    $('#player').innerHTML = src
-      ? '<iframe src="' + src + '" title="' + esc(cur.l.t) + '" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe>'
-      : '<div class="player-empty"><div><b class="serif">Sound <span>&amp;</span> Build</b>영상 주소를 연결하면 여기서 재생됩니다.</div></div>';
-    $('#cSect').textContent = c.no + ' · ' + cur.sect.title;
-    $('#cTitle').textContent = cur.l.t;
-    var prev = flat[idx - 1], next = flat[idx + 1];
-    var nav = '';
-    nav += prev ? '<a class="btn btn-line btn-sm" href="classroom.html?c=' + c.id + '&l=' + prev.key + '">' + IC.prev + '이전</a>' : '<span></span>';
-    nav += '<button class="btn btn-sm ' + (SB.prog.done(c.id, cur.key) ? 'btn-line' : 'btn-red') + '" id="doneBtn" type="button"></button>';
-    nav += next ? '<a class="btn btn-line btn-sm" href="classroom.html?c=' + c.id + '&l=' + next.key + '">다음' + IC.next + '</a>' : '<span></span>';
-    $('#cNav').innerHTML = nav;
-    var doneBtn = $('#doneBtn');
-    function paintDone() {
-      var d = SB.prog.done(c.id, cur.key);
-      doneBtn.className = 'btn btn-sm ' + (d ? 'btn-line' : 'btn-red');
-      doneBtn.innerHTML = d ? IC.check + '완료' : '완료로 표시';
-    }
-    paintDone();
-    doneBtn.addEventListener('click', function () {
-      SB.prog.set(c.id, cur.key, !SB.prog.done(c.id, cur.key)); paintDone(); side();
-    });
-    function side() {
-      var r = SB.prog.rate(c);
-      $('#cSide').innerHTML = '<div class="class-side-head"><a href="course.html?id=' + c.id + '"><h2>' + esc(c.title) + '</h2></a>' +
-        '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div></div>' + curriculum(c, cur);
-      bindSects($('#cSide'));
-    }
-    side();
-    // 노트 (시안: 이 브라우저에만)
-    var nk = 'sb_note_' + c.id + '_' + cur.key, na = $('#noteArea');
-    try { na.value = localStorage.getItem(nk) || ''; } catch (e) {}
-    na.addEventListener('input', function () { try { localStorage.setItem(nk, na.value); } catch (e) {} });
-    // 탭: 폰에서는 커리큘럼도 탭 하나로
-    var side$ = $('#cSide');
-    function show(v) {
-      $$('.tab-panel', root).forEach(function (p) { p.hidden = p.dataset.panel !== v; });
-      side$.classList.toggle('m-hide', v !== 'curri');
-    }
-    var mobile = matchMedia('(max-width: 860px)');
-    var tabs = $('#classTabs');
-    SB.seg(tabs, show);
-    function sync() {
-      var on = $('button.on', tabs).dataset.v;
-      if (!mobile.matches && on === 'curri') { $('button[data-v="note"]', tabs).click(); return; }
-      show(on); tabs._place(true);
-    }
-    if (mobile.addEventListener) mobile.addEventListener('change', sync);
-    if (!mobile.matches) $$('button', tabs).forEach(function (b) { b.classList.toggle('on', b.dataset.v === 'note'); });
-    sync();
+    api('/courses/' + (+qs('c') || 0)).then(function (c) {
+      var ls = flat(c);
+      var idx = Math.max(0, ls.map(function (x) { return x.l.id; }).indexOf(+qs('l')));
+      var cur = ls[idx];
+      if (!cur) { failBox($('#player'), new Error('아직 차시가 없습니다.')); return; }
+      document.title = cur.l.title + ' · ' + (c.no_label || c.title) + ' · ' + TITLE;
+      $('#cSect').textContent = (c.no_label ? c.no_label + ' · ' : '') + cur.sect.title;
+      $('#cTitle').textContent = cur.l.title;
+      var prev = ls[idx - 1], next = ls[idx + 1];
+      var href = function (x) { return 'classroom.html?c=' + c.id + '&l=' + x.l.id; };
+      $('#cNav').innerHTML = (prev ? '<a class="btn btn-line btn-sm" href="' + href(prev) + '">' + IC.prev + '이전</a>' : '<span></span>') +
+        '<button class="btn btn-sm btn-red" id="doneBtn" type="button" hidden></button>' +
+        (next ? '<a class="btn btn-line btn-sm" href="' + href(next) + '">다음' + IC.next + '</a>' : '<span></span>');
+      var doneBtn = $('#doneBtn');
+      var isDone = function () { return c.done.indexOf(cur.l.id) >= 0; };
+      function side() {
+        var r = c.lessons ? Math.round(c.done.length / c.lessons * 100) : 0;
+        $('#cSide').innerHTML = '<div class="class-side-head"><a href="course.html?id=' + c.id + '"><h2>' + esc(c.title) + '</h2></a>' +
+          '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div></div>' + curriculum(c, cur.l.id);
+        bindSects($('#cSide'));
+      }
+      function paintDone() {
+        var d = isDone();
+        doneBtn.className = 'btn btn-sm ' + (d ? 'btn-line' : 'btn-red');
+        doneBtn.innerHTML = d ? IC.check + '완료' : '완료로 표시';
+      }
+      side();
+      // 영상 · 노트: 볼 수 있을 때만 서버가 영상 주소를 준다
+      api('/lessons/' + cur.l.id).then(function (L) {
+        var src = SB.embed(L.video_url);
+        $('#player').innerHTML = src
+          ? '<iframe src="' + esc(src) + '" title="' + esc(cur.l.title) + '" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe>'
+          : '<div class="player-empty"><div><b class="serif">Sound <span>&amp;</span> Build</b>이 차시는 아직 영상이 연결되지 않았습니다.</div></div>';
+        if (L.member) {
+          doneBtn.hidden = false; paintDone();
+          doneBtn.addEventListener('click', function () {
+            var on = !isDone();
+            api('/lessons/' + cur.l.id + '/done', { method: 'PUT', data: { done: on } }).then(function () {
+              if (on) c.done.push(cur.l.id); else c.done = c.done.filter(function (x) { return x !== cur.l.id; });
+              paintDone(); side();
+            });
+          });
+        }
+        // 노트: 회원이면 계정에 저장 (입력 멈추고 0.8초 뒤)
+        var na = $('#noteArea'), help = $('.note-help');
+        na.value = L.note || '';
+        if (L.member) {
+          help.textContent = '내 계정에 저장되어 어느 기기에서나 보입니다.';
+          var t; na.addEventListener('input', function () {
+            clearTimeout(t); help.textContent = '저장하는 중…';
+            t = setTimeout(function () {
+              api('/lessons/' + cur.l.id + '/note', { method: 'PUT', data: { body: na.value } })
+                .then(function () { help.textContent = '저장했습니다.'; }).catch(function () { help.textContent = '저장하지 못했습니다. 잠시 뒤 다시 적어 주세요.'; });
+            }, 800);
+          });
+        } else { na.disabled = true; help.innerHTML = '<a class="hl" href="' + loginHref() + '">로그인</a>하면 노트를 남길 수 있습니다.'; }
+      }).catch(function (e) {
+        $('#player').innerHTML = '<div class="player-empty"><div>' + IC.lock.replace('<svg', '<svg width="34" height="34"') + '<b>' + esc(e.message) + '</b>' +
+          (e.status === 401 ? '<a class="btn btn-yellow btn-sm" href="' + loginHref() + '">로그인</a>' : '') + '</div></div>';
+        $('#noteArea').disabled = true;
+      });
+      // 탭: 폰에서는 커리큘럼도 탭 하나로
+      var side$ = $('#cSide');
+      function show(v) {
+        $$('.tab-panel', root).forEach(function (p) { p.hidden = p.dataset.panel !== v; });
+        side$.classList.toggle('m-hide', v !== 'curri');
+      }
+      var mobile = matchMedia('(max-width: 860px)');
+      var tabs = $('#classTabs');
+      SB.seg(tabs, show);
+      function sync() {
+        var on = $('button.on', tabs).dataset.v;
+        if (!mobile.matches && on === 'curri') { $('button[data-v="note"]', tabs).click(); return; }
+        show(on); tabs._place(true);
+      }
+      if (mobile.addEventListener) mobile.addEventListener('change', sync);
+      if (!mobile.matches) $$('button', tabs).forEach(function (b) { b.classList.toggle('on', b.dataset.v === 'note'); });
+      sync();
+    }).catch(function (e) { failBox($('#player'), e); });
   }
 
   /* ── 내 강의실 ── */
   function initMy() {
     var root = $('#myRoom'); if (!root) return;
-    var d = SB.prog.get(), doneN = 0, started = [];
-    SB.courses.forEach(function (c) {
-      var m = (d.done && d.done[c.id]) || {}, n = Object.keys(m).length; doneN += n;
-      if (n || (d.last && d.last.c === c.id)) started.push(c);
-    });
-    $('#stLessons').innerHTML = '<em>' + doneN + '</em><span>강</span>';
-    $('#stCourses').innerHTML = SB.courses.filter(function (c) { return SB.prog.rate(c) === 100; }).length + '<span>개</span>';
-    $('#stStreak').innerHTML = '<em>' + SB.prog.streak() + '</em><span>일</span>';
-    var last = d.last && SB.course(d.last.c);
-    if (last) {
-      var x = SB.flat(last).filter(function (f) { return f.key === d.last.l; })[0] || SB.flat(last)[0];
-      $('#resume').innerHTML = SB.thumb(last) + '<div class="resume-body"><small>이어서 보기</small><h2>' + esc(x.l.t) + '</h2>' +
-        '<div class="prog-row"><div class="progress"><i style="width:' + SB.prog.rate(last) + '%"></i></div><span>' + esc(last.no) + ' · ' + SB.prog.rate(last) + '%</span></div>' +
-        '<a class="btn btn-red btn-sm" href="classroom.html?c=' + last.id + '&l=' + x.key + '">' + IC.play + '계속 보기</a></div>';
-    } else {
-      $('#resume').outerHTML = '<div class="empty empty-gap">아직 본 강의가 없습니다. <a class="hl" href="courses.html">강의 둘러보기</a></div>';
-    }
-    $('#myCourses').innerHTML = started.length ? started.map(SB.card).join('') : '<div class="empty">강의를 열면 여기에 모입니다.</div>';
+    api('/my/courses').then(function (d) {
+      if (d.guest) {
+        $('.stats', root).hidden = true;
+        $('#resume').outerHTML = '<div class="empty empty-gap">로그인하면 보던 강의와 진도가 여기에 모입니다. <a class="hl" href="' + loginHref() + '">로그인</a></div>';
+        $('#myCourses').innerHTML = '';
+        return;
+      }
+      $('#stLessons').innerHTML = '<em>' + d.done + '</em><span>강</span>';
+      $('#stCourses').innerHTML = d.completed + '<span>개</span>';
+      $('#stStreak').innerHTML = '<em>' + d.streak + '</em><span>일</span>';
+      if (d.last) {
+        var c = d.last.course, r = rate(c);
+        $('#resume').innerHTML = SB.thumb(c) + '<div class="resume-body"><small>이어서 보기</small><h2>' + esc(d.last.lesson.title) + '</h2>' +
+          '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + esc(c.no_label || c.title) + ' · ' + r + '%</span></div>' +
+          '<a class="btn btn-red btn-sm" href="classroom.html?c=' + c.id + '&l=' + d.last.lesson.id + '">' + IC.play + '계속 보기</a></div>';
+      } else {
+        $('#resume').outerHTML = '<div class="empty empty-gap">아직 본 강의가 없습니다. <a class="hl" href="courses.html">강의 둘러보기</a></div>';
+      }
+      $('#myCourses').innerHTML = d.courses.length ? d.courses.map(SB.card).join('') : '<div class="empty">강의를 열면 여기에 모입니다.</div>';
+    }).catch(function (e) { failBox(root, e); });
   }
 
   function init() {

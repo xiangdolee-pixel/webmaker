@@ -25,6 +25,14 @@ Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `sit
 - 서비스와 관리 화면은 같은 로그인(`xms_sess`). 관리 화면은 레벨1만 — 다른 등급이 로그인해도 홈페이지 로그인은 그대로 두고 관리 화면만 막는다.
 - 스타일은 `xa-` 접두어로만, 사이트 CSS 와 섞이지 않는다. 색은 `--xa-bg` · `--xa-fg`.
 
+## 강의 (사이트별로 켜는 기능)
+
+- 켜기: `INSERT OR IGNORE INTO site_features (site, feature) VALUES ('<사이트>', 'courses')` → 관리 화면 왼쪽에 **강의 › 강의 관리**.
+- 강의 → 섹션 → 차시(제목 · YouTube/Vimeo 주소 · 길이 · 맛보기). ⠿ 로 끌어서 차례(강의 목록 · 섹션 · 차시 각각). 분야 · 수준은 사이트 목록의 탭 · 칩이 된다.
+- 볼 수 있는 등급(강의마다, 기본 1~8 — 9 일반회원은 맛보기만). 회원 등급을 바꿔 주면 수강 권한. 영상 주소는 볼 수 있는 사람에게만 내준다.
+- 방문자 API: `GET /xms-api/courses` · `/courses/<id>` · `/lessons/<id>`(영상 · 노트, 마지막 차시 · 공부한 날 기록) · `PUT /lessons/<id>/done` · `/lessons/<id>/note` · `GET /my/courses`(다 본 차시 · 완강 · 연속 학습).
+- 코드: `_worker/courses.js`, 화면 `js/admin.js` (강의 관리). 첫 사이트: sound-build.
+
 ## 수정 모드 (홈페이지 위에서 글자 고치기)
 
 - 관리자(레벨1)로 로그인 → 계정 메뉴 **수정 모드** → 파란 점선 글자를 눌러 고치고 **저장** (Ctrl+S). 주소에 `?xe=1` 을 붙여도 바로 열린다.

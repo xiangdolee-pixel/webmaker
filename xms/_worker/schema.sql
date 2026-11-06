@@ -276,3 +276,83 @@ CREATE TABLE IF NOT EXISTS page_texts (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (site, path, k)
 );
+
+-- 사이트별로 켜는 기능 (예: courses = 강의 관리). 켠 사이트만 관리 화면에 메뉴가 생긴다.
+CREATE TABLE IF NOT EXISTS site_features (
+  site    TEXT NOT NULL,
+  feature TEXT NOT NULL,
+  PRIMARY KEY (site, feature)
+);
+
+-- 강의: 강의 → 섹션 → 차시(영상). 볼 수 있는 등급(view_levels 비트)이 아니어도 '맛보기' 차시는 누구나.
+CREATE TABLE IF NOT EXISTS courses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  site         TEXT NOT NULL,
+  no_label     TEXT NOT NULL DEFAULT '',     -- 썸네일 큰 글자 (예: Build 2)
+  track        TEXT NOT NULL DEFAULT '',     -- 분야 (목록 탭: Sound · Build · 실전 …)
+  level        TEXT NOT NULL DEFAULT '',     -- 수준 (입문 · 기초 · 중급 …)
+  thumb        TEXT NOT NULL DEFAULT 'red',  -- 썸네일 색: red · black · split
+  title        TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  who          TEXT NOT NULL DEFAULT '[]',   -- 이런 분께 (JSON 배열)
+  learn        TEXT NOT NULL DEFAULT '[]',   -- 배우는 것 (JSON 배열)
+  view_levels  INTEGER NOT NULL DEFAULT 255, -- 강의를 볼 수 있는 등급 (기본 1~8등급, 9 일반회원은 맛보기만)
+  visible      INTEGER NOT NULL DEFAULT 1,
+  sort         INTEGER NOT NULL DEFAULT 0,
+  opened_on    TEXT NOT NULL DEFAULT '',     -- 등록일 (최근순 정렬, YYYY-MM-DD)
+  created_at   INTEGER NOT NULL,
+  updated_at   INTEGER NOT NULL,
+  deleted_at   INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_courses_site ON courses (site, deleted_at, sort);
+CREATE TABLE IF NOT EXISTS course_sections (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  site      TEXT NOT NULL,
+  course_id INTEGER NOT NULL,
+  title     TEXT NOT NULL,
+  sort      INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_csec_course ON course_sections (course_id, sort);
+CREATE TABLE IF NOT EXISTS course_lessons (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  site         TEXT NOT NULL,
+  course_id    INTEGER NOT NULL,
+  section_id   INTEGER NOT NULL,
+  title        TEXT NOT NULL,
+  video_url    TEXT NOT NULL DEFAULT '',
+  duration_sec INTEGER NOT NULL DEFAULT 0,
+  is_free      INTEGER NOT NULL DEFAULT 0,
+  sort         INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_clesson_course ON course_lessons (course_id, sort);
+-- 수강 기록: 다 본 차시 · 마지막으로 연 차시 · 공부한 날(연속 학습) · 노트
+CREATE TABLE IF NOT EXISTS course_done (
+  site      TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  lesson_id INTEGER NOT NULL,
+  course_id INTEGER NOT NULL,
+  at        INTEGER NOT NULL,
+  PRIMARY KEY (site, member_id, lesson_id)
+);
+CREATE TABLE IF NOT EXISTS course_last (
+  site      TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  course_id INTEGER NOT NULL,
+  lesson_id INTEGER NOT NULL,
+  at        INTEGER NOT NULL,
+  PRIMARY KEY (site, member_id, course_id)
+);
+CREATE TABLE IF NOT EXISTS course_days (
+  site      TEXT NOT NULL,
+  member_id INTEGER NOT NULL,
+  day       TEXT NOT NULL,
+  PRIMARY KEY (site, member_id, day)
+);
+CREATE TABLE IF NOT EXISTS course_notes (
+  site       TEXT NOT NULL,
+  member_id  INTEGER NOT NULL,
+  lesson_id  INTEGER NOT NULL,
+  body       TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (site, member_id, lesson_id)
+);

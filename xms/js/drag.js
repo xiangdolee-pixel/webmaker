@@ -11,9 +11,9 @@ const SLIDE_MS = 220;
 const SETTLE_MS = 240;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function sortable(box, { rowSel, nest = false, indent = 28, canParent = () => true, onDrop, guideLeft = 44, labelOf = (r) => (r.querySelector('b') || r).textContent.trim() }) {
+export function sortable(box, { rowSel, handleSel = '.handle', nest = false, indent = 28, canParent = () => true, onDrop, guideLeft = 44, labelOf = (r) => (r.querySelector('b') || r).textContent.trim() }) {
   box.addEventListener('pointerdown', (e) => {
-    const handle = e.target.closest('.handle');
+    const handle = e.target.closest(handleSel);
     if (!handle || !box.contains(handle) || e.button > 0) return;
     const row = handle.closest(rowSel);
     if (!row) return;

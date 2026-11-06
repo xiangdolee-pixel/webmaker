@@ -71,9 +71,18 @@
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
     // 운영자 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
-    menu.innerHTML = `${me.name ? `<div class="xa-me"><b>${String(me.name).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';')}</b> 님</div>` : ''}${admin ? `<a role="menuitem" href="/xms/">관리</a>${document.querySelector('[data-xe]') ? '<button type="button" role="menuitem" data-xa-edit>수정 모드</button>' : ''}<a role="menuitem" href="/xms/#/requests">유지보수 요청</a>` : ''}
-      ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
-      <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
+    // 메뉴 앞 단색 아이콘 (글자색을 따른다)
+    const ic = (d) => `<svg class="xa-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const IC = {
+      admin: ic('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'),
+      edit: ic('<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
+      req: ic('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/>'),
+      me: ic('<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c.8-3.7 3.9-6 7.5-6s6.7 2.3 7.5 6"/>'),
+      out: ic('<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/>'),
+    };
+    menu.innerHTML = `${me.name ? `<div class="xa-me"><b>${String(me.name).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';')}</b> 님</div>` : ''}${admin ? `<a role="menuitem" href="/xms/">${IC.admin}관리</a>${document.querySelector('[data-xe]') ? `<button type="button" role="menuitem" data-xa-edit>${IC.edit}수정 모드</button>` : ''}<a role="menuitem" href="/xms/#/requests">${IC.req}유지보수 요청</a>` : ''}
+      ${me.staff ? '' : `<a role="menuitem" href="/member/mypage">${IC.me}내 정보</a>`}
+      <button type="button" role="menuitem" data-xa-logout>${IC.out}로그아웃</button>`;
     document.body.append(menu);
     const btn = el.querySelector('.xa-avatar');
 

@@ -22,4 +22,7 @@
 .xa-menu a,.xa-menu button{display:block;width:100%;padding:14px 28px;border:0;background:none;color:inherit;text-align:left;text-decoration:none;
   font-family:inherit;font-size:18px;font-weight:700;line-height:1.3;letter-spacing:-.01em;cursor:pointer}
 .xa-menu a:hover,.xa-menu button:hover{background:#f4f5f8}
+.xa-menu a,.xa-menu button{display:flex;align-items:center;gap:12px}
+.xa-ic{width:19px;height:19px;flex-shrink:0;opacity:.62}
+.xa-menu a:hover .xa-ic,.xa-menu button:hover .xa-ic{opacity:1}
 @media (prefers-reduced-motion:reduce){.xa-avatar,.xa-menu{transition:none}}

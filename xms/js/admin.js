@@ -32,6 +32,7 @@ const ACTIONS = {
   FAVICON_SET: '파비콘 바꾸기', FAVICON_REMOVE: '파비콘 내리기', SEO_UPDATE: '검색엔진 설정', ROBOTS_UPDATE: 'robots.txt 변경',
   SHARE_UPDATE: '미리보기 설명 변경', SHARE_IMAGE_SET: '미리보기 그림 바꾸기', SHARE_IMAGE_REMOVE: '미리보기 그림 내리기',
   POPUP_CREATE: '팝업 만들기', POPUP_UPDATE: '팝업 수정', POPUP_DELETE: '팝업 삭제',
+  COURSE_CREATE: '강의 만들기', COURSE_UPDATE: '강의 수정', COURSE_DELETE: '강의 삭제',
 };
 
 // ───────── 시작 · 로그인 ─────────
@@ -96,6 +97,7 @@ const SIDE_ICON = {
   account: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
   stats: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-4M12 16V7M17 16v-7"/></svg>',
   audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+  courses: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="M10 9v5l4.5-2.5z"/><path d="M8 21h8"/></svg>',
 };
 // 왼쪽 메뉴: 묶음 이름 아래 같은 모양의 한 단계 목록 (만들기 · 추가는 각 화면 오른쪽 위 버튼)
 const SIDE = [
@@ -106,13 +108,15 @@ const SIDE = [
     ['#/favicon', '파비콘', 'favicon'], ['#/seo', '검색엔진', 'seo'], ['#/share', '카카오톡 미리보기', 'share'], ['#/requests', '수정 요청', 'requests']]],
   ['내 계정', [['#/account', '비밀번호 변경', 'account'], ['#/audit', '관리 로그', 'audit']]],
 ];
+// 강의 기능을 켠 사이트만 '강의' 묶음이 생긴다 (회원 다음)
+const sideGroups = () => (INFO.features?.courses ? [SIDE[0], SIDE[1], ['강의', [['#/courses', '강의 관리', 'courses']]], ...SIDE.slice(2)] : SIDE);
 // 왼쪽 위 사이트 표시: 파비콘을 올렸으면 그 그림, 없으면 이름 두 글자
 let favVer = Date.now();
 function renderSide() {
   const s = INFO.site;
   const pct = s.quota_mb ? Math.round((s.used_mb / s.quota_mb) * 100) : 0;
   $('#side').innerHTML = `<a class="brand" href="/" target="_blank" rel="noopener"><i>${esc(s.slug.slice(0, 2).toUpperCase())}<img src="/xms/file/favicon-192.png?v=${favVer}" alt="" onload="this.parentElement.classList.add('has-fav')" onerror="this.remove()"></i><span><b>${esc(s.name)}</b><small>${esc(s.domain || s.slug)}</small></span></a>
-    ${SIDE.map(([group, items]) => `${group ? `<h4>${group}</h4>` : ''}${items.map(([href, label, icon]) => `<a href="${href}">${SIDE_ICON[icon] || ''}<span class="lbl">${label}</span>${icon === 'storage' ? `<span class="meter${pct >= 90 ? ' full' : ''}">${pct}%</span>` : ''}</a>`).join('')}`).join('')}
+    ${sideGroups().map(([group, items]) => `${group ? `<h4>${group}</h4>` : ''}${items.map(([href, label, icon]) => `<a href="${href}">${SIDE_ICON[icon] || ''}<span class="lbl">${label}</span>${icon === 'storage' ? `<span class="meter${pct >= 90 ? ' full' : ''}">${pct}%</span>` : ''}</a>`).join('')}`).join('')}
     <p class="foot">${esc(s.name)} 관리자 화면</p>`;
 }
 function markSide() {
@@ -174,6 +178,9 @@ async function route() {
     if (parts[0] === 'popups' && parts[1] === 'new') return await popupPage(null);
     if (parts[0] === 'popups' && parts[1]) return await popupPage(Number(parts[1]));
     if (parts[0] === 'popups') return await popupsPage(qs);
+    if (parts[0] === 'courses' && parts[1] === 'new') return await coursePage(null);
+    if (parts[0] === 'courses' && parts[1]) return await coursePage(Number(parts[1]));
+    if (parts[0] === 'courses') return await coursesPage();
     if (parts[0] === 'favicon') return await faviconPage();
     if (parts[0] === 'seo') return await seoPage(qs);
     if (parts[0] === 'share') return await sharePage();
@@ -1364,6 +1371,181 @@ async function popupPage(id) {
       if (!form.reportValidity()) return;
       if (id) await api(`/popups/${id}`, { method: 'PUT', data }); else await api('/popups', { method: 'POST', data });
       dirty = false; toast(id ? '팝업을 저장했습니다.' : '팝업을 만들었습니다.'); go('#/popups');
+    });
+  });
+}
+
+// ───────── 강의 (강의 → 섹션 → 차시 영상) ─────────
+const THUMB_LABEL = { red: '빨강', black: '검정', split: '빨강 · 검정 반반' };
+const fmtDur = (sec) => { sec = Number(sec) || 0; const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`; };
+const fmtTotal = (sec) => { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return sec ? `${h ? `${h}시간 ` : ''}${m}분` : '-'; };
+const durSec = (t) => String(t || '').trim().split(':').map((x) => parseInt(x, 10) || 0).reduce((a, x) => a * 60 + x, 0);
+const thumbChip = (c) => `<span class="c-thumb t-${esc(c.thumb)}"><b>${esc(c.no_label || c.title.slice(0, 6))}</b></span>`;
+
+async function coursesPage() {
+  const list = await api('/courses');
+  main.innerHTML = `${head('강의', '강의 관리', '홈페이지 [강의] 메뉴에 나오는 강의입니다. 줄을 끌어서 목록 차례를 바꿀 수 있습니다.', '<a class="btn primary" href="#/courses/new">+ 강의 만들기</a>')}
+    <div class="panel">${list.length ? `<table class="tbl cardy"><thead><tr><th>차례</th><th>썸네일</th><th>강의</th><th>분야 · 수준</th><th>차시</th><th>수강생</th><th>공개</th><th>관리</th></tr></thead><tbody id="crows">
+      ${list.map((c) => `<tr data-id="${c.id}"><td><button type="button" class="handle" aria-label="끌어서 차례 바꾸기">⠿</button></td>
+        <td>${thumbChip(c)}</td>
+        <td><b>${esc(c.title)}</b><small>${esc(c.description.slice(0, 60))}</small></td>
+        <td data-l="분야 · 수준">${esc([c.track, c.level].filter(Boolean).join(' · ') || '-')}</td>
+        <td data-l="차시">${c.lessons}강 · ${fmtTotal(c.total_sec)}</td>
+        <td data-l="수강생">${c.students}명</td>
+        <td data-l="공개">${c.visible ? '<span class="tag green">공개</span>' : '<span class="tag">숨김</span>'}</td>
+        <td><div class="mng"><a class="btn sm" href="#/courses/${c.id}">수정</a><a class="btn sm" href="/course.html?id=${c.id}" target="_blank" rel="noopener">보기</a><button class="btn sm danger" type="button" data-del>삭제</button></div></td></tr>`).join('')}
+      </tbody></table>` : empty('아직 강의가 없습니다', '강의를 만들고 섹션 · 차시에 YouTube · Vimeo 영상 주소를 붙여 넣으면 홈페이지에 바로 나옵니다.', '<a class="btn primary" href="#/courses/new">첫 강의 만들기</a>')}</div>
+    <p class="meta gap">수강 권한: 강의마다 <b>볼 수 있는 등급</b>을 고릅니다. 회원의 등급은 <a href="#/members">가입회원</a>에서 바꿉니다. <b>맛보기</b> 차시는 누구나 볼 수 있습니다.</p>`;
+  if (!list.length) return;
+  sortable($('#crows'), { rowSel: 'tr[data-id]', onDrop: (rows) => busy(null, null, async () => {
+    await api('/courses/order', { method: 'PUT', data: { ids: rows.map((r) => Number(r.id)) } }); toast('차례를 저장했습니다.');
+  }) });
+  $$('#crows tr').forEach((tr) => {
+    const c = list.find((x) => x.id === +tr.dataset.id);
+    tr.querySelector('[data-del]').onclick = (e) => confirmInline(e.currentTarget, `"${esc(c.title)}" 강의를 지웁니다. 홈페이지에서 바로 사라집니다.`, '강의 삭제', async () => {
+      await api(`/courses/${c.id}`, { method: 'DELETE' }); toast('강의를 지웠습니다.'); route();
+    });
+  });
+}
+
+let tmpId = 0;
+function lessonRow(l = {}) {
+  return `<div class="cl-row" data-id="${l.id || `n${++tmpId}`}" data-lid="${l.id || ''}">
+    <button type="button" class="handle l-handle" aria-label="끌어서 차시 차례 바꾸기">⠿</button>
+    <input class="input cl-t" maxlength="150" value="${esc(l.title || '')}" placeholder="차시 제목" aria-label="차시 제목">
+    <input class="input cl-v" maxlength="500" value="${esc(l.video_url || '')}" placeholder="https://youtu.be/… 또는 https://vimeo.com/…" aria-label="영상 주소">
+    <input class="input cl-d" maxlength="8" value="${l.duration_sec ? fmtDur(l.duration_sec) : ''}" placeholder="12:30" aria-label="길이 (분:초)">
+    <label class="check cl-f"><input type="checkbox" class="cl-free"${l.is_free ? ' checked' : ''}> 맛보기</label>
+    <button type="button" class="btn sm danger cl-x" data-del-lesson aria-label="차시 지우기">✕</button>
+  </div>`;
+}
+function sectionBox(s = {}) {
+  return `<div class="cs-box" data-id="${s.id || `n${++tmpId}`}" data-sid="${s.id || ''}">
+    <div class="cs-head"><button type="button" class="handle s-handle" aria-label="끌어서 섹션 차례 바꾸기">⠿</button>
+      <input class="input cs-t" maxlength="100" value="${esc(s.title || '')}" placeholder="섹션 이름 (예: 1장 · 소리의 단위)" aria-label="섹션 이름">
+      <button type="button" class="btn sm danger" data-del-section>섹션 지우기</button></div>
+    <div class="cl-list">${(s.lessons || []).map(lessonRow).join('')}</div>
+    <button type="button" class="btn sm cl-add" data-add-lesson>+ 차시 추가</button>
+  </div>`;
+}
+
+async function coursePage(id) {
+  const [c, all] = await Promise.all([id ? api(`/courses/${id}`) : null, api('/courses')]);
+  const v = c || { title: '', no_label: '', track: '', level: '', thumb: 'red', description: '', who: [], learn: [], view_levels: [1, 2, 3, 4, 5, 6, 7, 8], visible: true, opened_on: new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10), sections: [{ title: '', lessons: [{}] }] };
+  const opts = (k) => [...new Set(all.map((x) => x[k]).filter(Boolean))].map((x) => `<option value="${esc(x)}">`).join('');
+  main.innerHTML = `${head('강의 › 강의 관리', id ? '강의 수정' : '강의 만들기', id ? `<a href="/course.html?id=${id}" target="_blank" rel="noopener">홈페이지에서 보기 ↗</a>` : '')}
+    <form id="cform" class="gap">
+      <section class="panel pad"><h2>기본 정보</h2>
+        <label class="field"><span>강의 이름</span><input class="input" name="title" required maxlength="100" value="${esc(v.title)}" placeholder="예: 정보의 계층화 — 2차 · 3차 정보 조립"></label>
+        <div class="row2">
+          <label class="field"><span>분야 <small class="meta">목록 위 탭이 됩니다</small></span><input class="input" name="track" list="dl-track" maxlength="30" value="${esc(v.track)}" placeholder="Sound · Build · 실전"><datalist id="dl-track">${opts('track')}</datalist></label>
+          <label class="field"><span>수준</span><input class="input" name="level" list="dl-level" maxlength="20" value="${esc(v.level)}" placeholder="입문 · 기초 · 중급"><datalist id="dl-level">${opts('level')}</datalist></label>
+        </div>
+        <div class="row2">
+          <label class="field"><span>썸네일 큰 글자</span><input class="input" name="no_label" maxlength="30" value="${esc(v.no_label)}" placeholder="예: Build 2"><small>숫자는 노란색으로 보입니다.</small></label>
+          <label class="field"><span>등록일 <small class="meta">최근순 정렬에 씁니다</small></span><input class="input" type="date" name="opened_on" value="${esc(v.opened_on)}"></label>
+        </div>
+        <fieldset class="field"><legend>썸네일 색</legend><div class="choices">${Object.entries(THUMB_LABEL).map(([k, l]) => `<label class="check"><input type="radio" name="thumb" value="${k}"${v.thumb === k ? ' checked' : ''}> <span class="c-sw t-${k}"></span>${l}</label>`).join('')}</div></fieldset>
+        <label class="check"><input type="checkbox" name="visible"${v.visible ? ' checked' : ''}> 홈페이지에 공개합니다</label>
+      </section>
+      <section class="panel pad"><h2>소개</h2>
+        <label class="field"><span>한 줄 소개</span><textarea class="input" name="description" maxlength="1000" rows="2" placeholder="목록 카드와 상세 화면 위에 나옵니다.">${esc(v.description)}</textarea></label>
+        <div class="row2">
+          <label class="field"><span>이런 분께 권해요 <small class="meta">한 줄에 하나</small></span><textarea class="input" name="who" rows="5">${esc(v.who.join('\n'))}</textarea></label>
+          <label class="field"><span>이 강의에서 배우는 것 <small class="meta">한 줄에 하나</small></span><textarea class="input" name="learn" rows="5">${esc(v.learn.join('\n'))}</textarea></label>
+        </div>
+      </section>
+      <section class="panel pad"><h2>볼 수 있는 등급 <small class="meta">맛보기 차시는 누구나 봅니다</small></h2>
+        ${levelChecks('view_levels', v.view_levels)}
+        <p class="meta gap">수강 권한을 주려면 <a href="#/members">가입회원</a>에서 그 회원의 등급을 여기서 고른 등급으로 바꿉니다. 등급 이름은 <a href="#/levels">등급 이름</a>에서 바꿀 수 있습니다 (예: 8등급 → 수강생).</p>
+      </section>
+      <section class="panel pad"><h2>커리큘럼 <small class="meta" data-cur-sum></small></h2>
+        <p class="meta">섹션 · 차시는 ⠿ 를 끌어서 차례를 바꿉니다. 영상 주소는 YouTube · Vimeo 의 공유 주소를 그대로 붙여 넣으세요. 제목 · 길이가 비어 있으면 자동으로 채워 봅니다.</p>
+        <div class="cs-list" id="cs-list">${(v.sections.length ? v.sections : [{ lessons: [{}] }]).map(sectionBox).join('')}</div>
+        <button type="button" class="btn" id="cs-add">+ 섹션 추가</button>
+      </section>
+      <p class="err" role="alert"></p>
+      ${id ? '<section class="panel pad"><h2>강의 지우기</h2><p class="meta">지우면 홈페이지에서 바로 사라집니다.</p><button type="button" class="btn danger" id="c-del">이 강의 지우기</button></section>' : ''}
+      ${saveBar(id ? '강의를 고치는 중입니다.' : '새 강의를 만드는 중입니다.', '#/courses')}
+    </form>`;
+  const form = $('#cform');
+  const box = $('#cs-list');
+  ctrlS(form);
+  $$('[data-all]', form).forEach((b) => b.addEventListener('click', () => { $$(`input[name="${b.dataset.all}"]`, form).forEach((i) => { i.checked = true; }); dirty = true; }));
+  $$('[data-none]', form).forEach((b) => b.addEventListener('click', () => { $$(`input[name="${b.dataset.none}"]`, form).forEach((i) => { i.checked = false; }); dirty = true; }));
+  const sum = () => {
+    const rows = $$('.cl-row', box);
+    const sec = rows.reduce((n, r) => n + durSec(r.querySelector('.cl-d').value), 0);
+    $('[data-cur-sum]').textContent = `섹션 ${$$('.cs-box', box).length}개 · 차시 ${rows.length}개 · ${fmtTotal(sec)}`;
+  };
+  const wire = () => {
+    $$('.cl-list', box).forEach((list) => {
+      if (list.dataset.wired) return;
+      list.dataset.wired = '1';
+      sortable(list, { rowSel: '.cl-row', handleSel: '.l-handle', onDrop: () => { dirty = true; } });
+    });
+    sum();
+  };
+  sortable(box, { rowSel: '.cs-box', handleSel: '.s-handle', onDrop: () => { dirty = true; } });
+  box.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('[data-add-lesson]')) {
+      const list = t.closest('.cs-box').querySelector('.cl-list');
+      list.insertAdjacentHTML('beforeend', lessonRow());
+      list.lastElementChild.querySelector('.cl-t').focus();
+      dirty = true; sum();
+    }
+    if (t.closest('[data-del-lesson]')) { t.closest('.cl-row').remove(); dirty = true; sum(); }
+    if (t.closest('[data-del-section]')) {
+      const sb = t.closest('.cs-box');
+      const n = $$('.cl-row', sb).length;
+      const kill = () => { sb.remove(); dirty = true; sum(); };
+      if (n) confirmInline(t.closest('button'), `이 섹션과 차시 ${n}개를 지웁니다. 저장해야 반영됩니다.`, '섹션 지우기', async () => kill()); else kill();
+    }
+  });
+  box.addEventListener('input', (e) => { if (e.target.matches('.cl-d')) sum(); });
+  // 영상 주소를 붙여 넣으면 제목 · 길이가 비어 있을 때만 채운다 (Vimeo 는 길이까지, YouTube 는 제목)
+  box.addEventListener('change', async (e) => {
+    if (!e.target.matches('.cl-v')) return;
+    const row = e.target.closest('.cl-row');
+    const url = e.target.value.trim();
+    if (!/^https:\/\//.test(url)) return;
+    try {
+      let d = null;
+      if (/vimeo\.com/.test(url)) d = await (await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`)).json();
+      else if (/youtu\.?be/.test(url)) d = await (await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`)).json();
+      if (!d) return;
+      const t = row.querySelector('.cl-t'); const du = row.querySelector('.cl-d');
+      if (!t.value.trim() && d.title) t.value = d.title;
+      if (!du.value.trim() && d.duration) du.value = fmtDur(d.duration);
+      sum();
+    } catch { /* 못 가져오면 손으로 */ }
+  });
+  $('#cs-add').addEventListener('click', () => { box.insertAdjacentHTML('beforeend', sectionBox({ lessons: [{}] })); wire(); box.lastElementChild.querySelector('.cs-t').focus(); dirty = true; });
+  $('#c-del')?.addEventListener('click', (e) => confirmInline(e.currentTarget, `"${esc(v.title)}" 강의를 지웁니다.`, '강의 삭제', async () => {
+    await api(`/courses/${id}`, { method: 'DELETE' }); dirty = false; toast('강의를 지웠습니다.'); go('#/courses');
+  }));
+  wire();
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+      if (!form.reportValidity()) return;
+      const f = formData(form);
+      const sections = $$('.cs-box', box).map((sb) => ({
+        id: Number(sb.dataset.sid) || null,
+        title: sb.querySelector('.cs-t').value,
+        lessons: $$('.cl-row', sb).map((r) => ({
+          id: Number(r.dataset.lid) || null, title: r.querySelector('.cl-t').value, video_url: r.querySelector('.cl-v').value.trim(),
+          duration: r.querySelector('.cl-d').value, is_free: r.querySelector('.cl-free').checked,
+        })).filter((l) => l.title.trim() || l.video_url),
+      }));
+      const data = {
+        title: f.title, no_label: f.no_label, track: f.track, level: f.level, thumb: f.thumb, opened_on: f.opened_on, visible: !!f.visible,
+        description: f.description, who: f.who, learn: f.learn, view_levels: f.view_levels || [], sections,
+      };
+      if (id) await api(`/courses/${id}`, { method: 'PUT', data });
+      else { const r = await api('/courses', { method: 'POST', data }); dirty = false; toast('강의를 만들었습니다.'); return go(`#/courses/${r.id}`); }
+      dirty = false; toast('강의를 저장했습니다.'); route();
     });
   });
 }

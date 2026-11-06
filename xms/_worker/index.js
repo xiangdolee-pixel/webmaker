@@ -18,6 +18,7 @@ import { livePopups } from './popups.js';
 import { uploadApi, serveUpload, avatarOf } from './uploads.js';
 import { embedCss } from './css-scope.js';
 import { recordVisit } from './visits.js';
+import { publicCourses } from './courses.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const headCache = new Map();
@@ -138,6 +139,10 @@ export class Cms extends WorkerEntrypoint {
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await timed(uploadApi(ctx));
       if (p.startsWith('/xms-api/admin/')) return await timed(adminApi(ctx));
+      if (/^\/xms-api\/(courses|lessons|my\/courses)(\/|$)/.test(p)) {
+        return await timed((async () => (await publicCourses(ctx, p.slice(8).replace(/\/+$/, ''), request.method))
+          || new Response(JSON.stringify({ error: '찾을 수 없습니다.' }), { status: 404, headers: { 'Content-Type': 'application/json; charset=utf-8' } }))());
+      }
       if (p.startsWith('/xms-api/')) return await timed(publicApi(ctx));
       if (p.startsWith('/member/') || p.startsWith('/board/') || p === '/board') return await timed(publicPage(ctx));
       return new Response('Not found', { status: 404 });
