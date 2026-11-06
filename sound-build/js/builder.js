@@ -200,6 +200,15 @@
     document.body.appendChild(fs);
     var seg = SB.seg($('.fs-mode', fs), function (v) { mode = v; step = 0; show(); });
 
+    function fit(el) {
+      el.style.fontSize = ''; el.classList.add('one-line');
+      var base = parseFloat(getComputedStyle(el).fontSize), min = 16;
+      if (el.scrollWidth > el.clientWidth) {
+        var size = Math.floor(base * el.clientWidth / el.scrollWidth * 0.98);
+        el.style.fontSize = Math.max(size, min) + 'px';
+        if (el.scrollWidth > el.clientWidth) el.classList.remove('one-line');   // 너무 긴 문장은 줄바꿈 허용
+      }
+    }
     function show(anim) {
       var c = cards[at]; if (!c) return;
       var A = c.A, sent = $('.fs-sent', fs), tree = $('.fs-tree', fs);
@@ -208,8 +217,11 @@
       $('[data-fs="next"]', fs).disabled = at === cards.length - 1;
       fs.classList.toggle('stepping', mode === 'step');
       $('.fs-step', fs).hidden = mode !== 'step';
+      // 위 문장은 한 줄에 — 다 표시된 모양 기준으로 글자 크기를 한 번 정한다(단계가 바뀌어도 크기가 튀지 않게)
+      sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts);
+      fit(sent);
       drawn = SB.markDiagram(tree, A.toks, A.roles, A.parts, 0);
-      if (mode !== 'step') { sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts); return; }
+      if (mode !== 'step') return;
       // 뼈대(1차) 먼저, 그다음 조립도 순서대로 한 덩어리씩
       order = drawn.filter(function (L) { return !L.p; }).concat(drawn.filter(function (L) { return L.p; }));
       var bones = order.filter(function (L) { return !L.p; }).length;

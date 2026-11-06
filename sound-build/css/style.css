@@ -693,6 +693,7 @@ a.lesson:hover { background: var(--paper); }
 .fs-btns .icon-btn:disabled { opacity: .3; pointer-events: none; }
 .fs-body { flex: 1; width: 100%; max-width: 1400px; margin: 0 auto; padding: 2vh clamp(20px, 5vw, 72px) 8vh; display: flex; flex-direction: column; justify-content: center; }
 .fs-sent { font-size: clamp(1.4rem, 3vw, 2.5rem); line-height: 2.1; letter-spacing: -.005em; }
+.fs-sent.one-line { white-space: nowrap; }
 .fs-tree { margin-top: clamp(28px, 5vh, 56px); padding-top: clamp(20px, 4vh, 40px); border-top: 1.5px dashed var(--line); font-size: clamp(1.15rem, 2.2vw, 1.8rem); }
 .fs-tree .dl { line-height: 1.7; margin: 6px 0; }
 .fs-left { display: flex; align-items: center; gap: 14px; }
