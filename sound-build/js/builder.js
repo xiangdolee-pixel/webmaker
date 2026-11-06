@@ -213,27 +213,28 @@
       // 뼈대(1차) 먼저, 그다음 조립도 순서대로 한 덩어리씩
       order = drawn.filter(function (L) { return !L.p; }).concat(drawn.filter(function (L) { return L.p; }));
       var bones = order.filter(function (L) { return !L.p; }).length;
-      var upto = bones - 1 + step, seen = order.slice(0, upto + 1);
+      // step 0 = 문장만(표시 없음) → 1 = 뼈대 → 2… = 부품 하나씩
+      var upto = step === 0 ? -1 : bones - 1 + (step - 1), seen = order.slice(0, upto + 1);
       var ids = {}, roles = {}, parts = [];
       seen.forEach(function (L) { if (L.p) { parts.push(L.p); for (var i = L.p.from; i <= L.p.to; i++) ids[i] = 1; } else L.ids.forEach(function (i) { ids[i] = 1; }); });
       // 아직 안 나온 덩어리 안 낱말은 흐리게
       order.slice(upto + 1).forEach(function (L) { if (L.p) L.ids.forEach(function (i) { delete ids[i]; }); });
       Object.keys(A.roles).forEach(function (i) { if (ids[i]) roles[i] = A.roles[i]; });
       sent.innerHTML = SB.markInline(A.toks, roles, parts);
-      $$('.wd', sent).forEach(function (w) { if (!ids[w.dataset.i]) w.classList.add('fs-later'); });
+      if (step > 0) $$('.wd', sent).forEach(function (w) { if (!ids[w.dataset.i]) w.classList.add('fs-later'); });
       order.forEach(function (L, k) {
         L.el.classList.toggle('pending', k > upto);
         L.el.classList.remove('reveal');
-        if (anim && k === upto && k >= bones) { void L.el.offsetWidth; L.el.classList.add('reveal'); }
+        if (anim && (k === upto || (step === 1 && k < bones))) { void L.el.offsetWidth; L.el.classList.add('reveal'); }
       });
       var cur = order[upto];
-      $('.fs-cap', fs).innerHTML = cur && cur.p ? partHTML(A, drawn, cur) : boneHTML(A, drawn);
-      var tot = order.length - bones + 1;
-      $('.fs-count', fs).textContent = (step + 1) + ' / ' + tot + ' 단계';
+      $('.fs-cap', fs).innerHTML = step === 0 ? '<i class="tier-chip">시작</i><div><b>먼저 문장을 소리 내어 읽어 보세요.</b><p>다음 단계를 누르면 문장의 뼈대(1차 정보)부터 하나씩 나타나요.</p></div>' : cur && cur.p ? partHTML(A, drawn, cur) : boneHTML(A, drawn);
+      var tot = order.length - bones + 1;     // 뼈대 1 + 부품 수 (시작 화면은 세지 않음)
+      $('.fs-count', fs).textContent = step === 0 ? '시작' : step + ' / ' + tot + ' 단계';
       $('[data-fs="back"]', fs).disabled = step === 0 && at === 0;
-      $('[data-fs="fwd"]', fs).disabled = step >= tot - 1 && at === cards.length - 1;
+      $('[data-fs="fwd"]', fs).disabled = step >= tot && at === cards.length - 1;
     }
-    function total() { var c = cards[at]; return c ? c.A.parts.length + 1 : 1; }
+    function total() { var c = cards[at]; return c ? c.A.parts.length + 2 : 2; }   // 시작 + 뼈대 + 부품 수
     function fwd() {
       if (mode !== 'step') { if (at < cards.length - 1) { at++; show(); } return; }
       if (step < total() - 1) { step++; show(true); }
