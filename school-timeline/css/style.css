@@ -363,7 +363,7 @@ table { border-collapse: collapse; width: 100%; }
 @media (min-width: 768px) {
   .hero-grid { grid-template-columns: 1fr 1.02fr; }
   .hero-grid.single { grid-template-columns: 1.2fr .8fr; align-items: center; }
-  .miles { grid-template-columns: repeat(3, 1fr); }
+  .miles { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto; grid-auto-flow: column; } /* 학교마다 한 열: 위 입학 · 아래 졸업 */
   .split { grid-template-columns: 1fr 1fr; }
   .who-grid { grid-template-columns: repeat(3, 1fr); }
   .footer-grid { grid-template-columns: 1.2fr 1fr; align-items: start; }
