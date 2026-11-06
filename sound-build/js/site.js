@@ -1,6 +1,6 @@
-/* 영소립 English Sound & Build — 사이트 공통 스크립트
+/* 영소립 English, Sound & Build — 사이트 공통 스크립트
    강의 · 진도 · 노트는 xms 강의 기능(/xms-api/courses …)에서 온다. 관리 화면 /xms/ → 강의 관리 에서 고친다.
-   로컬 미리보기(서버 없음)에서는 data.js 의 예시 강의로 보여 준다. */
+   (로컬 미리보기에는 서버가 없어 강의 자료가 나오지 않는다 — 배포 주소에서 확인) */
 (function () {
   'use strict';
   var SB = window.SB = window.SB || {};
@@ -20,7 +20,7 @@
     next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>'
   };
   SB.IC = IC;
-  var TITLE = '영소립 English Sound & Build';
+  var TITLE = '영소립 English, Sound & Build';
 
   /* ── 헤더 ── */
   function initHeader() {
@@ -73,9 +73,7 @@
   };
 
   /* ── 서버 (xms 강의) — 없으면 예시 자료 ── */
-  var LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   function api(path, opt) {
-    if (LOCAL) return Promise.resolve(demo(path, opt));
     opt = opt || {};
     return fetch('/xms-api' + path, {
       method: opt.method || 'GET', credentials: 'same-origin', cache: 'no-store',
@@ -89,34 +87,6 @@
     });
   }
   SB.api = api;
-  // 로컬 미리보기용: data.js 예시 강의를 서버와 같은 모양으로
-  var demoData = null;
-  function demo(path, opt) {
-    if (!demoData) {
-      var lid = 0, thumb = { sound: 'red', build: 'black', real: 'split' };
-      demoData = (SB.courses || []).map(function (c, ci) {
-        return {
-          id: ci + 1, title: c.title, no_label: c.no, track: SB.tracks[c.track], level: c.level, thumb: thumb[c.track], description: c.desc,
-          opened_on: c.date, who: c.who, learn: c.learn, can_view: true,
-          sections: c.sections.map(function (s, si) {
-            return { id: ci * 100 + si, title: s.title, lessons: s.lessons.map(function (l) { lid++; return { id: lid, title: l.t, duration_sec: sec(l.d), is_free: !!l.free, open: true, has_video: !!l.v, v: l.v || '' }; }) };
-          })
-        };
-      });
-      demoData.forEach(function (c) { var ls = flat(c); c.lessons = ls.length; c.total_sec = ls.reduce(function (n, x) { return n + x.l.duration_sec; }, 0); c.done = 0; });
-    }
-    var m;
-    if (path === '/courses') return demoData;
-    if ((m = path.match(/^\/courses\/(\d+)$/))) { var c = demoData[+m[1] - 1] || demoData[0]; return Object.assign({ done: [], last: null, guest: false }, c); }
-    if ((m = path.match(/^\/lessons\/(\d+)$/))) {
-      var hit = null; demoData.forEach(function (c) { flat(c).forEach(function (x) { if (x.l.id === +m[1]) hit = x.l; }); });
-      return { id: +m[1], video_url: hit ? hit.v : '', note: '', member: false };
-    }
-    if (path === '/my/courses') return { done: 0, completed: 0, streak: 0, last: null, courses: [], local: true };
-    return { ok: true };
-  }
-  function sec(d) { var p = String(d || '').split(':'); return (+p[0]) * 60 + (+p[1] || 0); }
-
   /* ── 강의 공통 ── */
   function flat(c) {
     var out = [];
@@ -144,18 +114,6 @@
       '<h3>' + esc(c.title) + '</h3><p>' + esc(c.description) + '</p>' +
       (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') +
       '<div class="course-meta"><span>강의 ' + (c.lessons || 0) + '개</span><span>' + total(c.total_sec || 0) + '</span></div></div></a>';
-  };
-  // 강의 목록 한 줄 (스터디언처럼: 그림 · 정보 · 단추)
-  SB.row = function (c) {
-    var r = rate(c), href = 'course.html?id=' + c.id;
-    return '<article class="course-row"><a href="' + href + '" tabindex="-1" aria-hidden="true">' + SB.thumb(c) + '</a>' +
-      '<div class="cr-body"><div class="course-tags">' + tags(c) + '</div><h3><a href="' + href + '">' + esc(c.title) + '</a></h3>' +
-      (c.description ? '<p>' + esc(c.description) + '</p>' : '') +
-      '<div class="cr-meta"><span><b>강의 수</b>' + (c.lessons || 0) + '개</span>' + (c.total_sec ? '<span><b>총 시간</b>' + total(c.total_sec) + '</span>' : '') +
-      (c.level ? '<span><b>수준</b>' + esc(c.level) + '</span>' : '') + '</div>' +
-      (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') + '</div>' +
-      '<div class="cr-act"><a class="btn btn-red btn-sm" href="' + href + '">' + (r ? '이어서 보기' : '강의 보기') + '</a>' +
-      '<a class="btn btn-line btn-sm" href="' + href + '#curri">커리큘럼</a></div></article>';
   };
   function curriculum(c, curId) {
     var done = c.done || [];
@@ -215,7 +173,7 @@
       if (st.sort === 'new') list.sort(function (a, b) { return a.opened_on < b.opened_on ? 1 : -1; });
       if (st.sort === 'abc') list.sort(function (a, b) { return a.title.localeCompare(b.title, 'ko'); });
       $('#courseCount').innerHTML = '강의 <b>' + list.length + '</b>개';
-      grid.innerHTML = list.length ? list.map(SB.row).join('') : '<div class="empty">조건에 맞는 강의가 없습니다.</div>';
+      grid.innerHTML = list.length ? list.map(SB.card).join('') : '<div class="empty">조건에 맞는 강의가 없습니다.</div>';
     }
     api('/courses').then(function (list) {
       all = list;
