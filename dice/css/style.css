@@ -4,8 +4,6 @@
   --fg: #111;
   --muted: #6b7280;
   --line: #e5e7eb;
-  --board: #f3f4f6;
-  --board-line: #e7e8ec;
   --btn: #f3f4f6;
   --btn-fg: #111;
   --btn-on: #111;
@@ -19,6 +17,11 @@
   --pip-hi: #4b5563;
   --pip-one: #d90f3f;
   --pip-one-hi: #ff6b8b;
+  --pip-rim: rgba(255, 255, 255, .9);
+  --pip-glow: 0 0 0 transparent;
+  --gloss: none;
+  --tex: none;
+  --felt: #1d5a45;
   --chip: #111;
   --chip-fg: #fff;
   --shadow: rgba(17, 24, 39, .28);
@@ -30,7 +33,6 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f1012; --fg: #f3f4f6; --muted: #9ca3af; --line: #26282d;
-    --board: #1a1c20; --board-line: #23262b;
     --btn: #22252a; --btn-fg: #f3f4f6; --btn-on: #f3f4f6; --btn-on-fg: #111;
     --chip: #f3f4f6; --chip-fg: #111; --shadow: rgba(0, 0, 0, .6);
   }
@@ -74,20 +76,48 @@ button { font: inherit; color: inherit; }
   .step:not(:disabled):hover { background: var(--btn-on); color: var(--btn-on-fg); }
 }
 
+/* 주사위 종류 고르기 — 알약 탭, 고른 칸 배경(.skin-ind) 하나가 미끄러져 간다 */
+.skins-wrap { margin-bottom: 12px; }
+.skins { position: relative; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--btn);
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.skins::-webkit-scrollbar { display: none; }
+.skin-ind { position: absolute; left: 0; top: 0; width: 0; height: 0; border-radius: 999px; background: var(--btn-on);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .15); transition: transform .35s var(--ease), width .35s var(--ease), height .35s var(--ease); pointer-events: none; }
+.skin { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px 0 6px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--btn-fg); font-size: 14px; font-weight: 600; white-space: nowrap;
+  cursor: pointer; transition: color .35s var(--ease), background .2s; }
+.skin.on { color: var(--btn-on-fg); }
+.skins.no-ind .skin.on { background: var(--btn-on); }
+/* 견본: 작은 주사위 면 + 가운데 눈 */
+.sw { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: none;
+  background: var(--gloss), var(--tex), radial-gradient(120% 120% at 28% 22%, var(--face-hi), var(--face) 55%, var(--face-lo));
+  box-shadow: inset 0 0 0 1px var(--face-edge), 0 0 0 1px rgba(0, 0, 0, .06); transition: box-shadow .35s var(--ease); }
+.sw::after { content: ""; width: 34%; height: 34%; border-radius: 50%; background: radial-gradient(circle at 38% 32%, var(--pip-one-hi), var(--pip-one) 62%); }
+.skin.on .sw { box-shadow: inset 0 0 0 1px var(--face-edge), 0 0 0 1.5px rgba(255, 255, 255, .55); }
+@media (prefers-color-scheme: dark) {
+  .sw { box-shadow: inset 0 0 0 1px var(--face-edge), 0 0 0 1px rgba(255, 255, 255, .1); }
+  .skin.on .sw { box-shadow: inset 0 0 0 1px var(--face-edge), 0 0 0 1.5px rgba(0, 0, 0, .35); }
+}
+@media (hover: hover) {
+  .skin:not(.on):hover { background: rgba(127, 127, 127, .12); }
+}
+
 /* 판 — 화면을 누르면 던짐 */
 .play { flex: 1; display: flex; flex-direction: column; padding-bottom: max(16px, env(safe-area-inset-bottom)); min-height: 0; }
 .board {
   position: relative; flex: 1; min-height: 280px; border-radius: var(--radius); overflow: hidden; cursor: pointer;
-  background: var(--board) radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .55), transparent 70%);
-  box-shadow: inset 0 0 0 1px var(--board-line);
+  --shadow: rgba(0, 0, 0, .5);
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 255, 255, .12), transparent 70%),
+    radial-gradient(rgba(255, 255, 255, .035) 1px, transparent 1.2px) 0 0 / 4px 4px,
+    var(--felt);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25), inset 0 0 70px rgba(0, 0, 0, .35);
+  transition: background-color .4s;
   touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
-@media (prefers-color-scheme: dark) {
-  .board { background: var(--board) radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .04), transparent 70%); }
-}
-.board:focus-visible { outline-offset: -2px; }
+.board:focus-visible { outline: 2px solid #fff; outline-offset: -5px; }
 .stage { position: absolute; inset: 0; }
-.hint { position: absolute; left: 0; right: 0; bottom: 16px; margin: 0; text-align: center; font-size: 15px; color: var(--muted);
+.hint { position: absolute; left: 0; right: 0; bottom: 16px; margin: 0; text-align: center; font-size: 15px; color: rgba(255, 255, 255, .72);
   pointer-events: none; transition: opacity .3s; }
 .board.rolled .hint { opacity: 0; }
 
@@ -99,7 +129,7 @@ button { font: inherit; color: inherit; }
 .cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
 .face {
   position: absolute; inset: 0; border-radius: 22%;
-  background: radial-gradient(120% 120% at 28% 22%, var(--face-hi) 0%, var(--face) 55%, var(--face-lo) 100%);
+  background: var(--gloss), var(--tex), radial-gradient(120% 120% at 28% 22%, var(--face-hi) 0%, var(--face) 55%, var(--face-lo) 100%);
   box-shadow: inset 0 0 0 1px var(--face-edge), inset 0 0 calc(var(--s) * .08) rgba(0, 0, 0, .07);
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 15%;
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
@@ -107,7 +137,7 @@ button { font: inherit; color: inherit; }
 /* 눈: 오목하게 파인 느낌 */
 .face i { width: 66%; aspect-ratio: 1; border-radius: 50%; place-self: center;
   background: radial-gradient(circle at 38% 32%, var(--pip-hi), var(--pip) 62%);
-  box-shadow: inset 0 calc(var(--s) * .015) calc(var(--s) * .02) rgba(0, 0, 0, .45), 0 1px 0 rgba(255, 255, 255, .9); }
+  box-shadow: inset 0 calc(var(--s) * .015) calc(var(--s) * .02) rgba(0, 0, 0, .45), 0 1px 0 var(--pip-rim), var(--pip-glow); }
 .face.v1 i { width: 92%; background: radial-gradient(circle at 38% 32%, var(--pip-one-hi), var(--pip-one) 62%); }
 /* 속 채움: 둥근 모서리 틈으로 빈 속이 안 보이게 가운데에 판 셋 */
 .core { position: absolute; inset: 2%; border-radius: 8%; background: var(--core); }
@@ -119,6 +149,38 @@ button { font: inherit; color: inherit; }
 .f4 { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
 .f2 { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); }
 .f5 { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+/* 주사위 종류 — 변수만 바꾼다 (판 · 고르기 단추 견본이 같이 쓴다) */
+[data-dice="onyx"] { --face: #1d1e22; --face-hi: #45474f; --face-lo: #0b0c0e; --face-edge: rgba(255, 255, 255, .08); --core: #141518;
+  --pip: #e9eaee; --pip-hi: #fff; --pip-one: #e11d48; --pip-one-hi: #ff7a96; --pip-rim: rgba(255, 255, 255, .12); }
+[data-dice="casino"] { --face: #d3122f; --face-hi: #ff6b6b; --face-lo: #7d0819; --face-edge: rgba(255, 255, 255, .18); --core: #a50d25;
+  --pip: #f4f4f6; --pip-hi: #fff; --pip-one: #f4f4f6; --pip-one-hi: #fff; --pip-rim: rgba(255, 255, 255, .25);
+  --gloss: linear-gradient(155deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .08) 34%, transparent 35%); }
+[data-dice="sapphire"] { --face: #1f56d8; --face-hi: #7cb4ff; --face-lo: #0a1f5c; --face-edge: rgba(255, 255, 255, .2); --core: #163f9f;
+  --pip: #eef3ff; --pip-hi: #fff; --pip-one: #eef3ff; --pip-one-hi: #fff; --pip-rim: rgba(255, 255, 255, .25);
+  --gloss: linear-gradient(155deg, rgba(255, 255, 255, .45) 0%, rgba(255, 255, 255, .08) 34%, transparent 35%); }
+[data-dice="emerald"] { --felt: #1d2c4d; --face: #0f9d63; --face-hi: #66eab0; --face-lo: #054a2c; --face-edge: rgba(255, 255, 255, .2); --core: #0b774b;
+  --pip: #d9a520; --pip-hi: #fff1b8; --pip-one: #d9a520; --pip-one-hi: #fff1b8; --pip-rim: rgba(255, 255, 255, .25);
+  --gloss: linear-gradient(155deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .08) 34%, transparent 35%); }
+[data-dice="wood"] { --face: #c98a4b; --face-hi: #f0c48f; --face-lo: #9a5f2b; --face-edge: rgba(70, 35, 10, .18); --core: #a8703a;
+  --pip: #3a2211; --pip-hi: #6b4426; --pip-one: #3a2211; --pip-one-hi: #6b4426; --pip-rim: rgba(255, 230, 190, .5);
+  --tex: repeating-linear-gradient(98deg, transparent 0 5px, rgba(90, 45, 15, .13) 5px 6px, transparent 6px 9px, rgba(90, 45, 15, .07) 9px 11px, transparent 11px 17px); }
+[data-dice="marble"] { --face: #f1f2f4; --face-hi: #fff; --face-lo: #d6d9df; --core: #d9dce2;
+  --pip: #b8860b; --pip-hi: #ffe28a; --pip-one: #b8860b; --pip-one-hi: #ffe28a;
+  --tex: radial-gradient(ellipse 90% 14% at 30% 38%, rgba(120, 125, 138, .22), transparent 70%),
+    radial-gradient(ellipse 70% 9% at 68% 66%, rgba(120, 125, 138, .2), transparent 70%),
+    radial-gradient(ellipse 50% 6% at 52% 22%, rgba(120, 125, 138, .14), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 80% 20%, rgba(200, 205, 215, .35), transparent 70%); }
+[data-dice="gold"] { --face: #d9a520; --face-hi: #fff3b0; --face-lo: #8a6200; --face-edge: rgba(90, 60, 0, .2); --core: #b8860b;
+  --pip: #2a1d00; --pip-hi: #5c4200; --pip-one: #2a1d00; --pip-one-hi: #5c4200; --pip-rim: rgba(255, 240, 180, .6);
+  --gloss: linear-gradient(135deg, transparent 20%, rgba(255, 255, 255, .45) 38%, transparent 52%, transparent 70%, rgba(255, 255, 255, .25) 80%, transparent 90%); }
+[data-dice="mint"] { --felt: #2a2f45; --face: #bdeedd; --face-hi: #f1fffa; --face-lo: #8fd4bd; --face-edge: rgba(15, 90, 74, .12); --core: #a2dfca;
+  --pip: #0f5a4a; --pip-hi: #2f8a76; --pip-one: #ff6f91; --pip-one-hi: #ffb3c4; --pip-rim: rgba(255, 255, 255, .7); }
+[data-dice="galaxy"] { --face: #3b1f8f; --face-hi: #8a5cf0; --face-lo: #10082a; --face-edge: rgba(255, 255, 255, .14); --core: #2a1666;
+  --pip: #fff; --pip-hi: #fff; --pip-one: #ffd6f5; --pip-one-hi: #fff; --pip-rim: transparent; --pip-glow: 0 0 calc(var(--s, 60px) * .08) rgba(190, 170, 255, .95);
+  --tex: radial-gradient(circle at 18% 26%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 74% 18%, rgba(255, 255, 255, .8) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 82% 70%, #fff 0 1px, transparent 1.6px), radial-gradient(circle at 36% 84%, rgba(255, 255, 255, .7) 0 .8px, transparent 1.4px),
+    radial-gradient(circle at 56% 46%, rgba(255, 140, 220, .35), transparent 45%); }
+
 /* 눈 자리: 3×3 칸 번호 1~9 */
 .p1 { grid-area: 1 / 1; } .p2 { grid-area: 1 / 2; } .p3 { grid-area: 1 / 3; }
 .p4 { grid-area: 2 / 1; } .p5 { grid-area: 2 / 2; } .p6 { grid-area: 2 / 3; }
@@ -150,14 +212,16 @@ button { font: inherit; color: inherit; }
   .top { padding-top: 22px; padding-bottom: 18px; }
   .logo { font-size: 22px; }
   .board { min-height: 420px; }
+  .skins { flex-wrap: wrap; overflow: visible; border-radius: 26px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
   .top { padding-top: 8px; padding-bottom: 8px; }
   .board { min-height: 200px; }
+  .skins-wrap { margin-bottom: 8px; }
   .result { padding-top: 8px; min-height: 48px; }
   .total-num { font-size: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chips li { animation: none; }
-  .step, .hint, .dpos { transition: none; }
+  .step, .hint, .dpos, .skin, .skin-ind, .sw { transition: none; }
 }

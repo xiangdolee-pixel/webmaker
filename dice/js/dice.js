@@ -220,6 +220,70 @@
     rt = setTimeout(function () { if (!rolling) { measure(); dice.forEach(place); } }, 120);
   });
 
+  // 주사위 종류 — 알약 탭 한 번만 그리고 .on 만 바꾼다, 배경(.skin-ind)은 미끄러져 간다
+  var SKINS = [
+    ['classic', '클래식'], ['onyx', '블랙'], ['casino', '카지노 레드'], ['sapphire', '사파이어'], ['emerald', '에메랄드'],
+    ['wood', '원목'], ['marble', '대리석'], ['gold', '골드'], ['mint', '민트'], ['galaxy', '갤럭시']
+  ];
+  var SKIN_KEY = 'dice-skin';
+  var skinsEl = document.getElementById('skins');
+  var ind = skinsEl.querySelector('.skin-ind');
+  var skin = 'classic';
+  try { var ss = localStorage.getItem(SKIN_KEY); if (SKINS.some(function (k) { return k[0] === ss; })) skin = ss; } catch (e) {}
+  SKINS.forEach(function (k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'skin'; b.setAttribute('role', 'radio'); b.dataset.skin = k[0];
+    b.innerHTML = '<span class="sw" data-dice="' + k[0] + '" aria-hidden="true"></span>' + k[1];
+    skinsEl.appendChild(b);
+  });
+  var skinBtns = skinsEl.querySelectorAll('.skin');
+
+  function moveInd(animate) {
+    var on = skinsEl.querySelector('.skin.on');
+    if (!on || !on.offsetWidth) { skinsEl.classList.add('no-ind'); return; }   // 폭을 못 재면 칸 자체 배경으로
+    skinsEl.classList.remove('no-ind');
+    if (!animate) ind.style.transition = 'none';
+    ind.style.width = on.offsetWidth + 'px';
+    ind.style.height = on.offsetHeight + 'px';
+    ind.style.transform = 'translate(' + on.offsetLeft + 'px,' + on.offsetTop + 'px)';
+    if (!animate) { void ind.offsetWidth; ind.style.transition = ''; }
+  }
+  function setSkin(name, animate) {
+    skin = name;
+    try { localStorage.setItem(SKIN_KEY, name); } catch (e) {}
+    for (var i = 0; i < skinBtns.length; i++) {
+      var on = skinBtns[i].dataset.skin === name;
+      skinBtns[i].classList.toggle('on', on);
+      skinBtns[i].setAttribute('aria-checked', on ? 'true' : 'false');
+      skinBtns[i].tabIndex = on ? 0 : -1;
+    }
+    moveInd(animate);                       // 배경부터 옮기고
+    board.setAttribute('data-dice', name);  // 주사위 색은 뒤따라
+    var onBtn = skinsEl.querySelector('.skin.on');
+    if (onBtn && animate) {
+      var l = onBtn.offsetLeft - 8, r = onBtn.offsetLeft + onBtn.offsetWidth + 8;
+      if (l < skinsEl.scrollLeft) skinsEl.scrollTo({ left: l, behavior: reduce ? 'auto' : 'smooth' });
+      else if (r > skinsEl.scrollLeft + skinsEl.clientWidth) skinsEl.scrollTo({ left: r - skinsEl.clientWidth, behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
+  skinsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.skin');
+    if (b) setSkin(b.dataset.skin, true);
+  });
+  skinsEl.addEventListener('keydown', function (e) {
+    var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    var idx = SKINS.findIndex(function (k) { return k[0] === skin; });
+    var next = SKINS[(idx + d + SKINS.length) % SKINS.length][0];
+    setSkin(next, true);
+    skinsEl.querySelector('[data-skin="' + next + '"]').focus();
+  });
+  setSkin(skin, false);
+  // 창 크기 · 글꼴 로딩 뒤 다시 잰다
+  window.addEventListener('resize', function () { moveInd(false); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { moveInd(false); });
+
   setCount(count);
   if (!('ontouchstart' in window)) hint.textContent = '판을 클릭하거나 스페이스를 눌러 던지세요';
 })();
