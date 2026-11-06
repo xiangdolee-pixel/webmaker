@@ -13,6 +13,7 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 - plators/ — email.plators.com (Worker plators, 사용자 도메인 · 2026-11-06 plators.com 에서 옮김) 한 장짜리 페이지(가운데 master@plators.com) · xim 연결됨
 - portfolio/ — 포트폴리오 (portfolio.plators.com) · xim 연결됨 · 접속할 때마다 비밀번호(Worker 비밀값 PORTFOLIO_PASSWORD, 리포에 없음) · 카드 목록 = xim 사이트 줄의 '포트폴리오' 스위치를 켠 사이트, 이름 · 설명 · 그림 = 각 사이트 xms(검색엔진 제목 · 카톡 미리보기)
 - school-timeline/ — 스쿨타임라인 (plators.com, 옛 주소 school-timeline.plators.com 은 301 이동) 초등학교 입학년도 계산기 · 2027 초등 취학 준비 · xim 연결됨 · 애드센스 신청 대상 · 빌드 없는 HTML/JS, 테스트는 폴더 안 _dev/ (npm test · npm run test:e2e)
+- sound-build/ — 영소립 English, Sound & Build 영어 강의 사이트 (시안 1단계: 홈 · 강의 목록 · 상세 · 강의실 · 내 강의실 · 문장 훈련). 강의 · 문장 훈련 자료는 지금 js/data.js 예시 → 2단계에서 xms "강의" · "문장 훈련" 관리로. 아직 배포 전
 - xim/ — 고객 사이트 통합 관리(고객·사이트·정지·용량·수정요청). https://xim.xiangdolee.workers.dev , 자세한 건 xim/README.md
 - xms/ — 업체별 홈페이지 관리(회원·게시판·메뉴). 각 사이트주소/admin/ , 자세한 건 xms/README.md
 

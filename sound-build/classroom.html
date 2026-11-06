@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>강의실 · 영소립 Sound & Build</title>
+<meta name="description" content="영소립 강의실">
+<meta name="theme-color" content="#7a0e0e">
+<link rel="icon" type="image/png" href="img/logo-160.png">
+<link rel="apple-touch-icon" href="img/logo-512.png">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="class-body">
+
+<header class="site-header">
+  <div class="wrap hdr-in">
+    <a class="brand" href="./" aria-label="영소립 Sound &amp; Build 홈">
+      <img src="img/logo-160.png" alt="" width="38" height="38">
+      <span class="brand-txt"><b>영소립</b><small>English, Sound &amp; Build</small></span>
+    </a>
+    <nav class="gnb" id="gnb" aria-label="주 메뉴" data-xms-menu>
+      <a href="courses.html" data-xms-item>강의</a>
+      <a href="training.html" data-xms-item>문장 훈련</a>
+      <a href="my.html" data-xms-item>내 강의실</a>
+      <a href="/board/notice" data-xms-item>공지사항</a>
+    </nav>
+    <span class="gnb-account" data-xms-account></span>
+    <button class="nav-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="gnb"><span></span><span></span></button>
+  </div>
+</header>
+
+<main class="classroom" id="classroom">
+  <div class="class-main">
+    <div class="player" id="player"></div>
+    <div class="class-title">
+      <div><small id="cSect"></small><h1 id="cTitle"></h1></div>
+      <div class="class-nav" id="cNav"></div>
+    </div>
+    <div class="class-tabs">
+      <div class="seg" id="classTabs" aria-label="강의실 탭">
+        <button data-v="curri" class="on class-only-m">커리큘럼</button><button data-v="note">노트</button><button data-v="files">강의 자료</button>
+      </div>
+    </div>
+    <div class="tab-panel" data-panel="note" hidden>
+      <label class="sr" for="noteArea">노트</label>
+      <textarea class="note-area" id="noteArea" placeholder="이 강의에서 기억할 것을 적어 두세요."></textarea>
+      <p class="note-help">시안에서는 이 브라우저에만 저장됩니다. 실제 사이트에서는 계정에 저장돼 어느 기기에서나 보입니다.</p>
+    </div>
+    <div class="tab-panel" data-panel="files" hidden>
+      <ul class="files"><li><span class="badge">PDF</span>강의 자료는 관리 화면에서 올리면 여기에 나옵니다.</li></ul>
+    </div>
+  </div>
+  <aside class="class-side" id="cSide" aria-label="커리큘럼"></aside>
+</main>
+
+<footer class="site-footer">
+  <div class="ft-in">
+    <div class="ft-brand"><img src="img/logo-160.png" alt="" width="44" height="44"><div><b>영소립</b><small>English, Sound &amp; Build</small></div></div>
+    <nav class="ft-links" aria-label="바닥 메뉴">
+      <a href="courses.html">강의</a><a href="training.html">문장 훈련</a><a href="/board/notice">공지사항</a><a href="/member/terms">이용약관</a><a href="/member/privacy">개인정보 처리방침</a>
+    </nav>
+    <p class="ft-copy">© 2026 영소립 · 영어, 소리와 조립</p>
+  </div>
+</footer>
+
+<script src="js/data.js" defer></script>
+<script src="js/site.js" defer></script>
+</body>
+</html>
