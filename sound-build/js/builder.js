@@ -13,6 +13,7 @@
     sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
     full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+    steps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h7M8 12h7M12 18h8"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
   };
   var cards = [];
@@ -32,17 +33,24 @@
     if (p.att === 's') return '이음말 <b>' + esc(SB.markText(t, p.from, p.from).toLowerCase()) + '</b>';
     return '본드가 숨어 있음 (that 생략)';
   }
-  function explain(A) {
-    var lines = SB.markLines(A.toks, A.roles, A.parts), h = '';
+  function boneHTML(A, lines) {
     var bones = [];
     lines.forEach(function (L) {
       if (L.p) return;
       L.ids.forEach(function (i) { if (A.roles[i]) bones.push('<span class="w-' + (A.roles[i] === 'j' ? 'p' : A.roles[i]) + '">' + esc(A.toks[i].t) + '</span> <small>' + ROLE[A.roles[i]] + '</small>'); });
     });
-    h += '<li class="ex-row ex-bone"><i class="tier-chip t1">1차</i><div><b>뼈대</b> — ' + (bones.join(' · ') || '<small>뼈대를 찾지 못했어요. 고치기로 표시해 주세요.</small>') +
-      '<p>문장의 가장 중요한 정보예요. 나머지는 모두 이 뼈대를 설명하러 붙은 부품이에요.</p></div></li>';
-    lines.forEach(function (L) {
-      if (!L.p) return;
+    return '<i class="tier-chip t1">1차</i><div><b>뼈대</b> — ' + (bones.join(' · ') || '<small>뼈대를 찾지 못했어요. 고치기로 표시해 주세요.</small>') +
+      '<p>문장의 가장 중요한 정보예요. 나머지는 모두 이 뼈대를 설명하러 붙은 부품이에요.</p></div>';
+  }
+  function explain(A) {
+    var lines = SB.markLines(A.toks, A.roles, A.parts);
+    var h = '<li class="ex-row ex-bone">' + boneHTML(A, lines) + '</li>';
+    lines.forEach(function (L) { if (L.p) h += '<li class="ex-row" style="--d:' + Math.min(L.tier - 1, 4) + '">' + partHTML(A, lines, L) + '</li>'; });
+    return h;
+  }
+  function partHTML(A, lines, L) {
+    var h = '';
+    (function () {
       var key = L.p.kind + '-' + L.p.att, head = L.head != null ? A.toks[L.head].t : '';
       var sib = lines.filter(function (x) { return x.p && x.parent === L.parent && x.head === L.head; }).length;
       var who = L.p.att === 's' ? '문장 전체' : '<b>' + esc(head) + '</b>';
@@ -51,10 +59,10 @@
       var sample = L.p.kind === 'pp' ? '<span class="mk pp a-' + L.p.att + '"><b class="br">(</b>' + esc(SB.markText(A.toks, L.p.from, L.p.to)) + '<b class="br">)</b></span>'
         : L.p.att === 'n' ? '<span class="mk cl a-n"><b class="sl">/</b>' + esc(SB.markText(A.toks, L.p.from, L.p.to)) + '</span>'
         : '<span class="mk cl a-' + L.p.att + '">' + esc(SB.markText(A.toks, L.p.from, L.p.to)) + '</span>';
-      h += '<li class="ex-row" style="--d:' + Math.min(L.tier - 1, 4) + '"><i class="tier-chip t' + Math.min(L.tier, 4) + '">' + L.tier + '차</i><div>' + sample +
+      h = '<i class="tier-chip t' + Math.min(L.tier, 4) + '">' + L.tier + '차</i><div>' + sample +
         '<p>' + how + ' · ' + PLACE[key] + '에 붙은 <b>' + KIND[L.p.kind] + '</b> → <b class="mkname m-' + key + '">' + MK[key] + '</b>' +
-        (L.p.kind === 'cl' ? ' · ' + bond(A, L.p) : '') + '</p></div></li>';
-    });
+        (L.p.kind === 'cl' ? ' · ' + bond(A, L.p) : '') + '</p></div>';
+    })();
     return h;
   }
 
@@ -67,6 +75,7 @@
     el.innerHTML = '<header class="gen-head"><span class="gen-no">' + ('0' + (k + 1)).slice(-2) + '</span><div class="gen-tools">' +
       '<button class="icon-btn" type="button" data-act="say" aria-label="소리 듣기" title="소리 듣기">' + IC.sound + '</button>' +
       '<button class="icon-btn" type="button" data-act="edit" aria-label="고치기" aria-pressed="false" title="고치기">' + IC.edit + '</button>' +
+      '<button class="icon-btn" type="button" data-act="steps" aria-label="한 단계씩 (전체화면)" title="한 단계씩 (전체화면)">' + IC.steps + '</button>' +
       '<button class="icon-btn" type="button" data-act="full" aria-label="전체화면" title="전체화면">' + IC.full + '</button></div></header>' +
       '<div class="gen-edit" hidden><div class="seg seg-light gen-pens" aria-label="펜"><button data-v="n" class="on">명사</button><button data-v="v">동사</button><button data-v="j">형용사</button><button data-v="part">덩어리</button><button data-v="x">지우개</button></div>' +
       '<p class="gen-tip"></p></div>' +
@@ -122,7 +131,8 @@
     if (b) {
       var act = b.dataset.act;
       if (act === 'say') return say(c.src, b);
-      if (act === 'full') return full.open(cards.indexOf(c));
+      if (act === 'full') return full.open(cards.indexOf(c), 'all');
+      if (act === 'steps') return full.open(cards.indexOf(c), 'step');
       if (act === 'edit') { c.edit = !c.edit; b.setAttribute('aria-pressed', c.edit); b.classList.toggle('on', c.edit); c.sel = c.selA = null; return draw(c); }
       if (act === 'auto') { c.A = SB.markParse(SB.analyze(c.src)); return draw(c); }
       if (act === 'cancel') { c.sel = null; return draw(c); }
@@ -175,31 +185,74 @@
     syn.speak(u);
   }
 
-  /* ── 전체화면: 흰 바탕에 문장과 구조만 ── */
+  /* ── 전체화면: 흰 바탕에 문장과 구조만 — '한눈에' 또는 '한 단계씩'(뼈대 → 2차 → 3차 …) ── */
   var full = (function () {
-    var fs = document.createElement('div'), at = 0, idle;
+    var fs = document.createElement('div'), at = 0, idle, mode = 'all', step = 0, order = [], drawn = null;
     fs.className = 'fs'; fs.hidden = true; fs.setAttribute('role', 'dialog'); fs.setAttribute('aria-modal', 'true'); fs.setAttribute('aria-label', '문장 구조 전체화면');
-    fs.innerHTML = '<div class="fs-bar"><span class="fs-no"></span><div class="fs-btns">' +
+    fs.innerHTML = '<div class="fs-bar"><div class="fs-left"><span class="fs-no"></span>' +
+      '<div class="seg seg-light fs-mode" aria-label="보기 방식"><button data-v="all" class="on">한눈에</button><button data-v="step">한 단계씩</button></div></div><div class="fs-btns">' +
       '<button class="icon-btn" type="button" data-fs="prev" aria-label="앞 문장">' + SB.IC.prev + '</button>' +
       '<button class="icon-btn" type="button" data-fs="next" aria-label="다음 문장">' + SB.IC.next + '</button>' +
       '<button class="icon-btn" type="button" data-fs="say" aria-label="소리 듣기">' + IC.sound + '</button>' +
       '<button class="icon-btn" type="button" data-fs="close" aria-label="닫기 (Esc)">' + IC.close + '</button></div></div>' +
-      '<div class="fs-body"><p class="fs-sent"></p><div class="tr-diagram fs-tree"></div></div>';
+      '<div class="fs-body"><p class="fs-sent"></p><div class="tr-diagram fs-tree"></div></div>' +
+      '<div class="fs-step" hidden><div class="fs-cap ex-row"></div><div class="fs-step-nav">' +
+      '<button class="btn btn-line btn-sm" type="button" data-fs="back">' + SB.IC.prev + '이전 단계</button><span class="fs-count"></span>' +
+      '<button class="btn btn-ink btn-sm" type="button" data-fs="fwd">다음 단계' + SB.IC.next + '</button></div></div>';
     document.body.appendChild(fs);
-    function show() {
+    var seg = SB.seg($('.fs-mode', fs), function (v) { mode = v; step = 0; show(); });
+
+    function show(anim) {
       var c = cards[at]; if (!c) return;
+      var A = c.A, sent = $('.fs-sent', fs), tree = $('.fs-tree', fs);
       $('.fs-no', fs).textContent = (at + 1) + ' / ' + cards.length;
       $('[data-fs="prev"]', fs).disabled = at === 0;
       $('[data-fs="next"]', fs).disabled = at === cards.length - 1;
-      $('.fs-sent', fs).innerHTML = SB.markInline(c.A.toks, c.A.roles, c.A.parts);
-      SB.markDiagram($('.fs-tree', fs), c.A.toks, c.A.roles, c.A.parts, 0);
+      fs.classList.toggle('stepping', mode === 'step');
+      $('.fs-step', fs).hidden = mode !== 'step';
+      drawn = SB.markDiagram(tree, A.toks, A.roles, A.parts, 0);
+      if (mode !== 'step') { sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts); return; }
+      // 뼈대(1차) 먼저, 그다음 조립도 순서대로 한 덩어리씩
+      order = drawn.filter(function (L) { return !L.p; }).concat(drawn.filter(function (L) { return L.p; }));
+      var bones = order.filter(function (L) { return !L.p; }).length;
+      var upto = bones - 1 + step, seen = order.slice(0, upto + 1);
+      var ids = {}, roles = {}, parts = [];
+      seen.forEach(function (L) { if (L.p) { parts.push(L.p); for (var i = L.p.from; i <= L.p.to; i++) ids[i] = 1; } else L.ids.forEach(function (i) { ids[i] = 1; }); });
+      // 아직 안 나온 덩어리 안 낱말은 흐리게
+      order.slice(upto + 1).forEach(function (L) { if (L.p) L.ids.forEach(function (i) { delete ids[i]; }); });
+      Object.keys(A.roles).forEach(function (i) { if (ids[i]) roles[i] = A.roles[i]; });
+      sent.innerHTML = SB.markInline(A.toks, roles, parts);
+      $$('.wd', sent).forEach(function (w) { if (!ids[w.dataset.i]) w.classList.add('fs-later'); });
+      order.forEach(function (L, k) {
+        L.el.classList.toggle('pending', k > upto);
+        L.el.classList.remove('reveal');
+        if (anim && k === upto && k >= bones) { void L.el.offsetWidth; L.el.classList.add('reveal'); }
+      });
+      var cur = order[upto];
+      $('.fs-cap', fs).innerHTML = cur && cur.p ? partHTML(A, drawn, cur) : boneHTML(A, drawn);
+      var tot = order.length - bones + 1;
+      $('.fs-count', fs).textContent = (step + 1) + ' / ' + tot + ' 단계';
+      $('[data-fs="back"]', fs).disabled = step === 0 && at === 0;
+      $('[data-fs="fwd"]', fs).disabled = step >= tot - 1 && at === cards.length - 1;
+    }
+    function total() { var c = cards[at]; return c ? c.A.parts.length + 1 : 1; }
+    function fwd() {
+      if (mode !== 'step') { if (at < cards.length - 1) { at++; show(); } return; }
+      if (step < total() - 1) { step++; show(true); }
+      else if (at < cards.length - 1) { at++; step = 0; show(); }
+    }
+    function back() {
+      if (mode !== 'step') { if (at > 0) { at--; show(); } return; }
+      if (step > 0) { step--; show(); }
+      else if (at > 0) { at--; step = total() - 1; show(); }
     }
     function wake() { fs.classList.remove('idle'); clearTimeout(idle); idle = setTimeout(function () { fs.classList.add('idle'); }, 2500); }
-    function open(k) {
-      at = k; fs.hidden = false; document.body.classList.add('fs-on');
+    function open(k, m) {
+      at = k; step = 0; fs.hidden = false; document.body.classList.add('fs-on');
+      if (m && m !== mode) { mode = m; seg.set(m); }
       if (fs.requestFullscreen) fs.requestFullscreen().catch(function () {});
       show(); wake();
-      setTimeout(show, 150);                 // 전체화면으로 커진 뒤 계단 다시 재기
+      setTimeout(function () { seg.place(true); show(); }, 150);    // 전체화면으로 커진 뒤 계단 다시 재기
       $('[data-fs="close"]', fs).focus({ preventScroll: true });
     }
     function close() {
@@ -208,11 +261,14 @@
       if (window.speechSynthesis) speechSynthesis.cancel();
     }
     fs.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-fs]'); if (!b) return;
+      var b = e.target.closest('[data-fs]');
+      if (!b) { if (mode === 'step' && e.target.closest('.fs-body')) fwd(); return; }   // 단계 보기: 화면을 누르면 다음 단계
       var a = b.dataset.fs;
       if (a === 'close') close();
-      if (a === 'prev' && at > 0) { at--; show(); }
-      if (a === 'next' && at < cards.length - 1) { at++; show(); }
+      if (a === 'prev' && at > 0) { at--; step = 0; show(); }
+      if (a === 'next' && at < cards.length - 1) { at++; step = 0; show(); }
+      if (a === 'fwd') fwd();
+      if (a === 'back') back();
       if (a === 'say') say(cards[at].src, b);
     });
     fs.addEventListener('mousemove', wake);
@@ -220,8 +276,8 @@
     document.addEventListener('keydown', function (e) {
       if (fs.hidden) return;
       if (e.key === 'Escape') close();
-      if ((e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') && at < cards.length - 1) { e.preventDefault(); at++; show(); }
-      if ((e.key === 'ArrowLeft' || e.key === 'PageUp') && at > 0) { e.preventDefault(); at--; show(); }
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'Enter') { e.preventDefault(); fwd(); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') { e.preventDefault(); back(); }
     });
     window.addEventListener('resize', function () { if (!fs.hidden) show(); });
     return { open: open };
