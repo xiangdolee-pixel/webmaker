@@ -394,9 +394,10 @@ async function withXms(res, request, env, data) {
   return rw.transform(res);
 }
 
-// 맨 위로 버튼 — 스크롤을 조금 내리면 오른쪽 아래에 흰 동그라미가 떠오른다. 누르면 맨 위로 부드럽게.
+// 맨 위로 버튼 — 스크롤을 조금 내리면 오른쪽 아래에 동그라미가 떠오른다. 누르면 맨 위로 부드럽게.
+//   색은 사이트 CSS 에서 --xms-top-bg(동그라미) · --xms-top-fg(화살표) · --xms-top-line(테두리)로 바꾼다 (기본 흰 동그라미).
 const TOP_BTN = `<style>.xms-top{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:2147482000;width:52px;height:52px;border-radius:50%;
-border:0;background:#fff;color:#16181d;box-shadow:0 6px 22px rgba(15,20,30,.22),0 1px 3px rgba(15,20,30,.12);display:grid;place-items:center;cursor:pointer;
+border:1px solid var(--xms-top-line,rgba(15,20,30,.08));background:var(--xms-top-bg,#fff);color:var(--xms-top-fg,#16181d);box-shadow:0 6px 22px rgba(15,20,30,.22),0 1px 3px rgba(15,20,30,.12);display:grid;place-items:center;cursor:pointer;
 opacity:0;visibility:hidden;transform:translateY(12px) scale(.92);transition:opacity .25s,transform .3s cubic-bezier(.22,.8,.24,1),visibility .25s,box-shadow .2s;-webkit-tap-highlight-color:transparent}
 .xms-top.on{opacity:1;visibility:visible;transform:none}.xms-top:hover{box-shadow:0 10px 28px rgba(15,20,30,.28),0 1px 3px rgba(15,20,30,.12)}
 .xms-top:focus-visible{outline:2px solid #2f5fd0;outline-offset:3px}.xms-top svg{width:22px;height:22px}

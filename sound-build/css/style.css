@@ -543,6 +543,9 @@ a.lesson:hover { background: var(--paper); }
 .ft-bottom { padding-bottom: 32px; font-size: .84rem; }
 .ft-bottom p { padding-top: 18px; border-top: 1px solid var(--line); } /* 선도 글자와 같은 끝선 (wrap 안쪽) */
 
+/* 맨 위로 버튼 (xms 부가 기능): 흰 바탕에서 잘 보이게 검정 동그라미 + 노란 화살표 */
+:root { --xms-top-bg: var(--ink); --xms-top-fg: var(--yellow); --xms-top-line: transparent; }
+
 /* xms 게시판 · 회원 화면 강조색 */
 .xms-c { --brand: var(--red); }
 
