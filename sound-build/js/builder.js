@@ -288,6 +288,7 @@
     ls('sb_gen_text', input.value);
     cards = []; box.innerHTML = '';
     if (!list.length) { box.innerHTML = '<p class="gen-empty">위에 영어 문장을 넣고 <b>구조 보기</b>를 누르세요.</p>'; return; }
+    if (list.length > 1) box.insertAdjacentHTML('beforeend', '<p class="gen-count">넣은 글을 마침표 기준으로 <b>문장 ' + list.length + '개</b>로 나눠, 문장마다 따로 보여 줍니다.</p>');
     list.forEach(function (s, k) { var c = card(s, k); cards.push(c); box.appendChild(c.el); draw(c); });
   }
   $('#genRun').addEventListener('click', function () { run(); box.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -298,6 +299,6 @@
   });
   var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { cards.forEach(function (c) { SB.markDiagram(c.tree, c.A.toks, c.A.roles, c.A.parts, 0); }); }, 100); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { cards.forEach(function (c) { SB.markDiagram(c.tree, c.A.toks, c.A.roles, c.A.parts, 0); }); });
-  input.value = ls('sb_gen_text') || $('#genSamples [data-s]').dataset.s;
+  input.value = ls('sb_gen_text') || 'Elephants in the jungle of Africa play in the mud of this river.';   // 처음엔 한 문장만
   run();
 })();
