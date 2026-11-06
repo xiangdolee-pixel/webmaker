@@ -179,3 +179,22 @@ SB.sets = [
     ].join('\n')
   }
 ];
+
+/* 문장 표시 훈련 정답 — 강사 규칙(문장구조)
+   뼈대(1차 정보): {동사}  <명사>  *형용사*
+   부품: 전치사구 = 붙는자리( … )   절 = 붙는자리[ … ]
+   붙는 자리: n 명사 뒤 · j 형용사 뒤 · v 동사 · s 문장   (안에 또 넣으면 3차 정보) */
+SB.marks = [
+  { id: 'm1', level: '입문', title: '연습 1',
+    a: 'The <boy> n(in the red cap) {ran} v(to the station).' },
+  { id: 'm2', level: '입문', title: '연습 2',
+    a: '<I> {know} v[that <he> {is} *honest*].' },
+  { id: 'm3', level: '기초', title: '연습 3',
+    a: '<She> {is} *proud* j(of her <son> n[who {won} the <race>]).' },
+  { id: 'm4', level: '기초', title: '연습 4',
+    a: 's(After lunch), the <children> {played} v(in the park) s[until the <sun> {went} down].' },
+  { id: 't1', level: '중급', title: 'TEXT 1',
+    a: 's[When <I> {was} a <boy>], <I> {knew} an old <gentleman> n[who {used to say} the most ferocious <things> n(about his landlady) v(behind her back)], but n[who {was} all <smiles> and <obeisance> s[as soon as <she> {came} v(into the room)]].' },
+  { id: 't2', level: '중급', title: 'TEXT 2',
+    a: '<You> {are} *mistaken* s[if <you> {think} v[that <luxury>, <neglect> n(of good manners), and other <vices> n[of which each <man> {accuses} the <age> n[in which <he> {lives}]] {are} especially *characteristic* j(of our own epoch)]]; no <era> n(in history) {has} ever {been} *free* j(from blame).' }
+];

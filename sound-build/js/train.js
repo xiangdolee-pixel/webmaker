@@ -42,6 +42,7 @@
     return lines;
   }
   SB.parseSentence = parse;
+  SB.layoutDiagram = function (d, l) { layout(d, l); };
 
   /* ── 그리기 ── */
   function words(text, cls) {
@@ -119,7 +120,7 @@
     lines.forEach(function (L) {
       var el = L.el; L.x = 0;
       if (!L.parent) return;
-      var P = L.parent, a = anchorEl(P, L.anchor);
+      var P = L.parent, a = L.anchorNode || anchorEl(P, L.anchor);
       var x = a.getBoundingClientRect().left - base - 2;
       if (L.coord) x -= narrow ? 20 : 36;
       var w = el.offsetWidth;
@@ -304,7 +305,7 @@
       var fresh = document.createElement('div'); fresh.id = 'trainer';
       box.parentNode.replaceChild(fresh, box); box = fresh;
       cur = SB.trainer(box, s, { mode: mode }); mode = null;
-      history.replaceState(null, '', '?t=' + s.id);
+      var u = new URLSearchParams(location.search); u.set('t', s.id); u.delete('mode'); history.replaceState(null, '', '?' + u.toString());
     }
     SB.seg(sets, open);
     open(id);

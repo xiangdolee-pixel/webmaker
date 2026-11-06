@@ -390,6 +390,102 @@ a.lesson:hover { background: var(--paper); }
 @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 .build-done { width: 100%; font-weight: 700; color: var(--g-conn); }
 
+/* ── 문장 표시 훈련 (학생이 직접 기호를 친다) ───────────────────────────── */
+.mk-sets { margin-bottom: 16px; }
+.mk-sets small { font-weight: 500; opacity: .6; margin-left: 2px; }
+.marker { border-radius: var(--r); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; }
+.mk-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.mk-teacher.on { background: var(--red); border-color: var(--red); color: #fff; }
+.marker.teacher { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-soft), var(--shadow); }
+.mk-guide { padding: 16px 24px 0; font-size: .95rem; color: var(--ink-2); line-height: 1.7; }
+.mk-guide b { color: var(--ink); }
+.mk-guide .w-n, .mk-guide .w-v, .mk-guide .w-p { color: #fff; }
+.mk-guide .w-p { color: var(--ink); }
+.mk-pens, .mk-tree-bar { padding: 14px 24px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.mk-pens[hidden], .mk-tree-bar[hidden], .mk-text[hidden], .mk-diagram[hidden], .mk-sheet[hidden], .mk-parts[hidden], .mk-teacher-box[hidden] { display: none; }
+#mkPenSeg button[data-v="n"].on { color: #fff; }
+#mkPenSeg:has(button[data-v="n"].on) .seg-ind { background: var(--g-noun); }
+#mkPenSeg:has(button[data-v="v"].on) .seg-ind { background: var(--g-verb); }
+#mkPenSeg:has(button[data-v="v"].on) button.on { color: #fff; }
+#mkPenSeg:has(button[data-v="j"].on) .seg-ind { background: var(--yellow); }
+#mkPenSeg:has(button[data-v="j"].on) button.on { color: var(--ink); }
+.mk-text { padding: 22px 24px 26px; font-size: clamp(1.12rem, 2.2vw, 1.3rem); line-height: 2.35; -webkit-user-select: none; user-select: none; }
+.wd { cursor: pointer; padding: 2px 2px; border-radius: 3px; transition: background .15s, box-shadow .15s, color .15s; }
+.wd:hover { background: var(--paper-2); }
+.wd.r-v { background: var(--g-verb); color: #fff; }
+.wd.r-n { background: var(--g-noun); color: #fff; }
+.wd.r-j { background: var(--yellow); color: var(--ink); }
+.wd.insel { background: #ece6ff; box-shadow: inset 0 -3px 0 var(--g-coord); }
+.wd.insel.r-v, .wd.insel.r-n { box-shadow: inset 0 -3px 0 #fff; }
+.wd.sel-a { outline: 2px dashed var(--g-coord); outline-offset: 1px; }
+.wd.g-ok { box-shadow: 0 0 0 2.5px var(--g-conn); }
+.wd.g-bad { box-shadow: 0 0 0 2.5px var(--g-noun); text-decoration: line-through; text-decoration-thickness: 2px; }
+.wd.g-miss { outline: 2.5px dashed var(--g-noun); outline-offset: 1px; }
+.pu { color: var(--ink-2); }
+.mk { border-radius: 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.mk .br, .dl .br { font-weight: 800; font-size: 1.15em; line-height: 1; margin: 0 1px; }
+.mk.a-n > .br, .br.a-n { color: var(--g-noun); }
+.mk.a-j > .br, .br.a-j { color: #e0a800; }
+.mk.a-v > .br, .br.a-v { color: var(--g-verb); }
+.mk.a-s > .br, .br.a-s { color: var(--g-conn); }
+.mk .sl, .dl .sl { color: var(--g-noun); font-weight: 900; font-size: 1.2em; margin-right: 2px; }
+.mk.cl.a-j { border: 2px solid #f2b705; background: #fff8d6; padding: 2px 4px; }
+.mk.cl.a-v { border: 2px solid var(--g-noun); padding: 2px 4px; }
+.mk.cl.a-s { border: 2px solid var(--g-conn); padding: 2px 4px; }
+.mk.g-ok { box-shadow: 0 0 0 4px rgba(15, 157, 88, .22); }
+.mk.g-half { box-shadow: 0 0 0 4px rgba(242, 183, 5, .35); }
+.mk.g-bad { box-shadow: 0 0 0 4px rgba(225, 29, 42, .22); }
+.mk-diagram { margin: 24px 24px 28px; min-height: 140px; }
+.dl.bx { padding: 3px 10px; border-radius: 4px; }
+.dl.bx-j { border: 2px solid #f2b705; background: #fff8d6; }
+.dl.bx-v { border: 2px solid var(--g-noun); }
+.dl.bx-s { border: 2px solid var(--g-conn); }
+.dl.bx.kid::after, .dl.bx.has-kids::after { bottom: -2px; left: -2px; right: -2px; }
+.dl.bx.kid::before { left: -2px; bottom: -2px; }
+.mk-sheet { margin: 0 24px 20px; padding: 16px; border-radius: var(--r-sm); background: var(--paper); border: 1.5px solid var(--g-coord); }
+.mk-sel-t { font-weight: 700; margin-bottom: 10px; }
+.mk-row { display: grid; grid-template-columns: 64px repeat(4, 1fr); gap: 6px; align-items: stretch; margin-top: 6px; }
+.mk-row-h { align-self: center; font-size: .85rem; font-weight: 800; color: var(--ink-3); }
+.mk-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; border-radius: var(--r-sm); background: var(--card); border: 1.5px solid var(--line); font-size: 1.05rem; transition: border-color .2s, transform .2s var(--ease); }
+.mk-opt:hover { border-color: var(--ink); transform: translateY(-1px); }
+.mk-opt small { font-size: .78rem; font-weight: 700; color: var(--ink-2); }
+.mk-sheet-foot { margin-top: 10px; text-align: right; }
+.mk-parts { padding: 0 24px 18px; display: grid; gap: 6px; }
+.mk-part { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--line); font-size: .93rem; }
+.mk-part.g-ok { border-color: var(--g-conn); background: #eefaf3; }
+.mk-part.g-half { border-color: #f2b705; background: #fffbe6; }
+.mk-part.g-bad { border-color: var(--g-noun); background: #fdeeee; }
+.mk-part-tag { flex-shrink: 0; font-size: .78rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: var(--paper-2); }
+.mk-part-tag.a-n { color: var(--g-noun); } .mk-part-tag.a-j { color: #b58800; } .mk-part-tag.a-v { color: var(--g-verb); } .mk-part-tag.a-s { color: var(--g-conn); }
+.mk-part-t { flex: 1; min-width: 0; }
+.mk-empty { color: var(--ink-3); font-size: .9rem; }
+.mk-teacher-box { margin: 0 24px 18px; padding: 16px; border-radius: var(--r-sm); background: var(--red-soft); display: grid; gap: 8px; }
+.mk-teacher-box label { font-size: .85rem; font-weight: 800; color: var(--red); }
+.mk-teacher-box input, .mk-teacher-box textarea { width: 100%; min-width: 0; padding: 10px 12px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--card); font: inherit; font-size: .95rem; color: var(--ink); }
+.mk-teacher-box textarea { font-family: ui-monospace, Consolas, monospace; font-size: .85rem; resize: vertical; }
+.mk-new { display: flex; gap: 8px; align-items: center; }
+.mk-saved { font-size: .88rem; color: var(--g-conn); font-weight: 700; }
+.mk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--paper); }
+.mk-foot .btns { display: flex; gap: 8px; margin-left: auto; }
+.mk-result { font-size: .93rem; color: var(--ink-2); flex: 1 1 260px; }
+.mk-result .ok { color: var(--g-conn); font-weight: 700; } .mk-result .bad { color: var(--g-noun); } .mk-result .miss { color: var(--g-noun); } .mk-result .half { color: #b58800; }
+.marker[data-step="tree"] .mk-foot .btns { display: none; }
+.sec-sub { margin-top: clamp(48px, 7vw, 80px); }
+.sec-sub .sec-desc { margin: 0 0 16px; }
+@media (max-width: 640px) {
+  .mk-guide, .mk-pens, .mk-tree-bar { padding-left: 16px; padding-right: 16px; }
+  .mk-text { padding-left: 16px; padding-right: 16px; }
+  .mk-diagram { margin-left: 16px; margin-right: 16px; }
+  .mk-sheet, .mk-teacher-box { margin-left: 12px; margin-right: 12px; padding: 12px; }
+  .mk-parts { padding-left: 16px; padding-right: 16px; }
+  .mk-row { grid-template-columns: repeat(4, 1fr); }
+  .mk-row-h { grid-column: 1 / -1; }
+  .mk-opt { min-height: 58px; }
+  .mk-foot .btns { width: 100%; }
+  #mkSteps button { padding: 7px 11px; font-size: .9rem; }
+  .mk-foot .btns .btn { flex: 1; padding: 0 8px; }
+}
+
 /* ── 푸터 ───────────────────────────── */
 .site-footer { background: var(--dark); color: rgba(255, 255, 255, .6); font-size: .9rem; }
 .ft-in { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 44px var(--gut); }

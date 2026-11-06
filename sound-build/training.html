@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>문장 훈련 · 영소립 Sound & Build</title>
-<meta name="description" content="문장 안의 정보를 1차 · 2차 · 3차로 나누고 조립하는 훈련">
+<meta name="description" content="문장의 뼈대(1차 정보)를 찾고, 부품(부사 · 전치사구 · 절)이 붙는 자리를 직접 표시하는 문장구조 훈련">
 <meta name="theme-color" content="#7a0e0e">
 <link rel="icon" type="image/png" href="img/logo-160.png">
 <link rel="apple-touch-icon" href="img/logo-512.png">
@@ -38,12 +38,49 @@
     <div class="page-head">
       <p class="eyebrow">Build training</p>
       <h1>문장 훈련</h1>
-      <p>문장 안의 정보를 1차 · 2차 · 3차로 나누고, 계단처럼 다시 조립합니다. 한 줄씩 보며 따라가고, ‘조립’에서 직접 쌓아 보세요.</p>
+      <p>먼저 문장의 뼈대(1차 정보)를 찾고, 2차 · 3차 정보가 어디에 어떻게 붙는지 직접 표시해 보세요. 표시하면 바로 채점되고, 조립도로 펼쳐집니다.</p>
     </div>
-    <div class="train-top">
-      <div class="seg" id="trainSets" aria-label="문장 고르기"></div>
-    </div>
-    <div id="trainer"></div>
+    <div class="chips mk-sets" id="markSets" aria-label="문장 고르기"></div>
+    <section class="marker" id="marker">
+      <div class="mk-bar">
+        <div class="seg seg-light" id="mkSteps" aria-label="단계"><button data-v="bone" class="on">① 뼈대 찾기</button><button data-v="part">② 부품 붙이기</button><button data-v="tree">③ 조립도</button></div>
+        <button class="chip mk-teacher" id="mkTeacher" type="button" aria-pressed="false">강사 모드</button>
+      </div>
+      <p class="mk-guide" id="mkGuide"></p>
+      <div class="mk-pens" id="mkPens">
+        <div class="seg seg-light" id="mkPenSeg" aria-label="펜"><button data-v="n">명사</button><button data-v="v" class="on">동사</button><button data-v="j">형용사</button><button data-v="x">지우개</button></div>
+      </div>
+      <div class="mk-tree-bar" id="mkTreeBar" hidden>
+        <div class="seg seg-light" id="mkSrcSeg" aria-label="누구 표시"><button data-v="mine" class="on">내 조립도</button><button data-v="ans">정답 조립도</button></div>
+        <div class="seg seg-light" id="mkTierSeg" aria-label="정보 단계"><button data-v="0" class="on">전체</button><button data-v="1">1차</button><button data-v="2">~2차</button><button data-v="3">~3차</button></div>
+      </div>
+      <div class="mk-text" id="mkText" aria-live="polite"></div>
+      <div class="tr-diagram mk-diagram" id="mkDiagram" hidden></div>
+      <div class="mk-sheet" id="mkSheet" hidden></div>
+      <ol class="mk-parts" id="mkParts" hidden></ol>
+      <div class="mk-teacher-box" id="mkTeacherBox" hidden>
+        <label for="mkNew">새 문장 넣기</label>
+        <div class="mk-new"><input id="mkNew" type="text" placeholder="영어 문장을 붙여 넣으세요"><button class="btn btn-line btn-sm" id="mkNewBtn" type="button">넣기</button></div>
+        <label for="mkCode">정답 기호 (자동으로 만들어짐)</label>
+        <textarea id="mkCode" rows="3" readonly></textarea>
+        <div class="mk-new"><button class="btn btn-red btn-sm" id="mkSave" type="button">정답 저장</button><span class="mk-saved" id="mkSaved" role="status"></span></div>
+      </div>
+      <div class="mk-foot">
+        <p class="mk-result" id="mkResult" role="status"></p>
+        <div class="btns">
+          <button class="btn btn-line btn-sm" id="mkReset" type="button">지우기</button>
+          <button class="btn btn-line btn-sm" id="mkShow" type="button">정답 보기</button>
+          <button class="btn btn-red btn-sm" id="mkCheck" type="button">채점하기</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec-sub">
+      <h2 class="h-sub">조립 과정 보기</h2>
+      <p class="sec-desc">강사 해설처럼 문장이 한 줄씩 조립되는 과정을 보고, 직독직해로 이어 봅니다.</p>
+      <div class="train-top"><div class="seg" id="trainSets" aria-label="해설 문장 고르기"></div></div>
+      <div id="trainer"></div>
+    </section>
   </div>
 </main>
 
@@ -60,5 +97,6 @@
 <script src="js/data.js" defer></script>
 <script src="js/site.js" defer></script>
 <script src="js/train.js" defer></script>
+<script src="js/mark.js" defer></script>
 </body>
 </html>
