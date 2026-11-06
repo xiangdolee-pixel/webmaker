@@ -342,15 +342,15 @@ table { border-collapse: collapse; width: 100%; }
   .gnb a { min-height: 50px; font-size: 18px; padding: 0 16px; }
   .ytable .period { display: none; }
   .hero-art { width: min(80%, 320px); margin-top: 0; }
-  /* 폰: 제목 바로 아래에 계산기 → 첫 화면에서 바로 입력 (설명 · 그림은 계산기 뒤로) */
+  /* 폰: 계산기를 맨 위에 → 첫 화면에서 바로 입력, 결과는 바로 아래, 제목 · 설명 · 그림은 그 뒤로 */
   .hero-wrap { display: flex; flex-direction: column; }
   .hero-wrap .hero-grid, .hero-wrap .hero-intro { display: contents; }
   .hero-wrap > *, .hero-intro > * { order: 3; }
-  .hero-intro > .eyebrow { order: 0; align-self: flex-start; }
-  .hero-intro > h1 { order: 0; }
-  .hero-calc { order: 1; margin-top: 8px; }
-  .hero-wrap > .result { order: 2; }
-  .hero-intro > .lead { margin-top: 24px; }
+  .hero-intro > .eyebrow { order: 2; align-self: flex-start; margin-top: 28px; }
+  .hero-intro > h1 { order: 2; }
+  .hero-calc { order: 0; }
+  .hero-wrap > .result { order: 1; }
+  .hero:has(.hero-wrap) { padding-top: 16px; }
 }
 @media (max-width: 359px) {
   .brand { font-size: 19px; }
