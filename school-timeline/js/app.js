@@ -99,7 +99,7 @@ function resultHtml(r) {
         <span class="g-dot">${row.grade}</span>
         <div class="g-text"><b>${row.grade}학년 <span>${row.year}학년도</span></b><small>${row.year}. 3. ~ ${row.year + 1}. 2.</small></div>
         ${i === curIdx ? '<em class="g-now">지금</em>' : ''}</li>`).join('');
-    const end = st === 'high' ? `<p class="stage-end">졸업 · 다음 진학 ${r.milestones.graduation}년</p>` : '';
+    const end = `<p class="stage-end">${last + 1}년 2월 졸업${st === 'high' ? '' : ` · ${st === 'elementary' ? '중학교' : '고등학교'} 진학`}</p>`;
     return `<section class="stage ${cls[st]}">
       <header><span class="stage-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[st]}</svg></span>
         <div><b>${STAGE_NAME[st]}</b><small>${list.length}년 · ${first} ~ ${last}학년도</small></div></header>
@@ -126,8 +126,8 @@ function resultHtml(r) {
         <span class="arc-label">${esc(short)}</span>
       </div>
       <div>
-        <p class="result-from">${r.birthYear}년생</p>
-        <p class="result-big"><b>${r.entryYear}년 3월</b> 초등학교 입학</p>
+        <p class="result-from">${r.birthYear}년생 · 초등학교</p>
+        <p class="result-big"><span><b>${r.entryYear}년 3월</b> 입학</span> <span><b>${r.milestones.middle}년 2월</b> 졸업</span></p>
         <span class="tag">${esc(basisTag)}</span>
         ${diff}
       </div>
@@ -139,10 +139,12 @@ function resultHtml(r) {
       </div>
     </div>
     <dl class="miles">
-      <div class="mile"><dt>초등학교 입학</dt><dd>${r.milestones.elementary}<small>년</small></dd></div>
-      <div class="mile"><dt>중학교 진학</dt><dd>${r.milestones.middle}<small>년</small></dd></div>
-      <div class="mile"><dt>고등학교 진학</dt><dd>${r.milestones.high}<small>년</small></dd></div>
-      <div class="mile"><dt>고등학교 졸업</dt><dd>${r.milestones.graduation}<small>년 2월 무렵</small></dd></div>
+      <div class="mile e"><dt>초등학교 입학</dt><dd>${r.milestones.elementary}<small>년 3월</small></dd></div>
+      <div class="mile e"><dt>초등학교 졸업</dt><dd>${r.milestones.middle}<small>년 2월</small></dd></div>
+      <div class="mile m"><dt>중학교 입학</dt><dd>${r.milestones.middle}<small>년 3월</small></dd></div>
+      <div class="mile m"><dt>중학교 졸업</dt><dd>${r.milestones.high}<small>년 2월</small></dd></div>
+      <div class="mile h"><dt>고등학교 입학</dt><dd>${r.milestones.high}<small>년 3월</small></dd></div>
+      <div class="mile h"><dt>고등학교 졸업</dt><dd>${r.milestones.graduation}<small>년 2월</small></dd></div>
     </dl>
     <div class="card">
       <h3>12년 한눈에 보기</h3>
@@ -210,7 +212,7 @@ function initCalc(form) {
     result.classList.add('show');
     const fill = /** @type {SVGPathElement | null} */ (result.querySelector('.arc-fill'));
     if (fill) requestAnimationFrame(() => requestAnimationFrame(() => fill.setAttribute('stroke-dashoffset', fill.dataset.off || '0')));
-    status.textContent = `${r.birthYear}년생, ${r.entryYear}년 초등학교 입학. ${r.status.academicYear}학년도 기준 ${r.status.label}. 중학교 ${r.milestones.middle}년, 고등학교 ${r.milestones.high}년 진학.`;
+    status.textContent = `${r.birthYear}년생, ${r.entryYear}년 초등학교 입학, ${r.milestones.middle}년 졸업. ${r.status.academicYear}학년도 기준 ${r.status.label}. 중학교 ${r.milestones.middle}년, 고등학교 ${r.milestones.high}년 진학.`;
     const top = result.getBoundingClientRect().top;
     if (top > window.innerHeight * 0.7 || top < 0) result.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
   });
@@ -313,8 +315,8 @@ function initGradeTable() {
     const st = gradeIn(entryYear, ay);
     const start = st.stage !== 'before' && st.grade === 1 ? ' class="stage-start"' : '';
     const dot = st.stage === 'before' || st.stage === 'graduated' ? '' : `<span class="dot ${cls[st.stage]}" aria-hidden="true"></span>`;
-    const label = st.stage === 'before' ? `초등학교 입학 전 (${entryYear}년 입학)` : st.label;
-    rows.push(`<tr${start}><th scope="row">${dot}${by}년생</th><td>${label}</td><td class="n">${entryYear}</td></tr>`);
+    const label = st.stage === 'before' ? '초등학교 입학 전' : st.label;
+    rows.push(`<tr${start}><th scope="row">${dot}${by}년생</th><td>${label}</td><td class="n">${entryYear}</td><td class="n">${entryYear + 6}</td></tr>`);
   }
   const body = table.querySelector('tbody');
   if (body) body.innerHTML = rows.join('');
