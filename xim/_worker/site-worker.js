@@ -381,16 +381,18 @@ async function withXms(res, request, env, data) {
       });
     },
   });
-  // ⑥ 맨 위로 버튼 (xms 부가 기능에서 켠 사이트, 뺄 주소로 시작하는 페이지는 빼고)
+  // 페이지 끝에 붙일 것들 — body 끝 처리기는 하나만 둔다 (onEndTag 를 두 번 걸면 앞의 것이 사라진다:
+  //   2026-11-07 로그인하면 맨 위로 버튼이 안 보이던 원인 — 수정 모드 글자 스크립트가 버튼을 덮어씀)
+  const tail = [];
+  // ⑤ 맨 위로 버튼 (xms 부가 기능에서 켠 사이트, 뺄 주소로 시작하는 페이지는 빼고)
   const topCfg = data?.top;
-  if (topCfg && !(topCfg.except || []).some((x) => x && pagePath(url.pathname).startsWith(pagePath(x)))) {
-    rw = rw.on('body', { element(el) { el.onEndTag((end) => { end.before(TOP_BTN, { html: true }); }); } });
-  }
-  // ⑤ 수정 모드로 고친 글자를 넣는다 (글자 조각만 바꿔서 모양은 그대로). 관리자에게는 고칠 수 있는 자리 표시도.
+  if (topCfg && !(topCfg.except || []).some((x) => x && pagePath(url.pathname).startsWith(pagePath(x)))) tail.push(TOP_BTN);
+  // ⑥ 수정 모드로 고친 글자를 넣는다 (글자 조각만 바꿔서 모양은 그대로). 관리자에게는 고칠 수 있는 자리 표시도.
   if (data?.texts || data?.me?.admin) {
-    const T = JSON.stringify(data.texts || {}).replace(/</g, '\u003c');
-    rw = rw.on('body', { element(el) { el.onEndTag((end) => { end.before(`<script>${XE_APPLY.replace('__T__', () => T)}</script>`, { html: true }); }); } });
+    const T = JSON.stringify(data.texts || {}).replace(/</g, '\\u003c'); // </script> 가 글자에 있어도 스크립트가 끊기지 않게
+    tail.push(`<script>${XE_APPLY.replace('__T__', () => T)}</script>`);
   }
+  if (tail.length) rw = rw.on('body', { element(el) { el.onEndTag((end) => { end.before(tail.join('\n'), { html: true }); }); } });
   return rw.transform(res);
 }
 
