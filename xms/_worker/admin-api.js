@@ -52,6 +52,21 @@ export async function adminApi(ctx) {
       features: { courses: await featureOn(db, site, 'courses') },
     });
   }
+  // 부가 기능: 맨 위로 버튼 (스크롤하면 오른쪽 아래)
+  if (path === '/options/top') {
+    if (method === 'PUT') {
+      const b = await body(request);
+      const except = (Array.isArray(b.except) ? b.except : String(b.except || '').split('\n')).map((x) => str(x, 100)).filter((x) => x.startsWith('/')).slice(0, 30);
+      const v = JSON.stringify({ on: !!b.on, except });
+      await db.prepare("INSERT INTO site_options (site, k, v, updated_at) VALUES (?, 'top_button', ?, ?) ON CONFLICT(site, k) DO UPDATE SET v = excluded.v, updated_at = excluded.updated_at").bind(site, v, now()).run();
+      await audit(db, site, me, request, 'TOP_BUTTON', b.on ? '켬' : '끔', except.join(' '));
+      return json({ ok: true });
+    }
+    const r = await db.prepare("SELECT v FROM site_options WHERE site = ? AND k = 'top_button'").bind(site).first();
+    let v = { on: false, except: [] };
+    try { if (r) v = { ...v, ...JSON.parse(r.v) }; } catch { /* 기본값 */ }
+    return json(v);
+  }
   // 강의 (기능을 켠 사이트만)
   if (path.startsWith('/courses')) {
     const r = await adminCourses(ctx, path, method);

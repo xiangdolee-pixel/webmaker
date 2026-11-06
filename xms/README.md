@@ -25,6 +25,12 @@ Worker `xms` + D1 `xms` (xiangdolee 계정). 업체 구분은 모든 표의 `sit
 - 서비스와 관리 화면은 같은 로그인(`xms_sess`). 관리 화면은 레벨1만 — 다른 등급이 로그인해도 홈페이지 로그인은 그대로 두고 관리 화면만 막는다.
 - 스타일은 `xa-` 접두어로만, 사이트 CSS 와 섞이지 않는다. 색은 `--xa-bg` · `--xa-fg`.
 
+## 부가 기능: 맨 위로 버튼
+
+- 관리 화면 **사이트 › 부가 기능** 에서 켜고 끈다(사이트마다, 기본은 꺼짐). 뺄 주소(예: 올리브바스켓 /app · /basket)도 여기서.
+- 값은 D1 `site_options` (k = top_button, v = {"on":true,"except":[...]}). 사이트 Worker 가 페이지 끝에 버튼을 넣는다 — 그 사이트를 한 번 다시 배포해야(새 사이트 Worker) 붙는다.
+- 켠 곳(2026-11-07): sound-build · sjccc · olivebasket(웹페이지만) · school-timeline.
+
 ## 강의 (사이트별로 켜는 기능)
 
 - 켜기: `INSERT OR IGNORE INTO site_features (site, feature) VALUES ('<사이트>', 'courses')` → 관리 화면 왼쪽에 **강의 › 강의 관리**.

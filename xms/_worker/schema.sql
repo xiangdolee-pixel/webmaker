@@ -356,3 +356,12 @@ CREATE TABLE IF NOT EXISTS course_notes (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (site, member_id, lesson_id)
 );
+
+-- 사이트별 작은 설정 (JSON 값). 예: top_button = {"on":true,"except":["/app"]}  (맨 위로 버튼, 뺄 주소)
+CREATE TABLE IF NOT EXISTS site_options (
+  site       TEXT NOT NULL,
+  k          TEXT NOT NULL,
+  v          TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (site, k)
+);

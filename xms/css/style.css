@@ -899,3 +899,8 @@ input[type="date"], input[type="datetime-local"], input[type="time"], input[type
   .cl-row .cl-d, .cl-row .cl-f { grid-row: 3; }
   .cl-add { margin-left: 0; }
 }
+
+/* 부가 기능: 맨 위로 버튼 미리보기 */
+.top-pv { position: relative; height: 96px; margin: 4px 0 14px; border-radius: var(--radius); background: linear-gradient(180deg, var(--bg), #e6e9f0); }
+.top-pv-btn { position: absolute; right: 18px; bottom: 18px; width: 48px; height: 48px; border-radius: 50%; background: #fff; color: #16181d; display: grid; place-items: center; box-shadow: 0 6px 22px rgba(15, 20, 30, .22); }
+.top-pv-btn svg { width: 21px; height: 21px; }

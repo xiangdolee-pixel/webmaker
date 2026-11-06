@@ -381,6 +381,11 @@ async function withXms(res, request, env, data) {
       });
     },
   });
+  // ⑥ 맨 위로 버튼 (xms 부가 기능에서 켠 사이트, 뺄 주소로 시작하는 페이지는 빼고)
+  const topCfg = data?.top;
+  if (topCfg && !(topCfg.except || []).some((x) => x && pagePath(url.pathname).startsWith(pagePath(x)))) {
+    rw = rw.on('body', { element(el) { el.onEndTag((end) => { end.before(TOP_BTN, { html: true }); }); } });
+  }
   // ⑤ 수정 모드로 고친 글자를 넣는다 (글자 조각만 바꿔서 모양은 그대로). 관리자에게는 고칠 수 있는 자리 표시도.
   if (data?.texts || data?.me?.admin) {
     const T = JSON.stringify(data.texts || {}).replace(/</g, '\u003c');
@@ -388,6 +393,19 @@ async function withXms(res, request, env, data) {
   }
   return rw.transform(res);
 }
+
+// 맨 위로 버튼 — 스크롤을 조금 내리면 오른쪽 아래에 흰 동그라미가 떠오른다. 누르면 맨 위로 부드럽게.
+const TOP_BTN = `<style>.xms-top{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:2147482000;width:52px;height:52px;border-radius:50%;
+border:0;background:#fff;color:#16181d;box-shadow:0 6px 22px rgba(15,20,30,.22),0 1px 3px rgba(15,20,30,.12);display:grid;place-items:center;cursor:pointer;
+opacity:0;visibility:hidden;transform:translateY(12px) scale(.92);transition:opacity .25s,transform .3s cubic-bezier(.22,.8,.24,1),visibility .25s,box-shadow .2s;-webkit-tap-highlight-color:transparent}
+.xms-top.on{opacity:1;visibility:visible;transform:none}.xms-top:hover{box-shadow:0 10px 28px rgba(15,20,30,.28),0 1px 3px rgba(15,20,30,.12)}
+.xms-top:focus-visible{outline:2px solid #2f5fd0;outline-offset:3px}.xms-top svg{width:22px;height:22px}
+@media (max-width:640px){.xms-top{width:46px;height:46px}.xms-top svg{width:20px;height:20px}}
+@media (prefers-reduced-motion:reduce){.xms-top{transition:none}}</style>
+<button type="button" class="xms-top" aria-label="맨 위로" title="맨 위로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
+<script>(function(){var b=document.querySelector('.xms-top');if(!b)return;var t=0;function f(){b.classList.toggle('on',(window.scrollY||document.documentElement.scrollTop)>400)}
+addEventListener('scroll',function(){if(!t){t=requestAnimationFrame(function(){t=0;f()})}},{passive:true});f();
+b.addEventListener('click',function(){var r=matchMedia('(prefers-reduced-motion: reduce)').matches;scrollTo({top:0,behavior:r?'auto':'smooth'});b.blur()})})();</script>`;
 
 // 수정 모드 글자 넣기 — 페이지 끝에서 바로 돈다(사이트 스크립트보다 먼저, 화면이 바뀌어 보이지 않게).
 //   글자가 든 요소(바깥쪽 것)마다 원래 글자의 지문(k = 해시.몇 번째)을 붙이고, 고친 값이 있으면 글자 조각을 바꾼다.

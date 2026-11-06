@@ -128,13 +128,16 @@ export class Cms extends WorkerEntrypoint {
         const key = `${site}:${me.level}:${home ? 1 : 0}`;
         let data = me.level === 1 ? null : headCache.get(key);
         if (!data || Date.now() - data.at > 15000) {
-          const [ma, head, popups] = await Promise.all([menuAccess(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : []]);
-          data = { at: Date.now(), menu: ma.menu, blocked: ma.blocked, head, popups };
+          const [ma, head, popups, top] = await Promise.all([menuAccess(env.DB, site, me), headData(env, site), home ? livePopups(env.DB, site) : [],
+            env.DB.prepare("SELECT v FROM site_options WHERE site = ? AND k = 'top_button'").bind(site).first()]);
+          let topBtn = null;
+          try { topBtn = top ? JSON.parse(top.v) : null; } catch { topBtn = null; }
+          data = { at: Date.now(), menu: ma.menu, blocked: ma.blocked, head, popups, top: topBtn?.on ? { except: topBtn.except || [] } : null };
           if (me.level !== 1) headCache.set(key, data);
         }
         const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1, avatar: avatarOf(me.member) };
         const texts = await pageTexts(env.DB, site, url.searchParams.get('path') || '', me.level === 1);
-        return new Response(JSON.stringify({ menu: data.menu, blocked: data.blocked, head: data.head, popups: data.popups, me: who, texts, account_css: await accountCss(env), ver: verOf(env) }),
+        return new Response(JSON.stringify({ menu: data.menu, blocked: data.blocked, head: data.head, popups: data.popups, me: who, texts, top: data.top, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await timed(uploadApi(ctx));

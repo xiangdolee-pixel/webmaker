@@ -32,7 +32,7 @@ const ACTIONS = {
   FAVICON_SET: '파비콘 바꾸기', FAVICON_REMOVE: '파비콘 내리기', SEO_UPDATE: '검색엔진 설정', ROBOTS_UPDATE: 'robots.txt 변경',
   SHARE_UPDATE: '미리보기 설명 변경', SHARE_IMAGE_SET: '미리보기 그림 바꾸기', SHARE_IMAGE_REMOVE: '미리보기 그림 내리기',
   POPUP_CREATE: '팝업 만들기', POPUP_UPDATE: '팝업 수정', POPUP_DELETE: '팝업 삭제',
-  COURSE_CREATE: '강의 만들기', COURSE_UPDATE: '강의 수정', COURSE_DELETE: '강의 삭제',
+  TOP_BUTTON: '맨 위로 버튼', COURSE_CREATE: '강의 만들기', COURSE_UPDATE: '강의 수정', COURSE_DELETE: '강의 삭제',
 };
 
 // ───────── 시작 · 로그인 ─────────
@@ -97,6 +97,7 @@ const SIDE_ICON = {
   account: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
   stats: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-4M12 16V7M17 16v-7"/></svg>',
   audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>',
+  extras: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/></svg>',
   courses: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="13" rx="2.5"/><path d="M10 9v5l4.5-2.5z"/><path d="M8 21h8"/></svg>',
 };
 // 왼쪽 메뉴: 묶음 이름 아래 같은 모양의 한 단계 목록 (만들기 · 추가는 각 화면 오른쪽 위 버튼)
@@ -104,7 +105,7 @@ const SIDE = [
   [null, [['#/storage', '저장 공간', 'storage'], ['#/stats', '방문 통계', 'stats']]],
   ['회원', [['#/members', '가입회원', 'members'], ['#/members/withdrawn', '탈퇴회원', 'withdrawn'], ['#/levels', '등급 이름', 'levels'],
     ['#/fields', '가입 항목', 'fields'], ['#/terms', '이용약관', 'terms'], ['#/privacy', '개인정보 처리방침', 'privacy']]],
-  ['사이트', [['#/boards', '게시판', 'boards'], ['#/menus', '메뉴', 'menus'], ['#/popups', '팝업', 'popups'],
+  ['사이트', [['#/boards', '게시판', 'boards'], ['#/menus', '메뉴', 'menus'], ['#/popups', '팝업', 'popups'], ['#/extras', '부가 기능', 'extras'],
     ['#/favicon', '파비콘', 'favicon'], ['#/seo', '검색엔진', 'seo'], ['#/share', '카카오톡 미리보기', 'share'], ['#/requests', '수정 요청', 'requests']]],
   ['내 계정', [['#/account', '비밀번호 변경', 'account'], ['#/audit', '관리 로그', 'audit']]],
 ];
@@ -181,6 +182,7 @@ async function route() {
     if (parts[0] === 'courses' && parts[1] === 'new') return await coursePage(null);
     if (parts[0] === 'courses' && parts[1]) return await coursePage(Number(parts[1]));
     if (parts[0] === 'courses') return await coursesPage();
+    if (parts[0] === 'extras') return await extrasPage();
     if (parts[0] === 'favicon') return await faviconPage();
     if (parts[0] === 'seo') return await seoPage(qs);
     if (parts[0] === 'share') return await sharePage();
@@ -1546,6 +1548,30 @@ async function coursePage(id) {
       if (id) await api(`/courses/${id}`, { method: 'PUT', data });
       else { const r = await api('/courses', { method: 'POST', data }); dirty = false; toast('강의를 만들었습니다.'); return go(`#/courses/${r.id}`); }
       dirty = false; toast('강의를 저장했습니다.'); route();
+    });
+  });
+}
+
+// ───────── 부가 기능 (맨 위로 버튼 …) ─────────
+async function extrasPage() {
+  const v = await api('/options/top');
+  main.innerHTML = `${head('사이트', '부가 기능', '홈페이지에 함께 붙는 작은 기능입니다.')}
+    <form id="xform"><section class="panel pad"><h2>맨 위로 버튼</h2>
+      <div class="top-pv" aria-hidden="true"><span class="top-pv-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></span></div>
+      <label class="check"><input type="checkbox" name="on"${v.on ? ' checked' : ''}> 스크롤을 내리면 오른쪽 아래에 <b>맨 위로</b> 버튼을 띄웁니다</label>
+      <label class="field gap"><span>이 주소로 시작하는 페이지에는 띄우지 않기 <small class="meta">한 줄에 하나, / 로 시작 (예: /app)</small></span>
+        <textarea class="input" name="except" rows="3" placeholder="/app">${esc((v.except || []).join('\n'))}</textarea></label>
+    </section>
+    <p class="err" role="alert"></p>
+    ${saveBar('부가 기능을 고치는 중입니다.', '')}</form>`;
+  const form = $('#xform');
+  ctrlS(form);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    busy(form.querySelector('[type=submit]'), form.querySelector('.err'), async () => {
+      const f = formData(form);
+      await api('/options/top', { method: 'PUT', data: { on: !!f.on, except: f.except } });
+      dirty = false; toast('저장했습니다. 30초 안에 홈페이지에 반영됩니다.'); route();
     });
   });
 }
