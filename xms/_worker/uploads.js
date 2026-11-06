@@ -180,7 +180,7 @@ export async function attachToPost(env, site, postId, ids, me, keepOwner = false
   const stmts = keepOwner ? [] : [env.DB.prepare("UPDATE uploads SET post_id = NULL WHERE site = ? AND post_id = ? AND kind != 'INLINE'").bind(site, postId)];
   list.forEach((id, i) => stmts.push(env.DB.prepare(`UPDATE uploads SET post_id = ?, sort = ? WHERE id = ? AND site = ? AND kind != 'INLINE'
     AND (post_id IS NULL OR post_id = ?) AND (created_by IS ? OR ? = 1)`).bind(postId, i, id, site, postId, me.kind === 'member' ? me.member.id : null, me.level === 1 ? 1 : 0)));
-  await env.DB.batch(stmts);
+  if (stmts.length) await env.DB.batch(stmts); // 빈 batch 는 D1 이 오류를 낸다 (첨부 없이 새 글 등록 → "서버 오류" 인데 글은 들어감)
 }
 
 export async function postAttachments(env, site, postId) {

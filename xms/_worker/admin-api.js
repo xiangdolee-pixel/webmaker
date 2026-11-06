@@ -52,6 +52,28 @@ export async function adminApi(ctx) {
   }
 
   if (path === '/usage' && method === 'GET') return json(await usageOf(env, site));
+
+  // ───── 수정 모드: 홈페이지 위에서 고친 글자 (글자만 — 태그 · 모양은 사이트 그대로) ─────
+  if (path === '/page-texts' && method === 'POST') {
+    const b = await body(request);
+    const page = pageKey(b.path);
+    const items = Array.isArray(b.items) ? b.items.slice(0, 300) : [];
+    if (!items.length) throw bad('고친 글자가 없습니다.');
+    const stmts = [];
+    for (const it of items) {
+      const k = String(it.k || '');
+      if (!/^[0-9a-z]{1,8}\.\d{1,4}$/.test(k)) continue;
+      const pth = it.g === '*' ? '*' : page;
+      if (it.t === null) { stmts.push(db.prepare('DELETE FROM page_texts WHERE site = ? AND path = ? AND k = ?').bind(site, pth, k)); continue; }
+      if (!Array.isArray(it.t) || it.t.length > 200) continue;
+      const t = JSON.stringify(it.t.map((x) => String(x ?? '').slice(0, 5000)));
+      if (t.length > 20000) throw bad('글자가 너무 깁니다.');
+      stmts.push(db.prepare('INSERT INTO page_texts (site, path, k, t, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(site, path, k) DO UPDATE SET t = excluded.t, updated_at = excluded.updated_at').bind(site, pth, k, t, now()));
+    }
+    if (stmts.length) await db.batch(stmts);
+    await audit(db, site, me, request, '글자 수정', page, `${stmts.length}곳`);
+    return json({ ok: true, saved: stmts.length });
+  }
   if (path === '/stats' && method === 'GET') return statsApi(db, site, q);
 
   // ───── 회원 ─────
@@ -647,4 +669,12 @@ async function ximSite(env, site) {
   const s = await env.XIM_DB.prepare('SELECT id FROM sites WHERE slug = ?').bind(site).first();
   if (!s) throw notFound('xim 에 등록되지 않은 사이트입니다.');
   return s;
+}
+
+// 수정 모드 페이지 주소: /about.html · /about · /about/ 을 같은 것으로 (사이트 Worker pagePath 와 같게)
+function pageKey(p) {
+  let s = String(p || '/').split(/[?#]/)[0].slice(0, 300);
+  try { s = decodeURIComponent(s); } catch { /* 그대로 */ }
+  s = s.replace(/\/index\.html?$/i, '/').replace(/\.html?$/i, '').replace(/(.)\/+$/, '$1');
+  return s || '/';
 }

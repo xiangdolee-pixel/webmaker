@@ -294,7 +294,20 @@
   /* ── 페이지 연결 ── */
   function init() {
     var demo = $('#homeTrainer');
-    if (demo) SB.trainer(demo, SB.sets[0], { mode: 'all' });
+    if (demo) {
+      SB.trainer(demo, SB.sets[0], { mode: 'all' });
+      // 위의 단계 카드를 누르면 그 단계까지만 또렷하게 (한 번 더 누르면 전체)
+      var cards = $$('.layer-step[data-tier]');
+      cards.forEach(function (c) {
+        c.setAttribute('aria-pressed', 'false');
+        c.addEventListener('click', function () {
+          var off = c.classList.contains('on');
+          cards.forEach(function (x) { x.classList.toggle('on', !off && x === c); x.setAttribute('aria-pressed', !off && x === c ? 'true' : 'false'); });
+          var b = $('.seg[data-k="tier"] button[data-v="' + (off ? 0 : c.dataset.tier) + '"]', demo);
+          if (b) b.click();
+        });
+      });
+    }
     var box = $('#trainer'); if (!box) return;
     var sets = $('#trainSets'), cur = null;
     var q = new URLSearchParams(location.search), id = q.get('t') || SB.sets[0].id, mode = q.get('mode');

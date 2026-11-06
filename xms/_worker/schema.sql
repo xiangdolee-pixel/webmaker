@@ -266,3 +266,13 @@ CREATE TABLE IF NOT EXISTS visit_refs (   -- 방문자가 들어온 곳 (다른 
 CREATE INDEX IF NOT EXISTS idx_visit_days_day ON visit_days(day);
 CREATE INDEX IF NOT EXISTS idx_visit_pages_day ON visit_pages(day);
 CREATE INDEX IF NOT EXISTS idx_visit_refs_day ON visit_refs(day);
+
+-- 수정 모드(홈페이지 위에서 글자 고치기): 원래 글자의 지문(k)마다 고친 글자 조각들. path '*' = 머리 · 꼬리(모든 페이지 공통)
+CREATE TABLE IF NOT EXISTS page_texts (
+  site       TEXT NOT NULL,
+  path       TEXT NOT NULL,
+  k          TEXT NOT NULL,
+  t          TEXT NOT NULL,      -- JSON 배열: 그 요소 안 글자 조각(text node)들 차례대로
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (site, path, k)
+);

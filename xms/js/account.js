@@ -5,6 +5,7 @@
 //   서비스와 xms 는 같은 로그인(SSO). 색: 자리 요소에 --xa-bg(동그라미) · --xa-fg(사람) CSS 변수.
 (() => {
   if (window.__xmsAccount) return;
+  const VER = ((document.currentScript && document.currentScript.src) || '').match(/\?v=[\w-]+/)?.[0] || '';
   window.__xmsAccount = true;
 
   const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="4" fill="currentColor"/><path d="M4 20.2c0-4.1 3.6-6.7 8-6.7s8 2.6 8 6.7" fill="currentColor"/></svg>';
@@ -70,7 +71,7 @@
     menu.className = 'xa-menu';
     menu.setAttribute('role', 'menu');
     // 운영자 = xim "관리 화면 열기" 로 대신 들어온 로그인 (8시간). 업체 계정으로 오해하지 않게 분명히 적는다.
-    menu.innerHTML = `${me.name ? `<div class="xa-me"><b>${String(me.name).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';')}</b> 님</div>` : ''}${admin ? '<a role="menuitem" href="/xms/">관리</a><a role="menuitem" href="/xms/#/requests">유지보수 요청</a>' : ''}
+    menu.innerHTML = `${me.name ? `<div class="xa-me"><b>${String(me.name).replace(/[&<>"]/g, (c) => '&#' + c.charCodeAt(0) + ';')}</b> 님</div>` : ''}${admin ? `<a role="menuitem" href="/xms/">관리</a>${document.querySelector('[data-xe]') ? '<button type="button" role="menuitem" data-xa-edit>수정 모드</button>' : ''}<a role="menuitem" href="/xms/#/requests">유지보수 요청</a>` : ''}
       ${me.staff ? '' : '<a role="menuitem" href="/member/mypage">내 정보</a>'}
       <button type="button" role="menuitem" data-xa-logout>로그아웃</button>`;
     document.body.append(menu);
@@ -95,6 +96,12 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu.classList.contains('xa-open')) { open(false); btn.focus(); } });
     addEventListener('resize', () => menu.classList.contains('xa-open') && place());
     addEventListener('scroll', () => menu.classList.contains('xa-open') && place(), { passive: true });
+    // 수정 모드: 홈페이지 글자를 그 자리에서 고친다 (관리자만, 글자가 있는 페이지에서만)
+    menu.querySelector('[data-xa-edit]')?.addEventListener('click', async () => {
+      open(false);
+      try { (await import(`/xms/js/edit.js${VER}`)).startEdit(); } catch (e) { console.error('수정 모드를 열지 못했습니다.', e); }
+    });
+    if (admin && /[?&]xe=1(&|$)/.test(location.search) && document.querySelector('[data-xe]')) import(`/xms/js/edit.js${VER}`).then((m) => m.startEdit()).catch(() => {});
     menu.querySelector('[data-xa-logout]').addEventListener('click', async () => {
       try { await fetch('/xms-api/logout', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch { /* 이미 끊김 */ }
       location.reload();

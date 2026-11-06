@@ -187,7 +187,7 @@
     var root = $('#courseDetail'); if (!root) return;
     var c = SB.course(qs('id')) || SB.courses[0];
     root.classList.add('has-bar');
-    document.title = c.title + ' · 영소립 Sound & Build';
+    document.title = c.title + ' · 영소립 English, Sound & Build';
     var flat = SB.flat(c), r = SB.prog.rate(c);
     var last = SB.prog.get().last, startKey = (last && last.c === c.id) ? last.l : flat[0].key;
     var free = flat.filter(function (x) { return x.l.free; })[0];
@@ -221,7 +221,7 @@
     var c = SB.course(qs('c')) || SB.courses[0], flat = SB.flat(c);
     var idx = Math.max(0, flat.map(function (x) { return x.key; }).indexOf(qs('l')));
     var cur = flat[idx];
-    document.title = cur.l.t + ' · ' + c.no + ' · 영소립';
+    document.title = cur.l.t + ' · ' + c.no + ' · 영소립 English, Sound & Build';
     SB.prog.visit(c.id, cur.key);
     var src = SB.embed(cur.l.v);
     $('#player').innerHTML = src

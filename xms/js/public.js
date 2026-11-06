@@ -216,6 +216,17 @@ onForm('post', async (form, data) => {
   }
 });
 
+// 글쓰기 · 댓글: Ctrl+Enter(맥은 ⌘+Enter)로 바로 등록 — 등록 단추를 누른 것과 같다
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || e.isComposing) return;
+  const form = e.target.closest?.('form[data-form=post], form[data-form=comment]')
+    || (e.target.closest?.('[data-editor], [data-attach]') ? $('form[data-form=post]') : null);
+  if (!form) return;
+  e.preventDefault();
+  const btn = form.querySelector('[type=submit]');
+  if (btn && !btn.disabled) form.requestSubmit(btn);
+}, true); // 편집기가 Enter 를 먼저 가로채도 받도록 capture
+
 // 글 · 댓글 지우기
 $$('[data-del-post]').forEach((b) => b.addEventListener('click', () => confirmInline(b, '이 글을 지울까요? 지운 글은 목록에서 사라집니다.', '지우기', async () => {
   await api(`/posts/${b.dataset.delPost}`, { method: 'DELETE' });

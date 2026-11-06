@@ -21,6 +21,20 @@ import { recordVisit } from './visits.js';
 
 const SITE_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const headCache = new Map();
+// 수정 모드로 고친 글자: 이 페이지 것 + 머리 · 꼬리('*') 것. 15초 기억 (관리자는 늘 새로)
+const textCache = new Map();
+async function pageTexts(db, site, path, fresh) {
+  if (!path || path.length > 300) return null;
+  const key = `${site}|${path}`;
+  const hit = !fresh && textCache.get(key);
+  if (hit && Date.now() - hit.at < 15000) return hit.v;
+  const { results } = await db.prepare("SELECT path, k, t FROM page_texts WHERE site = ? AND path IN (?, '*')").bind(site, path).all();
+  const v = results.length ? { page: {}, all: {} } : null;
+  for (const r of results) { try { v[r.path === '*' ? 'all' : 'page'][r.k] = JSON.parse(r.t); } catch { /* 깨진 값은 건너뜀 */ } }
+  if (textCache.size > 2000) textCache.clear();
+  textCache.set(key, { at: Date.now(), v });
+  return v;
+}
 let accountCssText = null;
 async function accountCss(env) {
   if (accountCssText === null) accountCssText = await (await env.ASSETS.fetch(new Request('https://assets/css/account.css'))).text();
@@ -118,7 +132,8 @@ export class Cms extends WorkerEntrypoint {
           if (me.level !== 1) headCache.set(key, data);
         }
         const who = me.kind === 'guest' ? { guest: true } : me.kind === 'staff' ? { staff: true, admin: true } : { name: me.member.name, admin: me.level === 1, avatar: avatarOf(me.member) };
-        return new Response(JSON.stringify({ menu: data.menu, blocked: data.blocked, head: data.head, popups: data.popups, me: who, account_css: await accountCss(env), ver: verOf(env) }),
+        const texts = await pageTexts(env.DB, site, url.searchParams.get('path') || '', me.level === 1);
+        return new Response(JSON.stringify({ menu: data.menu, blocked: data.blocked, head: data.head, popups: data.popups, me: who, texts, account_css: await accountCss(env), ver: verOf(env) }),
           { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
       }
       if (p === '/xms-api/uploads' && request.method === 'POST') return await timed(uploadApi(ctx));

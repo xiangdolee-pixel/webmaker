@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>영소립 Sound & Build</title>
+<title>영소립 English, Sound & Build</title>
 <meta name="description" content="영어를 소리로 듣고, 문장을 정보의 계단으로 조립하는 영어 강의. 영소립 Sound & Build.">
 <meta name="theme-color" content="#7a0e0e">
 <link rel="icon" type="image/png" href="img/logo-160.png">
@@ -78,16 +78,14 @@
       <div class="sec-head">
         <p class="eyebrow">Layers of information</p>
         <h2 class="sec-title">문장 안의 정보를 계층으로</h2>
-        <p class="sec-desc">‘다음’을 눌러 문장이 조립되는 순서를 보세요. ‘정보 단계’에서 1차만 고르면 문장의 뼈대만 남습니다.</p>
+        <p class="sec-desc">단계 카드를 누르면 그 단계까지의 정보만 또렷하게 남습니다. 1차만 고르면 문장의 뼈대가 보입니다.</p>
       </div>
-      <div class="layer-demo">
-        <div class="layer-steps">
-          <div class="layer-step"><b>1차</b><div><h3>뼈대</h3><p>주어 + 동사 + 꼭 필요한 성분. I knew an old gentleman.</p></div></div>
-          <div class="layer-step"><b>2차</b><div><h3>뼈대에 매달린 정보</h3><p>명사 뒤에 사선(/)으로 이어 붙는 절, [When …] 같은 상자.</p></div></div>
-          <div class="layer-step"><b>3차</b><div><h3>설명의 설명</h3><p>(about his landlady)처럼 2차 정보에 다시 붙는 전치사구.</p></div></div>
-        </div>
-        <div id="homeTrainer"></div>
+      <div class="layer-steps" role="group" aria-label="정보 단계로 보기">
+        <button class="layer-step" type="button" data-tier="1"><b>1차</b><span><strong>뼈대</strong><small>주어 + 동사 + 꼭 필요한 성분 — I knew an old gentleman.</small></span></button>
+        <button class="layer-step" type="button" data-tier="2"><b>2차</b><span><strong>뼈대에 매달린 정보</strong><small>명사 뒤에 사선(/)으로 이어 붙는 절, [When …] 같은 상자</small></span></button>
+        <button class="layer-step" type="button" data-tier="3"><b>3차</b><span><strong>설명의 설명</strong><small>(about his landlady)처럼 2차 정보에 다시 붙는 전치사구</small></span></button>
       </div>
+      <div id="homeTrainer"></div>
     </div>
   </section>
 
