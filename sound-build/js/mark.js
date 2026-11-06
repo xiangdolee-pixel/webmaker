@@ -411,5 +411,24 @@
     load(new URLSearchParams(location.search).get('s') || SB.marks[0].id);
   }
   SB.markParse = parseA; SB.markSerialize = serialize;
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  SB.markInline = inline; SB.markLines = buildLines; SB.markDiagram = drawDiagram; SB.markText = plainText;
+
+  /* ── 보기 문장: <div data-a="기호"> → 표시된 문장, data-tree 가 있으면 조립도도 ── */
+  function examples() {
+    var trees = [];
+    $$('[data-a]').forEach(function (el) {
+      var A = parseA(el.getAttribute('data-a'));
+      el.innerHTML = '<p class="ex-s">' + inline(A.toks, A.roles, A.parts) + '</p>';
+      if (!el.hasAttribute('data-tree')) return;
+      var d = document.createElement('div'); d.className = 'tr-diagram ex-tree'; el.appendChild(d);
+      trees.push(function () { drawDiagram(d, A.toks, A.roles, A.parts, 0); });
+    });
+    if (!trees.length) return;
+    var all = function () { trees.forEach(function (f) { f(); }); };
+    all();
+    var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(all, 100); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(all);
+  }
+  function boot() { init(); examples(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
