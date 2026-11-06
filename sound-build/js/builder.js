@@ -75,7 +75,6 @@
     el.innerHTML = '<header class="gen-head"><span class="gen-no">' + ('0' + (k + 1)).slice(-2) + '</span><div class="gen-tools">' +
       '<button class="icon-btn" type="button" data-act="say" aria-label="소리 듣기" title="소리 듣기">' + IC.sound + '</button>' +
       '<button class="icon-btn" type="button" data-act="edit" aria-label="고치기" aria-pressed="false" title="고치기">' + IC.edit + '</button>' +
-      '<button class="icon-btn" type="button" data-act="steps" aria-label="한 단계씩 (전체화면)" title="한 단계씩 (전체화면)">' + IC.steps + '</button>' +
       '<button class="icon-btn" type="button" data-act="full" aria-label="전체화면" title="전체화면">' + IC.full + '</button></div></header>' +
       '<div class="gen-edit" hidden><div class="seg seg-light gen-pens" aria-label="펜"><button data-v="n" class="on">명사</button><button data-v="v">동사</button><button data-v="j">형용사</button><button data-v="part">덩어리</button><button data-v="x">지우개</button></div>' +
       '<p class="gen-tip"></p></div>' +
@@ -131,8 +130,7 @@
     if (b) {
       var act = b.dataset.act;
       if (act === 'say') return say(c.src, b);
-      if (act === 'full') return full.open(cards.indexOf(c), 'all');
-      if (act === 'steps') return full.open(cards.indexOf(c), 'step');
+      if (act === 'full') return full.open(cards.indexOf(c), 'step');   // 전체화면은 '한 단계씩'이 기본
       if (act === 'edit') { c.edit = !c.edit; b.setAttribute('aria-pressed', c.edit); b.classList.toggle('on', c.edit); c.sel = c.selA = null; return draw(c); }
       if (act === 'auto') { c.A = SB.markParse(SB.analyze(c.src)); return draw(c); }
       if (act === 'cancel') { c.sel = null; return draw(c); }
@@ -187,10 +185,10 @@
 
   /* ── 전체화면: 흰 바탕에 문장과 구조만 — '한눈에' 또는 '한 단계씩'(뼈대 → 2차 → 3차 …) ── */
   var full = (function () {
-    var fs = document.createElement('div'), at = 0, idle, mode = 'all', step = 0, order = [], drawn = null;
+    var fs = document.createElement('div'), at = 0, idle, mode = 'step', step = 0, order = [], drawn = null;
     fs.className = 'fs'; fs.hidden = true; fs.setAttribute('role', 'dialog'); fs.setAttribute('aria-modal', 'true'); fs.setAttribute('aria-label', '문장 구조 전체화면');
     fs.innerHTML = '<div class="fs-bar"><div class="fs-left"><span class="fs-no"></span>' +
-      '<div class="seg seg-light fs-mode" aria-label="보기 방식"><button data-v="all" class="on">한눈에</button><button data-v="step">한 단계씩</button></div></div><div class="fs-btns">' +
+      '<div class="seg seg-light fs-mode" aria-label="보기 방식"><button data-v="step" class="on">한 단계씩</button><button data-v="all">한눈에</button></div></div><div class="fs-btns">' +
       '<button class="icon-btn" type="button" data-fs="prev" aria-label="앞 문장">' + SB.IC.prev + '</button>' +
       '<button class="icon-btn" type="button" data-fs="next" aria-label="다음 문장">' + SB.IC.next + '</button>' +
       '<button class="icon-btn" type="button" data-fs="say" aria-label="소리 듣기">' + IC.sound + '</button>' +
