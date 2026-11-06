@@ -1387,12 +1387,12 @@ const thumbChip = (c) => `<span class="c-thumb t-${esc(c.thumb)}"><b>${esc(c.no_
 async function coursesPage() {
   const list = await api('/courses');
   main.innerHTML = `${head('강의', '강의 관리', '홈페이지 [강의] 메뉴에 나오는 강의입니다. 줄을 끌어서 목록 차례를 바꿀 수 있습니다.', '<a class="btn primary" href="#/courses/new">+ 강의 만들기</a>')}
-    <div class="panel">${list.length ? `<table class="tbl cardy"><thead><tr><th>차례</th><th>썸네일</th><th>강의</th><th>분야 · 수준</th><th>차시</th><th>수강생</th><th>공개</th><th>관리</th></tr></thead><tbody id="crows">
+    <div class="panel">${list.length ? `<table class="tbl cardy"><thead><tr><th>차례</th><th>썸네일</th><th>강의</th><th>분야 · 수준</th><th>강의 수</th><th>수강생</th><th>공개</th><th>관리</th></tr></thead><tbody id="crows">
       ${list.map((c) => `<tr data-id="${c.id}"><td><button type="button" class="handle" aria-label="끌어서 차례 바꾸기">⠿</button></td>
         <td>${thumbChip(c)}</td>
         <td><b>${esc(c.title)}</b><small>${esc(c.description.slice(0, 60))}</small></td>
         <td data-l="분야 · 수준">${esc([c.track, c.level].filter(Boolean).join(' · ') || '-')}</td>
-        <td data-l="차시">${c.lessons}강 · ${fmtTotal(c.total_sec)}</td>
+        <td data-l="강의">강의 ${c.lessons}개 · ${fmtTotal(c.total_sec)}</td>
         <td data-l="수강생">${c.students}명</td>
         <td data-l="공개">${c.visible ? '<span class="tag green">공개</span>' : '<span class="tag">숨김</span>'}</td>
         <td><div class="mng"><a class="btn sm" href="#/courses/${c.id}">수정</a><a class="btn sm" href="/course.html?id=${c.id}" target="_blank" rel="noopener">보기</a><button class="btn sm danger" type="button" data-del>삭제</button></div></td></tr>`).join('')}

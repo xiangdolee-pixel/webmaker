@@ -20,15 +20,17 @@
   <div class="wrap hdr-in">
     <a class="brand" href="./" aria-label="영소립 Sound &amp; Build 홈">
       <img src="img/logo-160.png" alt="" width="38" height="38">
-      <span class="brand-txt"><b>영소립</b><small>English, Sound &amp; Build</small></span>
+      <span class="brand-txt"><b>영소립</b><small>English Sound &amp; Build</small></span>
     </a>
     <nav class="gnb" id="gnb" aria-label="주 메뉴" data-xms-menu>
       <a href="courses.html" data-xms-item>강의</a>
       <a href="training.html" data-xms-item>문장 훈련</a>
-      <a href="my.html" data-xms-item>내 강의실</a>
       <a href="/board/notice" data-xms-item>공지사항</a>
     </nav>
-    <span class="gnb-account" data-xms-account></span>
+    <div class="hdr-act">
+      <a class="btn btn-ink btn-sm hdr-my" href="my.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v5l4-2.5z"/><path d="M8 21h8"/></svg>내 강의실</a>
+      <span class="gnb-account" data-xms-account></span>
+    </div>
     <button class="nav-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="gnb"><span></span><span></span></button>
   </div>
 </header>
@@ -91,14 +93,13 @@
 
   <section class="sec">
     <div class="wrap">
-      <div class="sec-head sec-head-row">
-        <div>
-          <p class="eyebrow">Courses</p>
-          <h2 class="sec-title">Sound &amp; Build 강의</h2>
-        </div>
-        <a class="btn btn-line btn-sm" href="courses.html">전체 강의 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <div class="sec-head center">
+        <p class="eyebrow">Roadmap</p>
+        <h2 class="sec-title">실력이 쌓이는 학습 로드맵</h2>
+        <p class="sec-desc">입문부터 차근차근. 수준에 맞는 강의부터 시작하세요.</p>
       </div>
-      <div class="course-grid" id="homeCourses"></div>
+      <div id="roadmap" class="roadmap"></div>
+      <p class="center-more"><a class="btn btn-line" href="courses.html">전체 강의 보기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
     </div>
   </section>
 
@@ -132,13 +133,16 @@
 </main>
 
 <footer class="site-footer">
-  <div class="ft-in">
-    <div class="ft-brand"><img src="img/logo-160.png" alt="" width="44" height="44"><div><b>영소립</b><small>English, Sound &amp; Build</small></div></div>
+  <div class="wrap ft-in">
+    <div class="ft-main">
+      <a class="ft-brand" href="./"><img src="img/logo-160.png" alt="" width="40" height="40"><span><b>영소립</b><small>English Sound &amp; Build</small></span></a>
+      <p class="ft-desc">영어, 소리와 조립 — 소리로 듣고, 정보의 계단으로 문장을 조립합니다.</p>
+    </div>
     <nav class="ft-links" aria-label="바닥 메뉴">
-      <a href="courses.html">강의</a><a href="training.html">문장 훈련</a><a href="/board/notice">공지사항</a><a href="/member/terms">이용약관</a><a href="/member/privacy">개인정보 처리방침</a>
+      <a href="courses.html">강의</a><a href="training.html">문장 훈련</a><a href="/board/notice">공지사항</a><a href="/member/terms">이용약관</a><a href="/member/privacy"><b>개인정보 처리방침</b></a>
     </nav>
-    <p class="ft-copy">© 2026 영소립 · 영어, 소리와 조립</p>
   </div>
+  <div class="wrap ft-bottom"><p>© 2026 영소립. All rights reserved.</p></div>
 </footer>
 
 <script src="js/data.js" defer></script>

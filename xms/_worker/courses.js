@@ -267,7 +267,7 @@ export async function publicCourses(ctx, path, method) {
 }
 const pubCourse = (c, me) => ({
   id: c.id, title: c.title, no_label: c.no_label, track: c.track, level: c.level, thumb: c.thumb, description: c.description,
-  opened_on: c.opened_on, lessons: c.lessons, total_sec: c.total_sec, can_view: canView(c, me), hidden: !c.visible,
+  opened_on: c.opened_on, lessons: c.lessons, total_sec: c.total_sec, can_view: canView(c, me), hidden: !c.visible, learn: parseList(c.learn).slice(0, 3),
 });
 async function pubFind(db, site, id, me) {
   const c = await db.prepare('SELECT * FROM courses WHERE id = ? AND site = ? AND deleted_at IS NULL').bind(id, site).first();

@@ -2,13 +2,14 @@
 
 :root {
   /* 색: 바탕 60 · 잉크 30 · 버건디 7 · 노랑 3 */
-  --paper: #faf8f3;
-  --paper-2: #f3efe6;
+  --paper: #ffffff;
+  --paper-2: #f4f5f7;
+  --tint: #f7f8fa;      /* 구분 띠 · 표 머리 */
   --card: #ffffff;
   --ink: #16140f;
-  --ink-2: #4a463e;
-  --ink-3: #8a8478;
-  --line: #e7e1d4;
+  --ink-2: #4b5059;
+  --ink-3: #8b9099;
+  --line: #e6e8ec;
   --dark: #141210;
   --dark-2: #1f1c18;
   --dark-line: #34302a;
@@ -37,7 +38,7 @@
   --shadow: 0 1px 2px rgba(22, 20, 15, .05), 0 8px 24px rgba(22, 20, 15, .06);
   --shadow-up: 0 2px 4px rgba(22, 20, 15, .06), 0 16px 40px rgba(22, 20, 15, .12);
   --ease: cubic-bezier(.22, .8, .24, 1);
-  --hdr: 68px;
+  --hdr: 76px;
 }
 
 /* ── 기본 ───────────────────────────── */
@@ -68,21 +69,23 @@ ul, ol { padding: 0; list-style: none; }
 /* ── 헤더 ───────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 50; height: var(--hdr);
-  background: rgba(250, 248, 243, .9); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  border-bottom: 1px solid transparent; transition: border-color .3s, background .3s;
+  background: rgba(255, 255, 255, .96); backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--line); transition: box-shadow .3s;
 }
-.site-header.scrolled { border-bottom-color: var(--line); }
+.site-header.scrolled { box-shadow: 0 4px 18px rgba(20, 24, 32, .06); }
 .hdr-in { height: 100%; display: flex; align-items: center; gap: 12px; }
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .brand img { width: 38px; height: 38px; border-radius: 50%; }
 .brand-txt { display: flex; flex-direction: column; line-height: 1.1; }
 .brand-txt b { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; }
 .brand-txt small { font-family: var(--serif); font-size: .78rem; color: var(--ink-3); letter-spacing: .02em; }
-.gnb { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.gnb a { padding: 9px 16px; border-radius: var(--pill); font-weight: 600; font-size: 1.06rem; color: var(--ink-2); transition: color .2s, background .2s; }
-.gnb a:hover { color: var(--ink); background: var(--paper-2); }
-.gnb a[aria-current="page"] { color: var(--ink); background: var(--paper-2); }
-.gnb-account { margin-left: 8px; --xa-bg: var(--ink); --xa-fg: var(--yellow); }
+.gnb { display: flex; align-items: center; gap: clamp(4px, 2vw, 28px); margin: 0 auto; }
+.gnb a { padding: 9px 16px; border-radius: var(--pill); font-family: var(--font); font-weight: 600; font-size: 1.08rem; letter-spacing: -.01em; color: var(--ink); transition: color .2s, background .2s; }
+.gnb a:hover { color: var(--red); background: transparent; }
+.gnb a[aria-current="page"] { color: var(--red); background: transparent; box-shadow: inset 0 -2px 0 var(--red); border-radius: 0; }
+.hdr-act { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.hdr-my svg { color: var(--yellow); }
+.gnb-account { --xa-bg: var(--ink); --xa-fg: var(--yellow); }
 .gnb-account .xa-login { font-weight: 600; font-size: 1rem; padding: 8px 14px; border-radius: var(--pill); border: 1px solid var(--line); background: var(--card); }
 .nav-toggle { display: none; width: 42px; height: 42px; border-radius: 50%; position: relative; }
 .nav-toggle span { position: absolute; left: 12px; right: 12px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform .3s var(--ease), top .3s var(--ease); }
@@ -106,6 +109,8 @@ ul, ol { padding: 0; list-style: none; }
 .btn-yellow:hover { background: #fff; color: var(--ink); }
 .btn-line { border: 1.5px solid var(--line); background: var(--card); color: var(--ink); }
 .btn-line:hover { border-color: var(--ink); }
+.btn-ink { background: var(--ink); color: #fff; }
+.btn-ink:hover { background: var(--red); }
 .btn-ghost { border: 1.5px solid rgba(255, 255, 255, .28); color: #fff; }
 .btn-ghost:hover { background: #fff; color: var(--ink); border-color: #fff; }
 .btn-sm { min-height: 38px; padding: 0 16px; font-size: .92rem; }
@@ -116,12 +121,16 @@ ul, ol { padding: 0; list-style: none; }
 
 /* ── 섹션 공통 ───────────────────────────── */
 .sec { padding: clamp(64px, 9vw, 112px) 0; }
-.sec-alt { background: var(--paper-2); }
+.sec-alt { background: var(--tint); }
 .sec-head { margin-bottom: clamp(28px, 4vw, 44px); }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-family: var(--serif); font-style: italic; font-size: 1rem; color: var(--red); margin-bottom: 10px; }
 .eyebrow::before { content: ""; width: 18px; height: 2px; background: currentColor; }
 .sec-title { font-size: clamp(1.6rem, 3.6vw, 2.35rem); font-weight: 800; letter-spacing: -.03em; line-height: 1.3; }
 .sec-desc { margin-top: 12px; color: var(--ink-2); font-size: 1.1rem; max-width: 640px; }
+.sec-head.center, .page-head.center { text-align: center; }
+.sec-head.center .sec-desc, .page-head.center p { margin-left: auto; margin-right: auto; }
+.sec-head.center .eyebrow, .page-head.center .eyebrow { justify-content: center; }
+.center-more { margin-top: 32px; text-align: center; }
 .sec-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
 /* ── 홈: 히어로 (로고처럼 버건디 | 검정 반반) ───────────────────────────── */
@@ -167,6 +176,34 @@ ul, ol { padding: 0; list-style: none; }
 .layer-step.on small { color: rgba(255, 255, 255, .72); }
 #homeTrainer .tr-stage { min-height: 0; }
 
+/* ── 홈: 학습 로드맵 — 수준별 표 (LEVEL · 강의명 · 강의 소개) ── */
+.roadmap { display: grid; gap: 44px; }
+.rm-level { text-align: center; }
+.rm-badge { position: relative; display: inline-block; padding: 10px 26px; border-radius: 10px; font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; background: var(--ink); color: #fff; }
+.rm-badge::after { content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); border: 8px solid transparent; border-bottom: 0; border-top-color: inherit; border-top-color: var(--rm, var(--ink)); }
+.rm-badge small { font-weight: 600; opacity: .8; margin-left: 4px; font-size: .85em; }
+.rm-0 { --rm: var(--yellow); } .rm-0 .rm-badge { background: var(--yellow); color: var(--ink); }
+.rm-1 { --rm: var(--red); } .rm-1 .rm-badge { background: var(--red); }
+.rm-2 { --rm: var(--ink); }
+.rm-table { margin-top: 26px; border-radius: var(--r); border: 1px solid var(--line); overflow: hidden; text-align: left; }
+.rm-head, .rm-row { display: grid; grid-template-columns: 200px minmax(160px, .9fr) minmax(0, 1.6fr); align-items: center; }
+.rm-head { background: var(--tint); color: var(--ink-2); font-weight: 700; font-size: .92rem; border-bottom: 1px solid var(--line); }
+.rm-head span { padding: 12px 20px; text-align: center; }
+.rm-row { border-top: 1px solid var(--line); transition: background .2s; }
+.rm-row:first-of-type { border-top: 0; }
+.rm-row:hover { background: #fcfcfd; }
+.rm-row > * { padding: 18px 20px; }
+.rm-row .thumb { margin: 0; padding: 12px 14px; aspect-ratio: 16 / 9; border-radius: 8px; }
+.rm-row .rm-thumb { padding: 14px 20px; }
+.rm-row .thumb-word { font-size: 1.35rem; }
+.rm-name { text-align: center; border-right: 1px solid var(--line); }
+.rm-name b { display: block; font-size: 1.08rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.4; }
+.rm-name small { display: inline-block; margin-top: 8px; padding: 2px 10px; border-radius: var(--pill); background: var(--rm, var(--ink)); color: #fff; font-size: .8rem; font-weight: 700; }
+.rm-0 .rm-name small { color: var(--ink); }
+.rm-desc p { color: var(--ink-2); }
+.rm-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rm-tags span { padding: 4px 12px; border-radius: var(--pill); border: 1.5px solid var(--rm, var(--ink)); font-size: .84rem; font-weight: 700; color: var(--ink); background: #fff; }
+
 /* ── 홈: 학습 흐름 ───────────────────────────── */
 .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: flow; }
 .flow li { position: relative; padding: 24px 20px; border-top: 3px solid var(--ink); counter-increment: flow; }
@@ -202,7 +239,7 @@ ul, ol { padding: 0; list-style: none; }
 .seg-dark .seg-ind, .seg-dark.no-ind button.on { background: var(--yellow); }
 
 /* ── 강의 목록 ───────────────────────────── */
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
 .chip { height: 34px; padding: 0 14px; border-radius: var(--pill); border: 1px solid var(--line); background: var(--card); font-size: .9rem; font-weight: 600; color: var(--ink-2); transition: background .2s, color .2s, border-color .2s; }
 .chip:hover { border-color: var(--ink); color: var(--ink); }
@@ -210,6 +247,18 @@ ul, ol { padding: 0; list-style: none; }
 .count-line { color: var(--ink-3); font-size: .92rem; margin-bottom: 14px; }
 .count-line b { color: var(--red); }
 
+.course-list { display: grid; gap: 14px; }
+.course-row { display: grid; grid-template-columns: 300px minmax(0, 1fr) auto; gap: 28px; align-items: center; padding: 18px; border: 1px solid var(--line); border-radius: var(--r); background: #fff; transition: border-color .25s, box-shadow .25s; }
+.course-row:hover { border-color: var(--ink); box-shadow: var(--shadow); }
+.course-row .thumb { border-radius: 10px; }
+.cr-body { display: grid; gap: 8px; min-width: 0; }
+.cr-body h3 { font-size: 1.2rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.4; }
+.cr-body p { color: var(--ink-2); font-size: .97rem; }
+.cr-meta { display: flex; flex-wrap: wrap; gap: 4px 0; color: var(--ink-3); font-size: .9rem; }
+.cr-meta span + span::before { content: ""; display: inline-block; width: 1px; height: 11px; background: var(--line); margin: 0 12px; vertical-align: -1px; }
+.cr-meta b { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
+.cr-act { display: grid; gap: 8px; min-width: 150px; }
+.cr-act .btn { width: 100%; }
 .course-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 .course-card { display: flex; flex-direction: column; border-radius: var(--r); background: var(--card); border: 1px solid var(--line); overflow: hidden; transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s; }
 .course-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-up); border-color: transparent; }
@@ -499,16 +548,19 @@ a.lesson:hover { background: var(--paper); }
   .mk-foot .btns .btn { flex: 1; padding: 0 8px; }
 }
 
-/* ── 푸터 ───────────────────────────── */
-.site-footer { background: var(--dark); color: rgba(255, 255, 255, .6); font-size: .9rem; }
-.ft-in { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 44px var(--gut); }
-.ft-brand { display: flex; align-items: center; gap: 12px; color: #fff; }
-.ft-brand img { width: 44px; height: 44px; border-radius: 50%; }
+/* ── 푸터 — 흰 바탕, 본문과 같은 .wrap 끝선 ───────────────────────────── */
+.site-footer { background: #fff; color: var(--ink-3); font-size: .92rem; border-top: 1px solid var(--line); }
+.ft-in { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px 40px; flex-wrap: wrap; padding-top: 44px; padding-bottom: 28px; }
+.ft-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); }
+.ft-brand img { width: 40px; height: 40px; border-radius: 50%; }
 .ft-brand b { display: block; font-size: 1.05rem; }
-.ft-brand small { font-family: var(--serif); color: var(--yellow); font-size: .82rem; }
-.ft-links { display: flex; gap: 6px 18px; flex-wrap: wrap; align-items: center; }
-.ft-links a:hover { color: #fff; }
-.ft-copy { width: 100%; border-top: 1px solid var(--dark-line); padding-top: 18px; font-size: .84rem; }
+.ft-brand small { font-family: var(--serif); color: var(--ink-3); font-size: .8rem; }
+.ft-desc { margin-top: 12px; }
+.ft-links { display: flex; gap: 6px 22px; flex-wrap: wrap; align-items: center; color: var(--ink-2); }
+.ft-links a:hover { color: var(--red); }
+.ft-links b { color: var(--ink); }
+.ft-bottom { padding-bottom: 32px; font-size: .84rem; }
+.ft-bottom p { padding-top: 18px; border-top: 1px solid var(--line); } /* 선도 글자와 같은 끝선 (wrap 안쪽) */
 
 /* xms 게시판 · 회원 화면 강조색 */
 .xms-c { --brand: var(--red); }
@@ -521,6 +573,9 @@ a.lesson:hover { background: var(--paper); }
 /* ── 1024 이하 ───────────────────────────── */
 @media (max-width: 1024px) {
   .course-grid { grid-template-columns: repeat(2, 1fr); }
+  .course-row { grid-template-columns: 240px minmax(0, 1fr); }
+  .cr-act { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+  .rm-head, .rm-row { grid-template-columns: 170px minmax(140px, .8fr) minmax(0, 1.5fr); }
   .detail { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
   .classroom { grid-template-columns: minmax(0, 1fr) 300px; }
   .flow { grid-template-columns: repeat(2, 1fr); }
@@ -530,7 +585,8 @@ a.lesson:hover { background: var(--paper); }
 @media (max-width: 860px) {
   :root { --hdr: 60px; }
   .nav-toggle { display: block; margin-right: -6px; }
-  .gnb-account { margin-left: auto; }
+  .hdr-act { margin-left: auto; }
+  .hdr-my { display: none; }
   .gnb {
     position: fixed; top: var(--hdr); left: 0; right: 0; z-index: 49;
     flex-direction: column; align-items: stretch; gap: 0; margin: 0;
@@ -567,6 +623,18 @@ a.lesson:hover { background: var(--paper); }
 /* ── 640 이하 ───────────────────────────── */
 @media (max-width: 640px) {
   .course-grid { grid-template-columns: 1fr; gap: 16px; }
+  .course-row { grid-template-columns: 1fr; gap: 14px; padding: 14px; }
+  .cr-act { grid-column: auto; }
+  .rm-head { display: none; }
+  .rm-row { grid-template-columns: 120px minmax(0, 1fr); }
+  .rm-row > * { padding: 12px; }
+  .rm-row .rm-thumb { grid-row: 1 / 3; padding: 12px 0 12px 12px; }
+  .rm-row .thumb-word { font-size: 1rem; }
+  .rm-row .thumb { padding: 8px; }
+  .rm-row .thumb-sub { display: none; }
+  .rm-name { text-align: left; border-right: 0; padding-bottom: 0 !important; }
+  .rm-desc { padding-top: 6px !important; }
+  .ft-in { flex-direction: column; }
   .checks { grid-template-columns: 1fr; }
   .stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .stat { padding: 14px 12px; }

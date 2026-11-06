@@ -143,7 +143,19 @@
       '<div class="course-body"><div class="course-tags">' + tags(c) + '</div>' +
       '<h3>' + esc(c.title) + '</h3><p>' + esc(c.description) + '</p>' +
       (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') +
-      '<div class="course-meta"><span>' + (c.lessons || 0) + '강</span><span>' + total(c.total_sec || 0) + '</span></div></div></a>';
+      '<div class="course-meta"><span>강의 ' + (c.lessons || 0) + '개</span><span>' + total(c.total_sec || 0) + '</span></div></div></a>';
+  };
+  // 강의 목록 한 줄 (스터디언처럼: 그림 · 정보 · 단추)
+  SB.row = function (c) {
+    var r = rate(c), href = 'course.html?id=' + c.id;
+    return '<article class="course-row"><a href="' + href + '" tabindex="-1" aria-hidden="true">' + SB.thumb(c) + '</a>' +
+      '<div class="cr-body"><div class="course-tags">' + tags(c) + '</div><h3><a href="' + href + '">' + esc(c.title) + '</a></h3>' +
+      (c.description ? '<p>' + esc(c.description) + '</p>' : '') +
+      '<div class="cr-meta"><span><b>강의 수</b>' + (c.lessons || 0) + '개</span>' + (c.total_sec ? '<span><b>총 시간</b>' + total(c.total_sec) + '</span>' : '') +
+      (c.level ? '<span><b>수준</b>' + esc(c.level) + '</span>' : '') + '</div>' +
+      (r ? '<div class="prog-row"><div class="progress"><i style="width:' + r + '%"></i></div><span>' + r + '%</span></div>' : '') + '</div>' +
+      '<div class="cr-act"><a class="btn btn-red btn-sm" href="' + href + '">' + (r ? '이어서 보기' : '강의 보기') + '</a>' +
+      '<a class="btn btn-line btn-sm" href="' + href + '#curri">커리큘럼</a></div></article>';
   };
   function curriculum(c, curId) {
     var done = c.done || [];
@@ -158,7 +170,7 @@
         return '<li><a class="' + cls + '" href="classroom.html?c=' + c.id + '&l=' + l.id + '"' + (now ? ' aria-current="true"' : '') + '>' + inner + '</a></li>';
       }).join('');
       return '<div class="sect' + (open ? ' open' : '') + '"><button class="sect-btn" type="button" aria-expanded="' + open + '">' + esc(s.title) +
-        '<small>' + s.lessons.length + '강</small></button><div class="sect-body"><ol>' + rows + '</ol></div></div>';
+        '<small>강의 ' + s.lessons.length + '개</small></button><div class="sect-body"><ol>' + rows + '</ol></div></div>';
     }).join('');
   }
   function bindSects(root) {
@@ -171,10 +183,26 @@
   function failBox(el, e) { el.innerHTML = '<div class="empty">' + esc(e.message || '불러오지 못했습니다.') + '</div>'; }
 
   /* ── 홈 ── */
+  var LEVEL_EN = { '입문': 'Beginner', '기초': 'Basic', '중급': 'Intermediate', '고급': 'Advanced' };
   function initHome() {
-    var g = $('#homeCourses'); if (!g) return;
+    var g = $('#roadmap'); if (!g) return;
     api('/courses').then(function (list) {
-      g.innerHTML = list.length ? list.slice(0, 3).map(SB.card).join('') : '<div class="empty">곧 강의가 열립니다.</div>';
+      var levels = [];
+      list.forEach(function (c) { var k = c.level || '전체'; if (levels.indexOf(k) < 0) levels.push(k); });
+      var order = ['입문', '기초', '중급', '고급'];
+      levels.sort(function (a, b) { return (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99); });
+      g.innerHTML = levels.length ? levels.map(function (lv, i) {
+        var rows = list.filter(function (c) { return (c.level || '전체') === lv; });
+        return '<section class="rm-level rm-' + Math.min(i, 2) + '"><h3 class="rm-badge">' + esc(lv) + (LEVEL_EN[lv] ? '<small>(' + LEVEL_EN[lv] + ')</small>' : '') + '</h3>' +
+          '<div class="rm-table"><div class="rm-head" aria-hidden="true"><span>LEVEL</span><span>강의명</span><span>강의 소개</span></div>' +
+          rows.map(function (c) {
+            return '<a class="rm-row" href="course.html?id=' + c.id + '"><div class="rm-thumb">' + SB.thumb(c) + '</div>' +
+              '<div class="rm-name"><b>' + esc(c.title) + '</b><small>강의 ' + (c.lessons || 0) + '개' + (c.total_sec ? ' (약 ' + total(c.total_sec) + ')' : '') + '</small></div>' +
+              '<div class="rm-desc"><p>' + esc(c.description) + '</p>' +
+              ((c.learn || []).length ? '<div class="rm-tags">' + c.learn.slice(0, 3).map(function (t) { return '<span>#' + esc(t.replace(/\s+/g, '')) + '</span>'; }).join('') + '</div>' : '') +
+              '</div></a>';
+          }).join('') + '</div></section>';
+      }).join('') : '<div class="empty">곧 강의가 열립니다.</div>';
     }).catch(function (e) { failBox(g, e); });
   }
 
@@ -187,7 +215,7 @@
       if (st.sort === 'new') list.sort(function (a, b) { return a.opened_on < b.opened_on ? 1 : -1; });
       if (st.sort === 'abc') list.sort(function (a, b) { return a.title.localeCompare(b.title, 'ko'); });
       $('#courseCount').innerHTML = '강의 <b>' + list.length + '</b>개';
-      grid.innerHTML = list.length ? list.map(SB.card).join('') : '<div class="empty">조건에 맞는 강의가 없습니다.</div>';
+      grid.innerHTML = list.length ? list.map(SB.row).join('') : '<div class="empty">조건에 맞는 강의가 없습니다.</div>';
     }
     api('/courses').then(function (list) {
       all = list;
@@ -225,12 +253,12 @@
       $('#dTags').innerHTML = tags(c);
       $('#dTitle').textContent = c.title;
       $('#dDesc').textContent = c.description;
-      $('#dFacts').innerHTML = '<span><b>' + c.lessons + '</b>강</span>' + (c.total_sec ? '<span>총 <b>' + total(c.total_sec) + '</b></span>' : '') + '<span>섹션 <b>' + c.sections.length + '</b>개</span>';
+      $('#dFacts').innerHTML = '<span>강의 <b>' + c.lessons + '</b>개</span>' + (c.total_sec ? '<span>총 <b>' + total(c.total_sec) + '</b></span>' : '') + '<span>섹션 <b>' + c.sections.length + '</b>개</span>';
       $('#dWho').innerHTML = c.who.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
       $('#dWho').closest('.box').hidden = !c.who.length;
       $('#dLearn').innerHTML = c.learn.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('');
       $('#dLearn').closest('.box').hidden = !c.learn.length;
-      $('#dCurriMeta').textContent = c.sections.length + '개 섹션 · ' + c.lessons + '강' + (c.total_sec ? ' · ' + total(c.total_sec) : '');
+      $('#dCurriMeta').textContent = '섹션 ' + c.sections.length + '개 · 강의 ' + c.lessons + '개' + (c.total_sec ? ' · ' + total(c.total_sec) : '');
       $('#dCurri').innerHTML = curriculum(c, null);
       bindSects($('#dCurri'));
       var main = c.can_view
@@ -347,7 +375,7 @@
         $('#myCourses').innerHTML = '';
         return;
       }
-      $('#stLessons').innerHTML = '<em>' + d.done + '</em><span>강</span>';
+      $('#stLessons').innerHTML = '<em>' + d.done + '</em><span>개</span>';
       $('#stCourses').innerHTML = d.completed + '<span>개</span>';
       $('#stStreak').innerHTML = '<em>' + d.streak + '</em><span>일</span>';
       if (d.last) {
