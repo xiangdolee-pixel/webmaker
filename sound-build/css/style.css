@@ -389,13 +389,13 @@ a.lesson:hover { background: var(--paper); }
 
 /* 도식 한 줄 */
 .dl { position: relative; display: block; width: max-content; max-width: 100%; padding: 3px 4px 3px 6px; margin: 2px 0; line-height: 1.6; transition: opacity .35s var(--ease), filter .35s var(--ease); }
-.dl.kid::before { content: ""; position: absolute; left: 0; bottom: 4px; height: var(--up, 18px); border-left: 1.5px solid var(--ink-3); }
+.dl.kid::before { content: ""; position: absolute; left: calc(var(--cx, 6px) - 4px); bottom: 4px; height: var(--up, 18px); border-left: 1.5px solid var(--ink-3); }
 .dl.kid::after, .dl.has-kids::after { content: ""; position: absolute; left: 0; right: 0; bottom: 4px; border-bottom: 1.5px solid var(--ink-3); }
 .dl .tier { display: none; margin-right: 6px; padding: 0 5px; border-radius: 4px; background: var(--ink); color: var(--yellow); font-size: .68rem; font-weight: 800; font-style: normal; vertical-align: 2px; }
 .show-tier .dl .tier { display: inline-block; }
 .dl.clause { padding: 3px 10px; border: 2px solid var(--g-conn); border-radius: 4px; }
 .dl.clause.kid::after, .dl.clause.has-kids::after { bottom: -2px; left: -2px; right: -2px; }
-.dl.clause.kid::before { left: -2px; bottom: -2px; }
+.dl.clause.kid::before { left: calc(var(--cx, 6px) - 4px); bottom: -2px; }
 .dl.gap { margin-top: 12px; }
 .dl.pending { visibility: hidden; }
 .dl.reveal { animation: wipe .7s var(--ease) both; }
@@ -519,7 +519,8 @@ a.lesson:hover { background: var(--paper); }
 .dl.bx-v { border: 2px solid var(--g-noun); }
 .dl.bx-s { border: 2px solid var(--g-conn); }
 .dl.bx.kid::after, .dl.bx.has-kids::after { bottom: -2px; left: -2px; right: -2px; }
-.dl.bx.kid::before { left: -2px; bottom: -2px; }
+.dl.bx.kid::before { left: calc(var(--cx, 6px) - 4px); bottom: -2px; }
+.dl.kid::after { left: calc(var(--cx, 6px) - 4px) !important; }
 .mk-sheet { margin: 0 24px 20px; padding: 16px; border-radius: var(--r-sm); background: var(--paper); border: 1.5px solid var(--g-coord); }
 .mk-sel-t { font-weight: 700; margin-bottom: 10px; }
 .mk-row { display: grid; grid-template-columns: 64px repeat(4, 1fr); gap: 6px; align-items: stretch; margin-top: 6px; }

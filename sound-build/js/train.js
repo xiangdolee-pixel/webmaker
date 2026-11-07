@@ -144,7 +144,11 @@
       }
       if (!L.parent) return;
       var P = L.parent, a = L.anchorNode || anchorEl(P, L.anchor);
-      var x = a.getBoundingClientRect().left - base - 2;
+      // 줄의 내용(단계 표시 뒤 첫 글자)이 설명하는 낱말 바로 아래에서 시작하게, 연결선도 그 자리에서 내려온다
+      var fc = null; for (var c = el.firstElementChild; c; c = c.nextElementSibling) if (!c.classList.contains('tier') && !c.classList.contains('dl-box')) { fc = c; break; }
+      var off = fc ? fc.offsetLeft : 6;
+      el.style.setProperty('--cx', off + 'px');
+      var x = a.getBoundingClientRect().left - base - off;
       if (L.coord) x -= narrow ? 20 : 36;
       var w = el.offsetWidth;
       var min = P.x + step;
