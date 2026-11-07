@@ -478,3 +478,21 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   .tbtn { padding: 0 7px; font-size: 12px; }
   #btnSound { display: none; }
 }
+
+/* 결과 화면: 어디서 벌고 썼을까 */
+.ledger { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ledger summary { cursor: pointer; font-weight: 900; font-size: 15px; padding: 4px 0 8px; }
+.lg-wrap { overflow-x: auto; }
+.ledger table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ledger th, .ledger td { padding: 5px 3px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ledger tbody th, .ledger tfoot th { text-align: left; font-weight: 600; }
+.ledger thead th { border-top: 0; font-weight: 800; font-size: 12px; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
+.ledger thead th i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--pc); vertical-align: 1px; }
+.ledger td.minus { color: #c92a2a; }
+.ledger td.top { background: #fff3bf; font-weight: 800; }
+.ledger tfoot td, .ledger tfoot th { font-weight: 900; border-top: 2px solid var(--fg); }
+.ledger .note { margin-top: 8px; font-size: 12.5px; }
+@media (max-width: 380px) {
+  .ledger table { font-size: 11px; letter-spacing: -.02em; }
+  .ledger th, .ledger td { padding: 4px 2px; }
+}

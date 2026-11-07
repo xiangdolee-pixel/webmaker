@@ -591,10 +591,21 @@
     });
   }
   // 돈이 오간다. other 가 있으면 other ↔ p, 없으면 은행 ↔ p
+  var LED = [
+    ['start', '🚩 출발', /출발/], ['pay', '💰 월급', /월급|용돈/], ['gift', '🎁 축하금', /축의금|축하금|생일/],
+    ['chance', '❓ 찬스', /찬스/], ['lotto', '🎫 복권', /복권/], ['contest', '🏆 대회', /우승/], ['invest', '📈 투자', /투자|판매|구입|주가/],
+    ['tax', '🧾 세금', /세금/], ['retire', '🏁 은퇴', /은퇴/], ['road', '🛣️ 길 칸', /./]
+  ];
+  function ledger(p, why, n) {
+    var k = 'road';
+    for (var i = 0; i < LED.length; i++) if (LED[i][2].test(why)) { k = LED[i][0]; break; }
+    p.led = p.led || {}; p.led[k] = (p.led[k] || 0) + n;
+  }
   function money(p, n, why, other) {
     if (!n) return Promise.resolve();
     var i = S.players.indexOf(p), j = other ? S.players.indexOf(other) : -1;
     p.cash += n; if (other) other.cash -= n;
+    ledger(p, why, n); if (other) ledger(other, why, -n);
     log(p.name + ' · ' + why + ' ' + signed(n) + (other ? ' (' + other.name + (n > 0 ? '에게서)' : '에게)') : ''));
     var pw = seatEl(i) && seatEl(i).querySelector('.wallet'), ow = j >= 0 ? seatEl(j) && seatEl(j).querySelector('.wallet') : $('bank');
     pend[i]++; if (j >= 0) pend[j]++;
@@ -1214,6 +1225,23 @@
 
   function assetEnd(p) { return (p.assets || []).reduce(function (s, id) { return s + assetOf(id).end; }, 0); }
   function score(p) { return p.cash + p.level * LEVEL_PT + p.pass * PASS_PT + assetEnd(p); }
+  function man(n) { var a = Math.abs(n), v = a >= 10000 ? Math.round(a / 1000) / 10 + '만' : a ? Math.round(a / 100) / 10 + '천' : '0'; return (n > 0 ? '+' : n < 0 ? '−' : '') + v; }
+  function ledgerTable(list) {
+    var rows = LED.filter(function (c) { return list.some(function (q) { return q.led && q.led[c[0]]; }); }).map(function (c) {
+      return [c[1]].concat(list.map(function (q) { return (q.led && q.led[c[0]]) || 0; }));
+    });
+    rows.push(['🃏 레벨 카드'].concat(list.map(function (q) { return q.level * LEVEL_PT; })));
+    rows.push(['👪 동승자'].concat(list.map(function (q) { return q.pass * PASS_PT; })));
+    if (list.some(function (q) { return assetEnd(q); })) rows.push(['📄 주식 · 집'].concat(list.map(assetEnd)));
+    var best = rows.map(function (r) { var m = Math.max.apply(null, r.slice(1)); return m > 0 ? m : null; });
+    return '<details class="ledger" open><summary>어디서 벌고 썼을까?</summary><div class="lg-wrap"><table><thead><tr><th></th>' +
+      list.map(function (q) { return '<th style="--pc:' + q.color + '"><i></i>' + esc(q.name) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function (r, ri) {
+        return '<tr><th>' + r[0] + '</th>' + r.slice(1).map(function (v) { return '<td class="' + (v < 0 ? 'minus' : '') + (best[ri] !== null && v === best[ri] && list.length > 1 ? ' top' : '') + '">' + man(v) + '</td>'; }).join('') + '</tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><th>합계</th>' + list.map(function (q) { return '<td>' + man(score(q)).replace('+', '') + '</td>'; }).join('') + '</tr></tfoot></table></div>' +
+      '<p class="note">레벨 카드는 장당 1만, 동승자는 한 명당 5천, 주식 · 집은 게임 끝 값으로 쳐요. 룰렛은 모두 같은 확률(1~9)이에요. 색깔 · 순서 · PC에 따라 달라지지 않아요. 가장 많이 번 칸은 노랗게 표시했어요.</p></details>';
+  }
   async function showResult() {
     var list = S.players.slice().sort(function (a, b) { return score(b) - score(a); });
     jingle(true);
@@ -1222,7 +1250,7 @@
       body: '<p class="note">계산: 가진 돈 + 레벨업 카드 × 10,000원 + 동승자 × 5,000원 + 주식 · 부동산(게임 끝 값)</p><ol class="rank">' + list.map(function (p, i) {
         return '<li><span class="no">' + (i + 1) + '</span>' + carSvg(p.color, crewOf(p)) + '<span class="nm">' + esc(p.name) + (p.ai ? ' 🤖' : '') +
           '<small>' + won(p.cash) + ' + Lv ' + p.level + ' + 👪 ' + p.pass + ((p.assets || []).length ? ' + 📄 ' + won(assetEnd(p)) : '') + '</small></span><span class="sum">' + won(score(p)) + '</span></li>';
-      }).join('') + '</ol>',
+      }).join('') + '</ol>' + ledgerTable(list),
       buttons: [{ label: '판 보기', value: 0 }, { label: '새 게임', value: 1, pri: true }]
     });
     if (v) setup();
