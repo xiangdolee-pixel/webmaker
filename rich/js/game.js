@@ -208,14 +208,13 @@
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp); lp.connect(a.destination);
     o.start(t); o2.start(t); o.stop(t + dur + .02); o2.stop(t + dur + .02);
   }
-  function rollTick(k) {
+  // 누르면 '띠리리링' 네 번만, 부드러운 가운데 음
+  function rollTick() {}
+  function rollStart() {
     if (!sound) return;
-    try { pluck(ROLL_NOTES[k % ROLL_NOTES.length], audio().currentTime, .05, .12); } catch (e) {}
+    try { var t = audio().currentTime; [784, 988, 1175, 1319].forEach(function (f, i) { pluck(f, t + i * .085, .055, i === 3 ? .5 : .22); }); } catch (e) {}
   }
-  function rollDone() {
-    if (!sound) return;
-    try { var t = audio().currentTime; pluck(2093, t, .07, .25); pluck(2637, t + .07, .07, .35); pluck(3136, t + .14, .05, .45); } catch (e) {}
-  }
+  function rollDone() {}
   function jingle(good) {
     var notes = good ? [660, 880, 1320] : [440, 330, 220];
     notes.forEach(function (f, i) { setTimeout(function () { beep(f, .12, 'triangle', .07); }, i * 110); });
@@ -435,6 +434,27 @@
       return '<span class="stack' + (b[1] > 1 ? ' many' : '') + (b[1] > 2 ? ' lots' : '') + '">' + billHtml(b[0]) + (b[1] > 1 ? '<b>×' + b[1] + '</b>' : '') + '</span>';
     }).join('');
   }
+  var FAM_LABEL = { me: '나', spouse: '배우자', baby: '아기', pet: '반려견' };
+  function faceSvg(kind, k) { return '<svg viewBox="-4.4 -4.6 8.8 9" aria-hidden="true">' + personSvg(kind, 0, 0, k) + '</svg>'; }
+  function famHtml(p) {
+    var crew = crewOf(p), h = '';
+    for (var k = 0; k < 6; k++) {
+      h += k < crew.length
+        ? '<span class="fm in ' + crew[k] + '"><span class="fm-face">' + faceSvg(crew[k], k) + '</span><small>' + FAM_LABEL[crew[k]] + '</small></span>'
+        : '<span class="fm"><span class="fm-face"></span><small>빈자리</small></span>';
+    }
+    return h + (p.done ? '<span class="fm-done">🏁 ' + p.rank + '등 은퇴</span>' : '');
+  }
+  function jobKey(p) { return (p.job || 'student') + ':' + stage(p) + ':' + p.level; }
+  function jobPlate(p) {
+    var j = jobOf(p), st = stage(p);
+    if (!j) return '<span class="jp student"><span class="jp-ic">🎒</span><span class="jp-t"><small>학교 다니는 중</small><b>학생</b></span>' +
+      '<span class="jp-lv"><small>LEVEL</small><b>' + p.level + '</b></span></span>';
+    var need = st < 3 ? (st === 1 ? j.lp[0] : j.lp[0] + j.lp[1]) - p.level : 0;
+    return '<span class="jp" style="--jc:' + j.col + '"><span class="jp-ic">' + j.ic + '</span><span class="jp-t"><small>' + j.n + '의 길</small><b>L' + st + ' ' + esc(j.st[st - 1][0]) + '</b>' +
+      '<span class="jp-st">' + [1, 2, 3].map(function (k) { return '<i class="' + (k <= st ? 'on' : '') + '">L' + k + '</i>'; }).join('') + (need > 0 ? '<em>승진까지 레벨 ' + need + '</em>' : '<em>최고 단계!</em>') + '</span></span>' +
+      '<span class="jp-lv"><small>LEVEL</small><b>' + p.level + '</b></span></span>';
+  }
   function seatSide(i) { return i % 2 ? 'seatsB' : 'seatsA'; }
   function buildSeats() {
     $('seatsA').innerHTML = ''; $('seatsB').innerHTML = '';
@@ -445,7 +465,7 @@
       var d = document.createElement('div');
       d.className = 'seat'; d.id = 'seat' + i; d.style.setProperty('--pc', p.color);
       d.innerHTML = '<div class="seat-hd"><span class="seat-car"></span><span class="nm"></span><span class="cash"></span></div>' +
-        '<button type="button" class="seat-job"></button><div class="wallet"></div><div class="seat-cards"><span class="lvcards"></span><span class="assets"></span></div>';
+        '<button type="button" class="seat-job" aria-label="직업 카드 보기"></button><div class="fam" aria-label="자동차에 탄 가족"></div><div class="wallet"></div><div class="seat-cards"><span class="lvcards"></span><span class="assets"></span></div>';
       d.querySelector('.seat-job').addEventListener('click', function (e) { if (!modalOpen && !busy) viewCard(S.players[i], e.currentTarget); });
       $(seatSide(i)).appendChild(d);
     });
@@ -456,7 +476,11 @@
     d.querySelector('.nm').textContent = p.name + (p.ai ? ' 🤖' : '');
     var car = d.querySelector('.seat-car');
     var ck = crewOf(p).join(); if (car.dataset.crew !== ck) { car.innerHTML = carSvg(p.color, crewOf(p)); car.dataset.crew = ck; }
-    d.querySelector('.seat-job').innerHTML = esc(jobLabel(p)) + ' · 👪 ' + p.pass + (p.married ? ' 💍' : '') + (p.done ? ' · ' + p.rank + '등 은퇴' : '');
+    var jk = jobKey(p);
+    if (d.dataset.jk !== jk) { d.querySelector('.seat-job').innerHTML = jobPlate(p); d.dataset.jk = jk; }
+    var fk = crewOf(p).join() + (p.done ? p.rank : '');
+    if (d.dataset.fk !== fk) { var fam = d.querySelector('.fam'), old = +(d.dataset.fn || 0); fam.innerHTML = famHtml(p); d.dataset.fk = fk; d.dataset.fn = crewOf(p).length;
+      if (old && crewOf(p).length > old) { var nw = fam.querySelectorAll('.fm.in')[crewOf(p).length - 1]; if (nw) nw.classList.add('new'); } }
     if (!lvPend[i]) d.querySelector('.lvcards').innerHTML = p.level ? '<span class="lvcard"><i>LEVEL UP</i></span>' + (p.level > 1 ? '<b>×' + p.level + '</b>' : '') : '';
     d.querySelector('.assets').innerHTML = (p.assets || []).map(function (id) { var a = assetOf(id); return '<span class="acard" style="--c:' + a.col + '" title="' + esc(a.n) + '">' + a.ic + '</span>'; }).join('');
     d.classList.toggle('on', S.phase === 'play' && i === S.turn);
@@ -525,16 +549,16 @@
   // ---------- 화면 ----------
   function cur() { return S.players[S.turn]; }
   function render() {
-    placeTokens();
+    placeTokens(); setAutoBtn();
     var t = $('turn'), btn = $('btnSpin');
     if (!S || S.phase !== 'play') {
       t.innerHTML = '<span class="who"><span class="nm">머니로드</span><span class="sm">' + (S && S.phase === 'end' ? '게임 끝!' : '새 게임') + '</span></span>';
       btn.disabled = true; btn.querySelector('b').textContent = '누르기';
     } else {
       var p = cur();
-      t.innerHTML = '<span class="who" style="--pc:' + p.color + '"><span class="nm">' + esc(p.name) + '</span><span class="sm">' + (p.ai ? 'PC 차례' : '차례예요') + '</span></span>';
-      btn.disabled = busy || !!p.ai;
-      btn.querySelector('b').textContent = p.ai ? 'PC' : '누르기';
+      t.innerHTML = '<span class="who" style="--pc:' + p.color + '"><span class="nm">' + esc(p.name) + '</span><span class="sm">' + (p.ai ? 'PC 차례' : S.auto ? '자동 진행' : '차례예요') + '</span></span>';
+      btn.disabled = busy || isAI(p);
+      btn.querySelector('b').textContent = p.ai ? 'PC' : S.auto ? '자동' : '누르기';
     }
     if (S) S.players.forEach(function (_, i) { updateSeat(i, true); });
     $('log').innerHTML = S ? S.log.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') : '';
@@ -553,7 +577,8 @@
   // ---------- 창 ----------
   var modalOpen = false;
   var actor = null; // 지금 결정을 내리는 사람 (PC 면 자동)
-  function isAuto() { return !!(S && S.phase === 'play' && actor && actor.ai); }
+  function isAI(q) { return !!(q && (q.ai || (S && S.auto))); }
+  function isAuto() { return !!(S && S.phase === 'play' && actor && isAI(actor)); }
   function later(ms, fn) { setTimeout(fn, reduced() ? Math.min(ms, 250) : ms); }
   function autoModal(opts) {
     var box = $('mBody'), bx = $('mBtns');
@@ -601,6 +626,7 @@
     if (reduced()) { numEl.textContent = n; beep(1200, .08); return sleep(250).then(function () { return n; }); }
     return new Promise(function (resolve) {
       var steps = 11 + Math.floor(Math.random() * 3), k = 0, last = 0;
+      rollStart();
       (function tick() {
         k++;
         if (k >= steps) { numEl.textContent = n; rollDone(); setTimeout(function () { resolve(n); }, 160); return; }
@@ -639,10 +665,10 @@
       }).join('') + '</span></span></span>';
   }
   // 고른 카드가 가운데로 날아와 '촥' 열린다
-  function revealCard(fromRect, front, buttons, back) {
+  function revealCard(fromRect, front, buttons, back, tall) {
     return new Promise(function (resolve) {
       var fx = document.createElement('div');
-      fx.className = 'cardfx';
+      fx.className = 'cardfx' + (tall ? ' tall' : '');
       fx.innerHTML = '<div class="jc-rays"></div><div class="jc-pos"><div class="jc-in">' + (back || cardBack()) + front + '</div><span class="jc-flash"></span></div><div class="jc-btns"></div>';
       document.body.appendChild(fx);
       modalOpen = true;
@@ -770,8 +796,7 @@
     flashTile(p.pos);
     switch (t.type) {
       case 'spend':
-        money(p, -t.amt, t.name); jingle(false);
-        await toast(t.ic + ' ' + esc(t.name) + '<br><span class="minus">' + signed(-t.amt) + '</span>'); break;
+        await moneyScene([{ from: p, to: null, amt: t.amt }], { ic: t.ic, title: t.name, sub: esc(p.name) + ', 돈을 내야 해요!' }); break;
       case 'earn':
         money(p, t.amt, t.name); jingle(true);
         await toast(t.ic + ' ' + esc(t.name) + '<br><span class="plus">' + signed(t.amt) + '</span>'); break;
@@ -809,7 +834,7 @@
           ai: function () { return p.cash >= 15000 && Math.random() < .6 ? 1 : 0; }
         });
         if (!buy) { log(p.name + ' · 복권 안 삼'); break; }
-        money(p, -2000, '복권 구입');
+        await moneyScene([{ from: p, to: null, amt: 2000 }], { ic: '🎫', title: '복권 한 장', sub: esc(p.name) + ', 복권을 샀어요', why: '복권 구입' });
         var l = await spinModal('🎫 복권 추첨', '<p>룰렛을 눌러 추첨해요!</p>', '추첨');
         var prize = l === 9 ? 100000 : l >= 7 ? 30000 : l >= 5 ? 8000 : 0;
         var rank = l === 9 ? '1등' : l >= 7 ? '2등' : l >= 5 ? '3등' : '';
@@ -850,7 +875,8 @@
         if (!inv) { log(p.name + ' · 투자 안 함'); break; }
         var rr = await spinModal('📈 투자 결과', '<p>' + won(inv) + '을 넣었어요. 두근두근…</p>');
         var mult = rr <= 4 ? 0 : rr <= 7 ? 2 : 3, gain = inv * mult - inv;
-        money(p, gain, '투자 ' + rr + (mult ? ' (' + mult + '배)' : ' (손해)'));
+        if (gain > 0) money(p, gain, '투자 ' + rr + ' (' + mult + '배)');
+        else await moneyScene([{ from: p, to: null, amt: -gain }], { ic: '📉', title: '투자 실패…', sub: '룰렛 ' + rr + ' — 넣은 돈을 다 잃었어요', why: '투자 ' + rr + ' (손해)' });
         jingle(gain > 0);
         await ok(mult ? '📈 ' + mult + '배!' : '📉 다 잃었어요', '<span class="big ' + (gain > 0 ? 'plus' : 'minus') + '">' + signed(gain) + '</span>');
         break;
@@ -859,31 +885,31 @@
         var si = stageInfo(p), tax = si ? si[2] : 0;
         var est = (p.assets || []).map(assetOf).filter(function (a) { return a.tax; });
         var etax = est.reduce(function (s2, a) { return s2 + a.tax; }, 0);
-        if (tax + etax) money(p, -(tax + etax), '세금 (L' + stage(p) + (etax ? ' + 부동산' : '') + ')'); else log(p.name + ' · 세금 없음');
-        jingle(false);
+        if (!(tax + etax)) log(p.name + ' · 세금 없음');
         await ok('✋ STOP · 세금 내는 날', '<p>' + (si ? '<b>L' + stage(p) + ' ' + esc(si[0]) + '</b>의 세금 ' + won(tax) + '. 높이 올라갈수록 세금도 커져요.' : '아직 학생이라 직업 세금이 없어요.') + '</p>' +
           (est.length ? '<p class="note">부동산 세금: ' + est.map(function (a) { return a.ic + ' ' + esc(a.n) + ' ' + won(a.tax); }).join(' · ') + '</p>' : '') +
           '<span class="big minus">' + signed(-(tax + etax)) + '</span>');
+        await moneyScene([{ from: p, to: null, amt: tax + etax }], { ic: '🧾', title: '세금 내는 날', sub: esc(p.name) + '의 세금', why: '세금 (L' + stage(p) + (etax ? ' + 부동산' : '') + ')' });
         break;
       }
       case 'stopWed': {
         if (!p.married) {
           p.married = true; addPass(p, 'spouse');
-          o.forEach(function (q) { money(p, 5000, '결혼 축의금', q); });
-          jingle(true);
-          await ok('💍 STOP · 결혼해요!', '<p>배우자가 차에 탔어요 (👪 +1).<br>모두가 5,000원씩 축의금을 줘요.</p><span class="big plus">' + signed(5000 * o.length) + '</span>');
+          render(); jingle(true);
+          await ok('💍 STOP · 결혼해요!', '<p>배우자가 차에 탔어요 (👪 +1).<br>모두가 5,000원씩 축의금을 줘요.</p>');
+          await moneyScene(o.map(function (q) { return { from: q, to: p, amt: 5000 }; }), { ic: '💍', title: '결혼 축의금!', sub: '모두 ' + esc(p.name) + '에게 축의금을 줘요' });
         } else {
-          money(p, -5000, '결혼기념일 여행');
-          await ok('💍 STOP · 결혼기념일', '<p>기념일 여행을 다녀왔어요.</p><span class="big minus">' + signed(-5000) + '</span>');
+          await moneyScene([{ from: p, to: null, amt: 5000 }], { ic: '💍', title: '결혼기념일 여행', sub: esc(p.name) + ', 기념일 여행을 다녀왔어요' });
         }
         break;
       }
       case 'baby': {
         var added = addPass(p, p.married ? 'baby' : 'pet');
         if (p.married) {
-          o.forEach(function (q) { money(p, 2000, '아기 축하금', q); });
           if (added) log(p.name + ' · 아기 탄생 👪 +1');
-          await ok('👶 아기가 태어났어요!', '<p>' + (added ? '차에 한 명 더 탔어요 (👪 +1).' : '차가 꽉 찼어요!') + '<br>모두가 2,000원씩 축하금을 줘요.</p><span class="big plus">' + signed(2000 * o.length) + '</span>');
+          render();
+          await ok('👶 아기가 태어났어요!', '<p>' + (added ? '차에 한 명 더 탔어요 (👪 +1).' : '차가 꽉 찼어요!') + '<br>모두가 2,000원씩 축하금을 줘요.</p>');
+          await moneyScene(o.map(function (q) { return { from: q, to: p, amt: 2000 }; }), { ic: '👶', title: '아기 축하금!', sub: '모두 ' + esc(p.name) + '에게 축하금을 줘요' });
         } else {
           if (added) log(p.name + ' · 반려동물 입양 👪 +1');
           render();
@@ -913,7 +939,7 @@
         '<ol class="ct">' + order.map(function (q, k) { return '<li data-k="' + k + '">' + carSvg(q.color, crewOf(q)) + '<span class="nm">' + esc(q.name) + '</span><b>–</b></li>'; }).join('') + '</ol>' + MINI,
       onOpen: function (box, done, addBtn) {
         var b = box.querySelector('[data-spin]'), k = 0, rows = box.querySelectorAll('.ct li');
-        function lab() { b.textContent = order[k].name.slice(0, 5); rows.forEach(function (r, i) { r.classList.toggle('on', i === k); }); if (order[k].ai) later(800, function () { if (!b.disabled) b.click(); }); }
+        function lab() { b.textContent = order[k].name.slice(0, 5); rows.forEach(function (r, i) { r.classList.toggle('on', i === k); }); if (isAI(order[k])) later(800, function () { if (!b.disabled) b.click(); }); }
         lab();
         b.addEventListener('click', function () {
           b.disabled = true;
@@ -940,44 +966,117 @@
   function chanceBack() { return '<span class="jc-face jc-back cb"><span class="jb-pat" aria-hidden="true">? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?</span><span class="jb-band">찬스 카드</span><span class="jb-coin">?</span></span>'; }
   function tileRect(i) { var el = document.querySelector('.tl[data-i="' + i + '"]'); return el ? el.getBoundingClientRect() : null; }
   function jobNames(ids) { return ids.map(function (id) { for (var k = 0; k < JOBS.length; k++) if (JOBS[k].id === id) return JOBS[k].n; return ''; }).join(' · '); }
-  async function assetCard(p, a) {
+  async function pickChance(p) {
+    var rectOf = null;
+    beep(880, .1, 'triangle', .07);
+    await modal({
+      title: '❓ 찬스 카드를 뽑아요',
+      body: '<p>' + esc(p.name) + ', 엎어 둔 카드 중 한 장을 골라 뒤집어요.</p><div class="deck tall">' + [0, 1, 2].map(function (k) {
+        return '<button type="button" class="cback" data-i="' + k + '" aria-label="' + (k + 1) + '번 카드">' + chanceBack() + '</button>';
+      }).join('') + '</div>',
+      onOpen: function (box, done) {
+        box.querySelectorAll('.cback').forEach(function (el) {
+          el.addEventListener('click', function () { rectOf = el.getBoundingClientRect(); el.style.visibility = 'hidden'; done(+el.dataset.i); });
+        });
+      }
+    });
+    return rectOf || tileRect(p.pos);
+  }
+  function sellChips(a) {
+    var lo = 1;
+    return a.sell.map(function (r) { var t = '<span><small>' + (lo === r[0] ? lo : lo + '~' + r[0]) + '</small><b>' + short(r[1]) + '</b></span>'; lo = r[0] + 1; return t; }).join('');
+  }
+  async function assetCard(p, a, rect) {
     var can = p.cash >= a.price;
-    var front = '<span class="jc-face jc-front ac" style="--jc:' + a.col + '"><span class="ac-hd">' + a.kind + ' 카드</span><span class="ac-body"><span class="ac-pic">' + a.ic + '</span><span class="ac-info">' +
-      '<b>' + esc(a.n) + '</b><span>사는 값 ' + won(a.price) + (a.tax ? ' · 세금 ' + won(a.tax) : '') + '</span>' +
-      '<small>팔 때(투자 칸 룰렛): ' + sellRanges(a).join(' · ') + '</small><small>게임 끝나면 ' + won(a.end) + '으로 계산</small></span></span></span>';
+    var front = '<span class="jc-face jc-front ac" style="--jc:' + a.col + '">' +
+      '<span class="ac-hd">' + (a.kind === '주식' ? '📈' : '🏠') + ' ' + a.kind + ' 카드</span>' +
+      '<span class="ac-pic"><span>' + a.ic + '</span><b>' + esc(a.n) + '</b></span>' +
+      '<span class="ac-rows"><span><em>사는 값</em><b>' + won(a.price) + '</b></span>' + (a.tax ? '<span><em>세금 날 세금</em><b>' + won(a.tax) + '</b></span>' : '') +
+      '<span><em>게임 끝 값</em><b>' + won(a.end) + '</b></span></span>' +
+      '<span class="ac-sell"><em>팔 때 · 투자 칸 룰렛</em><span class="ac-chips">' + sellChips(a) + '</span></span></span>';
     var buy = Math.random() < .75 && p.cash >= a.price + 15000;
-    var v = await revealCard(tileRect(p.pos), front, can
+    var v = await revealCard(rect, front, can
       ? [{ label: '안 사요', value: 0, ai: !buy }, { label: '사요 ' + signed(-a.price), value: 1, pri: true, ai: buy }]
-      : [{ label: '돈이 모자라요', value: 0, pri: true }], chanceBack());
+      : [{ label: '돈이 모자라요', value: 0, pri: true }], chanceBack(), true);
     if (v) { p.assets.push(a.id); money(p, -a.price, a.n + ' 구입'); jingle(true); }
     else log(p.name + ' · ' + a.n + ' 안 삼');
     render();
   }
   async function chance(p, depth) {
     var free = ASSETS.filter(function (a) { return !S.players.some(function (q) { return (q.assets || []).indexOf(a.id) >= 0; }); });
-    if (free.length && Math.random() < .3) { beep(880, .1, 'triangle', .07); return assetCard(p, pick(free)); }
+    var rect = await pickChance(p);
+    if (free.length && Math.random() < .3) return assetCard(p, pick(free), rect);
     var c;
     do { c = pick(CHANCE); } while ((c.job && !p.job) || (c.all && S.players.length < 2));
-    beep(880, .1, 'triangle', .07);
     var salAmt = 0;
     if (c.sal) { var pay = payOf(p); salAmt = typeof pay === 'object' ? pay.spin * 5 : pay; }
     var hit = c.bj && p.job && c.bj.indexOf(p.job) >= 0;
     var amt = c.m || salAmt;
-    var front = '<span class="jc-face jc-front cc"><span class="cc-hd">찬스</span><span class="cc-ic">' + c.ic + '</span><span class="cc-t">' + esc(c.t) + '</span>' +
-      (amt ? '<span class="cc-amt ' + (amt > 0 ? 'plus' : 'minus') + '">' + signed(amt) + '</span>' : '') +
-      (c.bj ? '<span class="cc-bonus' + (hit ? ' hit' : '') + '">추가 보너스: ' + jobNames(c.bj) + '이면 <i class="lvmini">LEVEL UP</i> 카드 ' + c.blv + '장' + (hit ? ' ✔' : '') + '</span>' : '') + '</span>';
-    await revealCard(tileRect(p.pos), front, [{ label: '확인', value: 1, pri: true }], chanceBack());
-    if (c.m) { money(p, c.m, '찬스'); jingle(c.m > 0); }
+    var allTxt = c.all ? '<span class="cc-amt ' + (c.all > 0 ? 'plus' : 'minus') + '">모두 ' + (c.all > 0 ? '→ 나 ' : '← 나 ') + won(Math.abs(c.all)) + '씩</span>' : '';
+    var extra = c.lv ? '<span class="cc-amt lv"><i class="lvmini">LEVEL UP</i> +' + c.lv + '</span>' : c.mv ? '<span class="cc-amt mv">' + (c.mv > 0 ? '앞으로 ' : '뒤로 ') + Math.abs(c.mv) + '칸</span>' : '';
+    var front = '<span class="jc-face jc-front cc"><span class="cc-hd"><i>?</i>찬스 카드<i>?</i></span>' +
+      '<span class="cc-pic"><span>' + c.ic + '</span></span><span class="cc-t">' + esc(c.t) + '</span>' +
+      (amt ? '<span class="cc-amt ' + (amt > 0 ? 'plus' : 'minus') + '">' + signed(amt) + '</span>' : '') + extra + allTxt +
+      '<span class="cc-sp"></span>' +
+      (c.bj ? '<span class="cc-bonus' + (hit ? ' hit' : '') + '">추가 보너스 · ' + jobNames(c.bj) + '이면 <i class="lvmini">LEVEL UP</i> 카드 ' + c.blv + '장' + (hit ? ' ✔' : '') + '</span>' : '') +
+      '<span class="cc-foot">MONEY ROAD</span></span>';
+    await revealCard(rect, front, [{ label: '확인', value: 1, pri: true }], chanceBack(), true);
+    if (c.m > 0) { money(p, c.m, '찬스'); jingle(true); }
+    if (c.m < 0) await moneyScene([{ from: p, to: null, amt: -c.m }], { ic: c.ic, title: '찬스 · 돈을 내요', sub: esc(c.t) });
     if (c.lv) { jingle(true); await levelUp(p, c.lv, '찬스'); }
     if (hit) { jingle(true); await levelUp(p, c.blv, '찬스 직업 보너스'); }
     if (c.sal) { money(p, salAmt, '찬스 보너스 월급'); jingle(true); }
-    if (c.all) others(p).forEach(function (q) { money(p, c.all, '찬스', q); });
+    if (c.all > 0) await moneyScene(others(p).map(function (q) { return { from: q, to: p, amt: c.all }; }), { ic: c.ic, title: '모두가 ' + p.name + '에게!', sub: esc(c.t), why: '찬스' });
+    if (c.all < 0) await moneyScene(others(p).map(function (q) { return { from: p, to: q, amt: -c.all }; }), { ic: c.ic, title: p.name + '이(가) 모두에게!', sub: esc(c.t), why: '찬스' });
     if (c.job) await drawJobCard(p, '🤝 스카우트 제의', '새 직업 카드를 뽑아 보고, 마음에 들면 바꿔요.', true);
     if (c.mv) {
       log(p.name + ' · 찬스 ' + (c.mv > 0 ? '앞으로 ' : '뒤로 ') + Math.abs(c.mv) + '칸');
       await move(p, c.mv);
       if ((depth || 0) < 2) await land(p, (depth || 0) + 1);
     }
+  }
+
+  // ---------- 돈 주고받는 장면 ----------
+  // list = [{ from: 사람|null(은행), to: 사람|null(은행), amt }], o = { ic, title, sub, why }
+  function chip(q) { return q ? '<span class="ms-chip" style="--pc:' + q.color + '">' + esc(q.name) + '</span>' : '<span class="ms-chip bank">🏦 은행</span>'; }
+  function moneyScene(list, o) {
+    list = list.filter(function (t) { return t.amt > 0; });
+    if (!list.length) return Promise.resolve();
+    var froms = [], tos = [];
+    list.forEach(function (t) { if (froms.indexOf(t.from) < 0) froms.push(t.from); if (tos.indexOf(t.to) < 0) tos.push(t.to); });
+    var same = list.every(function (t) { return t.amt === list[0].amt; });
+    var flow = froms.map(chip).join('') + '<span class="ms-arrow">➜</span>' + tos.map(chip).join('');
+    var amtTxt = won(list[0].amt) + (same && list.length > 1 ? '씩' : '');
+    var fx = document.createElement('div');
+    fx.className = 'mscene';
+    fx.innerHTML = '<div class="ms-card"><span class="ms-ic">' + (o.ic || '💸') + '</span><b class="ms-title">' + esc(o.title) + '</b>' +
+      (o.sub ? '<span class="ms-sub">' + o.sub + '</span>' : '') +
+      '<span class="ms-flow">' + flow + '</span><span class="ms-amt">' + amtTxt + '</span><span class="ms-total"></span></div>';
+    document.body.appendChild(fx);
+    var lifted = [];
+    froms.concat(tos).forEach(function (q) { if (q) { var el = seatEl(S.players.indexOf(q)); if (el) { el.classList.add('lift'); lifted.push(el); } } });
+    beep(392, .14, 'triangle', .07); setTimeout(function () { beep(330, .2, 'triangle', .06); }, 140);
+    return (async function () {
+      await sleep(reduced() ? 100 : 650);
+      for (var k = 0; k < list.length; k++) {
+        var t = list[k], fe = t.from ? seatEl(S.players.indexOf(t.from)) : null;
+        if (fe) { fe.classList.remove('pay'); void fe.offsetWidth; fe.classList.add('pay'); }
+        if (t.to) await money(t.to, t.amt, o.why || o.title, t.from || null);
+        else await money(t.from, -t.amt, o.why || o.title);
+        await sleep(reduced() ? 0 : 160);
+      }
+      // 받은 사람 / 낸 사람 합계
+      var who = tos.length === 1 && tos[0] ? tos[0] : froms.length === 1 && froms[0] ? froms[0] : null, tot = 0;
+      list.forEach(function (t) { if (who && t.to === who) tot += t.amt; else if (who && t.from === who) tot -= t.amt; });
+      if (who) { var tt = fx.querySelector('.ms-total'); tt.innerHTML = chip(who) + '<b class="' + (tot >= 0 ? 'plus' : 'minus') + '">' + signed(tot) + '</b>'; tt.classList.add('on'); }
+      jingle(tot >= 0 && !!tos[0]);
+      await new Promise(function (res) {
+        var gone = false;
+        function close() { if (gone) return; gone = true; fx.classList.add('out'); lifted.forEach(function (el) { el.classList.remove('lift', 'pay'); }); setTimeout(function () { fx.remove(); res(); }, reduced() ? 0 : 240); }
+        fx.addEventListener('click', close);
+        setTimeout(close, reduced() ? 300 : 1500);
+      });
+    })();
   }
 
   // ---------- 차례 알림: 화면이 어두워지며 '○○ 차례' ----------
@@ -999,7 +1098,7 @@
   var busy = false;
   async function onSpin() {
     if (busy || modalOpen || !S || S.phase !== 'play') return;
-    if (this && this.nodeType && cur().ai) return; // PC 차례에는 사람이 누르지 않는다
+    if (this && this.nodeType && isAI(cur())) return; // PC · 자동 차례에는 사람이 누르지 않는다
     busy = true;
     var p = cur(); actor = p;
     render();
@@ -1014,7 +1113,8 @@
     save(); render();
     if (S.phase === 'end') showResult(); else autoTurn();
   }
-  function autoTurn() { if (S && S.phase === 'play' && cur().ai && !busy) later(900, function () { if (S && S.phase === 'play' && cur().ai && !busy && !modalOpen) onSpin(); }); }
+  function autoTurn() { if (S && S.phase === 'play' && isAI(cur()) && !busy) later(900, function () { if (S && S.phase === 'play' && isAI(cur()) && !busy && !modalOpen) onSpin(); }); }
+  function setAutoBtn() { var b = $('btnAuto'); if (!b) return; var on = !!(S && S.auto); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.textContent = on ? '자동 끄기' : '자동'; }
   function nextTurn() {
     if (S.players.every(function (q) { return q.done; })) { S.phase = 'end'; return; }
     var i = S.turn;
@@ -1120,6 +1220,12 @@
     drawBoard();
     setSoundBtn();
     $('btnSpin').addEventListener('click', onSpin);
+    $('btnAuto').addEventListener('click', function () {
+      if (!S || S.phase !== 'play') return;
+      S.auto = !S.auto; setAutoBtn(); save(); render();
+      toast(S.auto ? '🤖 자동 모드<br><span class="plus">끝까지 알아서 진행해요</span>' : '✋ 자동 모드 끔', 1200);
+      if (S.auto) autoTurn();
+    });
     $('btnRules').addEventListener('click', function () { if (!modalOpen) rules(); });
     $('btnNew').addEventListener('click', async function () {
       if (modalOpen || busy) return;
