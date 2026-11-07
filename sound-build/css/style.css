@@ -521,6 +521,9 @@ a.lesson:hover { background: var(--paper); }
 .dl.bx.kid::after, .dl.bx.has-kids::after { bottom: -2px; left: -2px; right: -2px; }
 .dl.bx.kid::before { left: calc(var(--cx, 6px) - 4px); bottom: -2px; }
 .dl.kid::after { left: calc(var(--cx, 6px) - 4px) !important; }
+.dl.boxed.kid::before { bottom: calc(100% + 1px); height: var(--upb, 12px); border-left-width: 2px; border-left-color: var(--g-conn); }
+.dl.boxed.bx-j.kid::before { border-left-color: #f2b705; } .dl.boxed.bx-v.kid::before { border-left-color: var(--g-noun); }
+.dl.boxed.kid:not(.has-kids)::after { display: none; }
 .mk-sheet { margin: 0 24px 20px; padding: 16px; border-radius: var(--r-sm); background: var(--paper); border: 1.5px solid var(--g-coord); }
 .mk-sel-t { font-weight: 700; margin-bottom: 10px; }
 .mk-row { display: grid; grid-template-columns: 64px repeat(4, 1fr); gap: 6px; align-items: stretch; margin-top: 6px; }

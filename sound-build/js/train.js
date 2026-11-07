@@ -148,7 +148,8 @@
       var fc = null; for (var c = el.firstElementChild; c; c = c.nextElementSibling) if (!c.classList.contains('tier') && !c.classList.contains('dl-box')) { fc = c; break; }
       var off = fc ? fc.offsetLeft : 6;
       el.style.setProperty('--cx', off + 'px');
-      var x = a.getBoundingClientRect().left - base - off;
+      var ar = a.getBoundingClientRect();
+      var x = (a === P.el ? ar.left : ar.left + ar.width / 2) - base - off + 4;   // 연결선이 설명하는 낱말 가운데에서 내려온다
       if (L.coord) x -= narrow ? 20 : 36;
       var w = el.offsetWidth;
       var min = P.x + step;
@@ -164,6 +165,7 @@
       if (!L.parent || L.coord) return;
       var up = L.el.getBoundingClientRect().bottom - L.parent.el.getBoundingClientRect().bottom;
       L.el.style.setProperty('--up', Math.max(8, up) + 'px');
+      L.el.style.setProperty('--upb', Math.max(6, up - L.el.offsetHeight + 4) + 'px');   // 박스 줄: 박스 윗변까지만
     });
     // 절 박스는 그 절에 매달린 줄(예: as soon as she came 아래 into the room)까지 한 박스로 감싼다
     function under(K, L) { for (var P = K.parent; P; P = P.parent) if (P === L) return true; return false; }
