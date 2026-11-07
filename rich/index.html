@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>머니로드 — 직업 부자 레이스</title>
+<meta name="description" content="전자룰렛을 눌러 말을 옮기고, 직업 월급 · 레벨업 · 찬스 · 복권 · 투자로 돈을 모으는 가족 보드게임. 2~4명이 폰 한 대로 돌려가며 합니다.">
+<meta name="theme-color" content="#ffd43b">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css?v=1">
+<script src="js/game.js?v=1" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <h1 class="logo"><span class="logo-mark" aria-hidden="true">₩</span>머니로드</h1>
+    <div class="top-act">
+      <button type="button" class="ibtn" id="btnSound" aria-pressed="true" aria-label="소리 끄기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="snd-on" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/><path class="snd-off" d="M4 9v6h4l5 4V5L8 9H4zm12 .5 5 5m0-5-5 5"/></svg>
+      </button>
+      <button type="button" class="tbtn" id="btnRules">규칙</button>
+      <button type="button" class="tbtn" id="btnNew">새 게임</button>
+      <span class="gnb-account" data-xms-account></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap game">
+  <section class="board-box" aria-label="게임판">
+    <div class="board" id="board">
+      <div class="grid" id="grid"></div>
+      <div class="tokens" id="tokens"></div>
+      <div class="toast" id="toast" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="machine">
+      <div class="turn" id="turn" aria-live="polite"></div>
+      <div class="disp" aria-label="룰렛 숫자"><span class="disp-ghost" aria-hidden="true">8</span><span class="disp-num" id="disp">-</span></div>
+      <button type="button" class="spin" id="btnSpin">누르기</button>
+    </div>
+    <ol class="players" id="players"></ol>
+    <h2 class="sub">기록</h2>
+    <ol class="log" id="log"></ol>
+  </aside>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 class="m-title" id="mTitle"></h2>
+    <div class="m-body" id="mBody"></div>
+    <div class="m-btns" id="mBtns"></div>
+  </div>
+</div>
+</body>
+</html>
