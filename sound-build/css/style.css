@@ -613,6 +613,10 @@ a.lesson:hover { background: var(--paper); }
 .doc-ex dd { margin: 0; }
 .doc-ex dd .ex { margin: 8px 0; }
 .doc-ex dd p { font-size: .97rem; color: var(--ink-2); }
+.doc-wh { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+.doc-wh span { padding: 10px 12px; border-radius: var(--r-sm); background: var(--tint); font-size: .9rem; color: var(--ink-2); line-height: 1.4; }
+.doc-wh b { display: block; font-family: var(--serif); font-size: 1.15rem; color: var(--ink); }
+.doc-wh small { display: block; font-size: .75rem; color: var(--ink-3); }
 .doc-bonds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
 .doc-bond { padding: 12px 14px; border-radius: var(--r-sm); background: var(--tint); }
 .doc-bond > b { display: inline-block; padding: 1px 10px; border-radius: 6px; background: var(--ink); color: var(--yellow); font-size: .9rem; letter-spacing: .04em; }
@@ -724,6 +728,7 @@ a.lesson:hover { background: var(--paper); }
 @media (max-width: 640px) {
   .doc-sec { padding: 22px 18px; }
   .doc-pair, .doc-vs, .doc-bonds, .doc-sum { grid-template-columns: 1fr; }
+  .doc-wh { grid-template-columns: 1fr 1fr; }
   .doc-grid4 { grid-template-columns: 1fr 1fr; }
   .dt-row { grid-template-columns: .9fr 1fr 1fr; }
   .dt-row > span { padding: 10px 8px; font-size: .86rem; }
