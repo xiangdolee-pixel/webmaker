@@ -192,14 +192,16 @@
       levels.sort(function (a, b) { return (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99); });
       g.innerHTML = levels.length ? levels.map(function (lv, i) {
         var rows = list.filter(function (c) { return (c.level || '전체') === lv; });
-        return '<section class="rm-level rm-' + Math.min(i, 2) + '"><h3 class="rm-badge">' + esc(lv) + (LEVEL_EN[lv] ? '<small>(' + LEVEL_EN[lv] + ')</small>' : '') + '</h3>' +
-          '<div class="rm-table"><div class="rm-head" aria-hidden="true"><span>LEVEL</span><span>강의명</span><span>강의 소개</span></div>' +
-          rows.map(function (c) {
-            return '<a class="rm-row" href="course.html?id=' + c.id + '"><div class="rm-thumb">' + SB.thumb(c) + '</div>' +
-              '<div class="rm-name"><b>' + esc(c.title) + '</b><small>강의 ' + (c.lessons || 0) + '개' + (c.total_sec ? ' (약 ' + total(c.total_sec) + ')' : '') + '</small></div>' +
-              '<div class="rm-desc"><p>' + esc(c.description) + '</p>' +
-              ((c.learn || []).length ? '<div class="rm-tags">' + c.learn.slice(0, 3).map(function (t) { return '<span>#' + esc(t.replace(/\s+/g, '')) + '</span>'; }).join('') + '</div>' : '') +
-              '</div></a>';
+        return '<section class="rm-level rm-' + Math.min(i, 2) + '">' +
+          '<header class="rm-side"><span class="rm-step">' + ('0' + (i + 1)).slice(-2) + '</span><div><h3>' + esc(lv) + '</h3>' +
+          (LEVEL_EN[lv] ? '<small>' + LEVEL_EN[lv] + '</small>' : '') + '<p>강의 ' + rows.length + '개</p></div></header>' +
+          '<div class="rm-list">' + rows.map(function (c) {
+            return '<a class="rm-card" href="course.html?id=' + c.id + '"><div class="rm-thumb">' + SB.thumb(c) + '</div>' +
+              '<div class="rm-body"><h4>' + esc(c.title) + '</h4>' +
+              '<p class="rm-meta">강의 ' + (c.lessons || 0) + '개' + (c.total_sec ? '<i></i>약 ' + total(c.total_sec) : '') + '</p>' +
+              '<p class="rm-desc">' + esc(c.description) + '</p>' +
+              ((c.learn || []).length ? '<p class="rm-tags">' + c.learn.slice(0, 3).map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
+              '</div><span class="rm-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a>';
           }).join('') + '</div></section>';
       }).join('') : '<div class="empty">곧 강의가 열립니다.</div>';
     }).catch(function (e) { failBox(g, e); });
