@@ -539,6 +539,14 @@ a.lesson:hover { background: var(--paper); }
 
 /* ── 보기 문장 · 단계 표시 (문장 원리 · 구조 생성기 공통) ───────────────────────────── */
 .ex { margin: 14px 0; padding: 14px 18px; border-radius: var(--r-sm); background: var(--card); border: 1px solid var(--line); }
+/* 정보 단계 숫자: 뼈대 낱말 · 부품 여는 표시 아래에 작게 (1차 진하게, 2차 파랑, 3차 이하 회색) */
+[data-t] { position: relative; }
+.tn { position: relative; display: inline-block; width: 0; height: 1.2em; vertical-align: -.3em; }
+.wd[data-t]::after, .tn::after { content: attr(data-t); position: absolute; left: 50%; top: 100%; transform: translate(-50%, 1px); min-width: 1.35em; padding: 0 .3em; border-radius: 99px; font: 800 .58em/1.5 var(--font); font-style: normal; letter-spacing: 0; text-align: center; color: var(--ink-3); background: var(--paper-2); pointer-events: none; white-space: nowrap; }
+.tn::after { left: .3em; }
+.mk.cl .tn::after { left: .7em; }
+[data-t="1"]::after { background: var(--ink) !important; color: var(--yellow) !important; }
+[data-t="2"]::after { background: #dfe6f5 !important; color: var(--g-verb) !important; }
 .ex-s { font-size: clamp(1.05rem, 2vw, 1.2rem); line-height: 2.2; }
 .ex .wd, .fs .wd { cursor: default; }
 .ex .wd:not([class*="r-"]):hover, .fs .wd:not([class*="r-"]):hover { background: none; }

@@ -69,15 +69,29 @@
   function inline(toks, roles, parts, o) {
     o = o || {};
     var list = parts.map(function (p, k) { return { p: p, k: k }; }).sort(function (a, b) { return byPos(a.p, b.p); });
+    // 정보 단계: 뼈대 = 1차, 부품은 붙은 곳보다 한 단계 아래. 명사 자리(동사 앞뒤 · 전치사 뒤)에 통째로 든 절(빨간 박스)은 단계를 내리지 않는다.
+    // 절 안의 명사 · 동사 · 형용사는 그 절의 뼈대라서 1 (예: 초록 박스는 2차, 그 안 I · was · boy 는 1차)
+    var tierOf = function () { return 1; };
+    if (o.tiers) {
+      var tp = [], tstk = [];
+      list.forEach(function (x) {
+        while (tstk.length && !(tstk[tstk.length - 1].p.from <= x.p.from && x.p.to <= tstk[tstk.length - 1].p.to)) tstk.pop();
+        var up = tstk.length ? tp[tstk[tstk.length - 1].k] : 1;
+        tp[x.k] = up + (x.p.kind === 'cl' && x.p.att === 'v' ? 0 : 1);
+        tstk.push(x);
+      });
+      tierOf = function (stk) { return stk.length ? tp[stk[stk.length - 1].k] : 1; };
+    }
+    var tn = function (t) { return o.tiers ? ' data-t="' + t + '"' : ''; };
     var h = '', stack = [];
     toks.forEach(function (t, i) {
       if (t.sp && h) h += ' ';
       list.forEach(function (x) {
         if (x.p.from !== i) return;
         var g = o.pg && o.pg[x.k] ? ' g-' + o.pg[x.k] : '';
-        h += '<span class="mk ' + x.p.kind + ' a-' + x.p.att + g + '" data-k="' + x.k + '">' +
-          (x.p.kind === 'pp' ? '<b class="br">(</b>' : x.p.att === 'n' ? '<b class="sl">/</b>' : '');
         stack.push(x);
+        h += '<span class="mk ' + x.p.kind + ' a-' + x.p.att + g + '" data-k="' + x.k + '">' + (o.tiers ? '<i class="tn"' + tn(tierOf(stack)) + '></i>' : '') +
+          (x.p.kind === 'pp' ? '<b class="br">(</b>' : x.p.att === 'n' ? '<b class="sl">/</b>' : '');
       });
       if (!t.w) h += '<span class="pu">' + esc(t.t) + '</span>';
       else {
@@ -85,7 +99,7 @@
         if (o.wg && o.wg[i]) c += ' g-' + o.wg[i];
         if (o.sel && i >= o.sel[0] && i <= o.sel[1]) c += ' insel';
         if (o.selA === i) c += ' sel-a';
-        h += '<span class="' + c + '" data-i="' + i + '">' + esc(t.t) + '</span>';
+        h += '<span class="' + c + '" data-i="' + i + '"' + (roles[i] && (!stack.length || stack[stack.length - 1].p.kind === 'cl') ? tn(1) : '') + '>' + esc(t.t) + '</span>';
       }
       while (stack.length && stack[stack.length - 1].p.to === i) h += closeMk(stack.pop());
     });
@@ -102,6 +116,16 @@
       while (stack.length > 1 && !(stack[stack.length - 1].from <= p.from && p.to <= stack[stack.length - 1].to)) stack.pop();
       stack[stack.length - 1].kids.push(n); stack.push(n);
     });
+    // 명사 자리(동사 앞뒤 · 전치사 뒤)에 통째로 들어간 절(빨간 박스)은 1차 정보 — 계단을 내리지 않고 제 줄에 그대로 둔다
+    (function flat(n) {
+      var ks = [];
+      n.kids.forEach(function (k) {
+        flat(k);
+        if (k.p.kind === 'cl' && k.p.att === 'v') { (n.inl = n.inl || []).push(k.p); (k.inl || []).forEach(function (q) { n.inl.push(q); }); k.kids.forEach(function (x) { ks.push(x); }); }
+        else ks.push(k);
+      });
+      n.kids = ks;
+    })(root);
     function own(n) {
       var ids = [];
       for (var i = n.from; i <= n.to; i++) if (!n.kids.some(function (k) { return i >= k.from && i <= k.to; })) ids.push(i);
@@ -109,7 +133,7 @@
     }
     var out = [];
     function emit(n, depth, parentLine, tier) {
-      var L = { n: n, p: n.p, ids: own(n), depth: depth, tier: tier, parent: parentLine };
+      var L = { n: n, p: n.p, ids: own(n), depth: depth, tier: tier, parent: parentLine, inl: n.inl };
       out.push(L);
       n.kids.forEach(function (k) { emit(k, depth + 1, L, tier + 1); });
       return L;
@@ -122,7 +146,7 @@
     rootIds.forEach(function (i) { cur.push(i); if (toks[i].t === ';') { segs.push(cur); cur = []; } });
     if (cur.length) segs.push(cur);
     segs.forEach(function (ids, si) {
-      var R = { n: root, p: null, ids: ids, depth: 0, tier: 1, parent: null, gap: si > 0 };
+      var R = { n: root, p: null, ids: ids, depth: 0, tier: 1, parent: null, gap: si > 0, inl: (root.inl || []).filter(function (q) { return ids.indexOf(q.from) >= 0; }) };
       out.push(R);
       var lo = si ? segs[si - 1][segs[si - 1].length - 1] : -1, hi = si < segs.length - 1 ? ids[ids.length - 1] : Infinity;
       root.kids.forEach(function (k) { if (front.indexOf(k) < 0 && k.from > lo && k.from <= hi) emit(k, 1, R, 2); });
@@ -150,14 +174,20 @@
     var h = '<i class="tier">' + TIER[Math.min(L.tier, 6)] + '</i>', first = true;
     if (L.p && L.p.kind === 'pp') h += '<b class="br a-' + L.p.att + '">(</b>';
     if (L.p && L.p.kind === 'cl' && L.p.att === 'n') h += '<b class="sl">/</b>';
-    L.ids.forEach(function (i) {
+    var inl = L.inl || [], open = 0;
+    L.ids.forEach(function (i, k) {
       var t = toks[i];
       if (!first && (t.sp || (t.w && toks[i - 1] && toks[i - 1].w))) h += ' ';
       first = false;
-      if (!t.w) { h += esc(t.t); return; }
+      inl.forEach(function (q) { if (q.from === i) { h += '<span class="mk cl a-v">'; open++; } });
+      var shut = inl.filter(function (q) { return i <= q.to && (k === L.ids.length - 1 || L.ids[k + 1] > q.to); }).length;
+      shut = Math.min(shut, open);
+      if (!t.w) { h += esc(t.t); while (shut--) { h += '</span>'; open--; } return; }
       var r = roles[i];
       h += '<span class="' + (r === 'v' ? 'w-v' : r === 'n' ? 'w-n' : r === 'j' ? 'w-p' : 'ww') + '" data-i="' + i + '">' + esc(t.t) + '</span>';
+      while (shut--) { h += '</span>'; open--; }
     });
+    while (open--) h += '</span>';
     if (L.p && L.p.kind === 'pp') h += '<b class="br a-' + L.p.att + '">)</b>';
     return h;
   }
@@ -245,7 +275,7 @@
       diag.hidden = st.step !== 'tree';
       text.hidden = st.step === 'tree';
       partsBox.hidden = st.step !== 'part';
-      var o = { sel: st.sel, selA: st.selA };
+      var o = { sel: st.sel, selA: st.selA, tiers: st.show || st.teacher };
       if (!st.show && !st.teacher) {
         if (st.step === 'bone' && grade.w) o.wg = grade.w;
         if (st.step === 'part' && grade.p) o.pg = grade.p;
@@ -418,7 +448,7 @@
     var trees = [];
     $$('[data-a]').forEach(function (el) {
       var A = parseA(el.getAttribute('data-a'));
-      el.innerHTML = '<p class="ex-s">' + inline(A.toks, A.roles, A.parts) + '</p>';
+      el.innerHTML = '<p class="ex-s">' + inline(A.toks, A.roles, A.parts, { tiers: true }) + '</p>';
       if (!el.hasAttribute('data-tree')) return;
       var d = document.createElement('div'); d.className = 'tr-diagram ex-tree'; el.appendChild(d);
       trees.push(function () { drawDiagram(d, A.toks, A.roles, A.parts, 0); });

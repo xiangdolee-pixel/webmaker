@@ -29,7 +29,7 @@
     if (REL7.test(w) && p.att === 'n') return '본드 <b>WH</b> · 관계사 ' + w;
     if (/^(which|whom|whose)$/.test(w2) && p.att === 'n') return '본드 <b>WH</b> · 관계사 ' + w2 + ' (앞에 전치사 ' + w + ')';
     if (WH.test(w) && p.att !== 's') return '본드 <b>WH</b> · 의문사 ' + w;
-    if (/(ed|en)$/.test(w) || /^(written|done|made|built|known|seen|given|taken)$/.test(w)) return '분사(-ed) 로 시작';
+    if (!WH.test(w) && /(ed|en)$/.test(w) || /^(written|done|made|built|known|seen|given|taken)$/.test(w)) return '분사(-ed) 로 시작';
     if (p.att === 's') return '이음말 <b>' + esc(SB.markText(t, p.from, p.from).toLowerCase()) + '</b>';
     return '본드가 숨어 있음 (that 생략)';
   }
@@ -40,7 +40,14 @@
       L.ids.forEach(function (i) { if (A.roles[i]) bones.push('<span class="w-' + (A.roles[i] === 'j' ? 'p' : A.roles[i]) + '">' + esc(A.toks[i].t) + '</span> <small>' + ROLE[A.roles[i]] + '</small>'); });
     });
     return '<i class="tier-chip t1">1차</i><div><b>뼈대</b> — ' + (bones.join(' · ') || '<small>뼈대를 찾지 못했어요. 고치기로 표시해 주세요.</small>') +
-      '<p>문장의 가장 중요한 정보예요. 나머지는 모두 이 뼈대를 설명하러 붙은 부품이에요.</p></div>';
+      '<p>문장의 가장 중요한 정보예요. 나머지는 모두 이 뼈대를 설명하러 붙은 부품이에요.</p>' + inlNote(A, lines.filter(function (L) { return !L.p; })) + '</div>';
+  }
+  // 명사 자리(동사 앞뒤 · 전치사 뒤)에 든 절 = 빨간 박스 = 계단을 내리지 않는 1차 정보
+  function inlNote(A, ls) {
+    var q = []; ls.forEach(function (L) { (L.inl || []).forEach(function (p) { q.push(p); }); });
+    return q.map(function (p) {
+      return '<p><span class="mk cl a-v">' + esc(SB.markText(A.toks, p.from, p.to)) + '</span> → <b class="mkname m-cl-v">빨간 박스</b> · 명사 자리(주어 · 목적어 · 전치사 뒤)에 통째로 든 절이라 설명이 아니라 <b>뼈대</b>예요. 계단을 내리지 않고 같은 줄에 둬요 · ' + bond(A, p) + '</p>';
+    }).join('');
   }
   function explain(A) {
     var lines = SB.markLines(A.toks, A.roles, A.parts);
@@ -61,7 +68,7 @@
         : '<span class="mk cl a-' + L.p.att + '">' + esc(SB.markText(A.toks, L.p.from, L.p.to)) + '</span>';
       h = '<i class="tier-chip t' + Math.min(L.tier, 4) + '">' + L.tier + '차</i><div>' + sample +
         '<p>' + how + ' · ' + PLACE[key] + '에 붙은 <b>' + KIND[L.p.kind] + '</b> → <b class="mkname m-' + key + '">' + MK[key] + '</b>' +
-        (L.p.kind === 'cl' ? ' · ' + bond(A, L.p) : '') + '</p></div>';
+        (L.p.kind === 'cl' ? ' · ' + bond(A, L.p) : '') + '</p>' + inlNote(A, [L]) + '</div>';
     })();
     return h;
   }
@@ -105,7 +112,7 @@
     $('.gen-edit', c.el).hidden = !c.edit;
     $('.gen-code', c.el).hidden = !c.edit;
     $('.gen-tip', c.el).innerHTML = TIP[c.pen];
-    c.sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts, { sel: c.sel, selA: c.selA });
+    c.sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts, { sel: c.sel, selA: c.selA, tiers: !c.edit });
     c.list.innerHTML = explain(A);
     if (!fromCode) c.code.value = SB.markSerialize(A.toks, A.roles, A.parts);
     drawSheet(c);
@@ -218,7 +225,7 @@
       fs.classList.toggle('stepping', mode === 'step');
       $('.fs-step', fs).hidden = mode !== 'step';
       // 위 문장은 한 줄에 — 다 표시된 모양 기준으로 글자 크기를 한 번 정한다(단계가 바뀌어도 크기가 튀지 않게)
-      sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts);
+      sent.innerHTML = SB.markInline(A.toks, A.roles, A.parts, { tiers: true });
       fit(sent);
       drawn = SB.markDiagram(tree, A.toks, A.roles, A.parts, 0);
       if (mode !== 'step') return;
@@ -228,11 +235,11 @@
       // step 0 = 문장만(표시 없음) → 1 = 뼈대 → 2… = 부품 하나씩
       var upto = step === 0 ? -1 : bones - 1 + (step - 1), seen = order.slice(0, upto + 1);
       var ids = {}, roles = {}, parts = [];
-      seen.forEach(function (L) { if (L.p) { parts.push(L.p); for (var i = L.p.from; i <= L.p.to; i++) ids[i] = 1; } else L.ids.forEach(function (i) { ids[i] = 1; }); });
+      seen.forEach(function (L) { if (L.p) { parts.push(L.p); for (var i = L.p.from; i <= L.p.to; i++) ids[i] = 1; } else L.ids.forEach(function (i) { ids[i] = 1; }); (L.inl || []).forEach(function (q) { parts.push(q); }); });
       // 아직 안 나온 덩어리 안 낱말은 흐리게
       order.slice(upto + 1).forEach(function (L) { if (L.p) L.ids.forEach(function (i) { delete ids[i]; }); });
       Object.keys(A.roles).forEach(function (i) { if (ids[i]) roles[i] = A.roles[i]; });
-      sent.innerHTML = SB.markInline(A.toks, roles, parts);
+      sent.innerHTML = SB.markInline(A.toks, roles, parts, { tiers: step > 0 });
       if (step > 0) $$('.wd', sent).forEach(function (w) { if (!ids[w.dataset.i]) w.classList.add('fs-later'); });
       order.forEach(function (L, k) {
         L.el.classList.toggle('pending', k > upto);
