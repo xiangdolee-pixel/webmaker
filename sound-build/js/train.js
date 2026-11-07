@@ -168,6 +168,18 @@
       L.el.style.setProperty('--up', Math.max(8, up) + 'px');
       L.el.style.setProperty('--upb', Math.max(6, up - L.el.offsetHeight + 4) + 'px');   // 박스 줄: 박스 윗변까지만
     });
+    // 윗줄 밑줄은 매달린 줄이 설명하는 낱말까지만 (형용사절이면 friend 까지). 문장 전체를 꾸미는 것이 있으면 끝까지
+    lines.forEach(function (P) { P._need = 0; });
+    lines.forEach(function (L) {
+      var P = L.parent; if (!P || L.coord) return;
+      var pr = P.el.getBoundingClientRect(), need = pr.width;
+      if (!L.anchorEnd) { var a = L.anchorNode || anchorEl(P, L.anchor); if (a !== P.el) need = a.getBoundingClientRect().right - pr.left + 2; }
+      P._need = Math.max(P._need, need);
+    });
+    lines.forEach(function (P) {
+      if (!P._need) { P.el.style.removeProperty('--ur'); return; }
+      P.el.style.setProperty('--ur', Math.max(0, P.el.getBoundingClientRect().width - P._need) + 'px');
+    });
     // 절 박스는 그 절에 매달린 줄(예: as soon as she came 아래 into the room)까지 한 박스로 감싼다
     function under(K, L) { for (var P = K.parent; P; P = P.parent) if (P === L) return true; return false; }
     lines.forEach(function (L) {
