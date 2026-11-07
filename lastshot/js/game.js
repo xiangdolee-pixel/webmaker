@@ -3,7 +3,7 @@
    문: 쏘면 숫자 +1, 지나가면 부대 수가 바뀜(+ · − · ×). 적 무리: 머리 위 숫자가 맞을 때마다 줄어듦, 닿으면 한 명씩 잃음.
    상자: 숫자만큼 쏘면 부서지며 연사 · 위력 UP. 끝에 보스. 레벨이 오를수록 어려워짐. 결제 · 아이템 없음.
    구조: 게임 계산은 위에서 본 평면(가로 360, 세로 H)으로 하고, 그림은 three.js 3D(#gl) + 숫자 · 효과 겹침(#cv 2D). */
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+import * as THREE from './vendor/three.module.min.js';   // three.js r160 (MIT) — 사이트에 함께 올림
 
 const $ = (s) => document.querySelector(s);
 const cv = $('#cv'), ctx = cv.getContext('2d'), glc = $('#gl');
