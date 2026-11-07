@@ -70,7 +70,7 @@
     o = o || {};
     var list = parts.map(function (p, k) { return { p: p, k: k }; }).sort(function (a, b) { return byPos(a.p, b.p); });
     // 정보 단계: 뼈대 = 1차, 부품은 붙은 곳보다 한 단계 아래. 명사 자리(동사 앞뒤 · 전치사 뒤)에 통째로 든 절(빨간 박스)은 단계를 내리지 않는다.
-    // 절 안의 명사 · 동사 · 형용사는 그 절의 뼈대라서 1 (예: 초록 박스는 2차, 그 안 I · was · boy 는 1차)
+    // 숫자는 문장 전체의 뼈대 낱말과 덩어리에만 단다. 덩어리 안 낱말은 그 덩어리 단계에 함께 묶인다(밑줄 · 박스로 범위를 보인다)
     var tierOf = function () { return 1; };
     if (o.tiers) {
       var tp = [], tstk = [];
@@ -90,7 +90,8 @@
         if (x.p.from !== i) return;
         var g = o.pg && o.pg[x.k] ? ' g-' + o.pg[x.k] : '';
         stack.push(x);
-        h += '<span class="mk ' + x.p.kind + ' a-' + x.p.att + g + '" data-k="' + x.k + '">' + (o.tiers ? '<i class="tn"' + tn(tierOf(stack)) + '></i>' : '') +
+        var tu = o.tiers && (x.p.kind === 'pp' || x.p.att === 'n') ? ' tu tu' + Math.min(tierOf(stack), 4) : '';   // 덩어리 전체에 밑줄 = 이만큼이 한 단계
+        h += '<span class="mk ' + x.p.kind + ' a-' + x.p.att + g + tu + '" data-k="' + x.k + '">' + (o.tiers ? '<i class="tn"' + tn(tierOf(stack)) + '></i>' : '') +
           (x.p.kind === 'pp' ? '<b class="br">(</b>' : x.p.att === 'n' ? '<b class="sl">/</b>' : '');
       });
       if (!t.w) h += '<span class="pu' + (t.t === '●' ? ' gap-dot' : '') + '">' + esc(t.t) + '</span>';   // ● = 빠진 주어 자리
@@ -99,7 +100,7 @@
         if (o.wg && o.wg[i]) c += ' g-' + o.wg[i];
         if (o.sel && i >= o.sel[0] && i <= o.sel[1]) c += ' insel';
         if (o.selA === i) c += ' sel-a';
-        h += '<span class="' + c + '" data-i="' + i + '"' + (roles[i] && (!stack.length || stack[stack.length - 1].p.kind === 'cl') ? tn(1) : '') + '>' + esc(t.t) + '</span>';
+        h += '<span class="' + c + '" data-i="' + i + '"' + (roles[i] && !stack.length ? tn(1) : '') + '>' + esc(t.t) + '</span>';
       }
       while (stack.length && stack[stack.length - 1].p.to === i) h += closeMk(stack.pop());
     });

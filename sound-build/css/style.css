@@ -545,6 +545,11 @@ a.lesson:hover { background: var(--paper); }
 .wd[data-t]::after, .tn::after { content: attr(data-t); position: absolute; left: 50%; top: 100%; transform: translate(-50%, 1px); min-width: 1.35em; padding: 0 .3em; border-radius: 99px; font: 800 .58em/1.5 var(--font); font-style: normal; letter-spacing: 0; text-align: center; color: var(--ink-3); background: var(--paper-2); pointer-events: none; white-space: nowrap; }
 .tn::after { left: .3em; }
 .mk.cl .tn::after { left: .7em; }
+.mk.tu { padding-bottom: 7px; border-bottom: 2px solid #9db4e6; }
+.mk.tu3 { padding-bottom: 4px; border-bottom-color: #c3c8d0; }
+.mk.tu4 { padding-bottom: 2px; border-bottom: 1.5px dotted #c3c8d0; }
+.tn::after { top: calc(100% + 5px); }
+.mk.tu > .tn::after { top: calc(100% + 9px); }
 [data-t="1"]::after { background: var(--ink) !important; color: var(--yellow) !important; }
 [data-t="2"]::after { background: #dfe6f5 !important; color: var(--g-verb) !important; }
 .ex-s { font-size: clamp(1.05rem, 2vw, 1.2rem); line-height: 2.2; }
