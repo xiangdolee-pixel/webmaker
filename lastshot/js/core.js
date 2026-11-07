@@ -2,8 +2,8 @@
    좌표: 위에서 본 평면. x = 길 가로(ROAD_L ~ ROAD_R), y = 길 세로(내 부대 = 0, 앞쪽이 음수).
    물건은 SPAWN 에서 생겨 +y 로 다가온다. 화면은 이 평면을 3D 로 세워 그린다.
    레벨마다 스테이지 종류(구성 · 색)가 바뀌고, 보스도 번갈아 바뀐다. 레벨이 오를수록 + 한 판 뒤로 갈수록 세짐. */
-export const ROAD_L = 34, ROAD_R = 326, MID = 180, SPAWN = -1150, RANGE = 620, START = 680;
-const GAP = 22;                       // 병사 사이 간격
+export const ROAD_L = 34, ROAD_R = 326, MID = 180, SPAWN = -1150, RANGE = 1000, START = 680;
+const GAP = 22, BV = 1150;           // BV: 총알 속도                       // 병사 사이 간격
 export const TIERS = [                // 부대 등급: 타이어에서 '진급'을 얻으면 오른다
   { name: '소총', bullet: 0, mul: 1 },
   { name: '기관총', bullet: 1, mul: 1.6 },
@@ -22,7 +22,7 @@ export const stageOf = L => L <= 1 ? 'basic' : ORDER[(L - 2) % ORDER.length];
 export const bossOf = L => L % 2 ? 'brute' : 'tank';
 export const BOSSES = { brute: '근육 대장', tank: '대포 탱크' };
 // 레벨 → 실제 세기: 6 까지는 가파르게, 그 뒤로는 완만하게(그래도 계속 오른다)
-export const power = L => L <= 6 ? 4 + L * .75 : 8.5 + (L - 6) * .5;
+export const power = L => L <= 6 ? 4.6 + L * .75 : 9.1 + (L - 6) * .45;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
@@ -100,7 +100,7 @@ function mobGroup(G, y, c, hp, cx, opt = {}) {
   }
   return grp;
 }
-const mobCount = (L, p, k = 1) => Math.min(Math.round((4 + L * 2.1) * (1 + p * 1.1) * rnd(.85, 1.15) * k), 320);
+const mobCount = (L, p, k = 1) => Math.min(Math.round((5 + L * 2.7) * (1 + p * 1.1) * rnd(.85, 1.15) * k), 360);
 const mobHp = (L, p) => 1 + Math.floor(L / 5 + p * (L / 8));
 
 function spawn(G, e, y) {
@@ -131,7 +131,7 @@ function spawn(G, e, y) {
     mobGroup(G, y - 60, c, hp, ROAD_R - 40, { side: 70 + L * 3 });
   } else if (k === 'barrel') {   // 무리 앞 드럼통: 쏘면 터져 둘레를 쓸어버림
     const cx = rnd(ROAD_L + 70, ROAD_R - 70);
-    mobGroup(G, y - 50, mobCount(L, p, 1.9), mobHp(L, p), cx);
+    mobGroup(G, y - 50, mobCount(L, p, 1.5), mobHp(L, p), cx);
     const nb = 2 + (Math.random() < .5 ? 1 : 0);
     for (let i = 0; i < nb; i++) G.barrels.push({ x: clamp(cx + (i - (nb - 1) / 2) * 60 + rnd(-10, 10), ROAD_L + 20, ROAD_R - 20), y: y + 10 + rnd(-10, 10), hp: 3 + Math.round(L * .4), flash: 0 });
   } else if (k === 'box') {
@@ -181,16 +181,21 @@ export function step(G, dt) {
   g.cd -= dt; g.flash = Math.max(0, g.flash - dt);
   if (g.cd <= 0 && g.n > 0) {
     g.cd = 1 / g.rate; g.flash = .06;
-    const shots = Math.min(g.n, 18), per = g.dmg * T.mul * Math.pow(g.n, .72) / shots;
-    const pos = squadPos(g.n);
+    const shots = Math.min(g.n, 18), per = g.dmg * T.mul * Math.pow(g.n, .72) / shots * .85;
+    const pos = squadPos(g.n), tg = targets(g);
     for (let s = 0; s < shots; s++) {
-      const q = pos[s] || [0, 0];
-      g.bullets.push({ x: g.px + q[0] + rnd(-2, 2), y: q[1] - 10, y0: q[1] - 10, d: per, vx: q[0] * .25 + rnd(-6, 6) });
+      const q = pos[s] || [0, 0], bx = g.px + q[0], by = q[1] - 10;
+      // 조준 보정: 앞쪽 가까운 적(타이어 · 드럼통 · 보스 포함)을 향해 살짝 꺾여 날아간다
+      let best = null, bs = 1e9;
+      for (const t of tg) { const dy = by - t.y, dx = Math.abs(t.x - bx); if (dy < 20 || dx > 50 + dy * .12) continue; const sc = dx * 2 + dy * .35 + (t.used || 0) * 18; if (sc < bs) { bs = sc; best = t; } }
+      let vx = rnd(-4, 4);
+      if (best) { best.used = (best.used || 0) + 1; vx = (best.x - bx) / ((by - best.y) / BV) + rnd(-3, 3); }
+      g.bullets.push({ x: bx, y: by, y0: by, d: per, vx });
     }
     h.sfx('shot');
   }
   for (let b = g.bullets.length - 1; b >= 0; b--) {
-    const B = g.bullets[b]; B.y -= 900 * dt; B.x += B.vx * dt;
+    const B = g.bullets[b]; B.y -= BV * dt; B.x += B.vx * dt;
     if (B.y < B.y0 - RANGE || hitAny(g, B)) g.bullets.splice(b, 1);
   }
   // 문
@@ -315,6 +320,15 @@ function breakBox(g, X) {
   g.pow++; h.shake(.25); h.sfx('power'); h.buzz(40);
 }
 
+// 조준 후보: 앞쪽(사거리 안)의 적 · 타이어 · 드럼통 · 보스
+function targets(g) {
+  const t = [], top = -RANGE + 40;
+  for (const M of g.mobs) if (M.y < -10 && M.y > top) t.push({ x: M.x, y: M.y + g.speed * .15 });
+  for (const X of g.boxes) if (X.y < -10 && X.y > top) t.push({ x: X.x + rnd(-X.w * .3, X.w * .3), y: X.y });
+  for (const b of g.barrels) if (b.hp > 0 && b.y < -10 && b.y > top) t.push({ x: b.x, y: b.y });
+  if (g.boss && g.boss.y > top) for (let i = 0; i < 6; i++) t.push({ x: g.boss.x + rnd(-g.boss.r * .6, g.boss.r * .6), y: g.boss.y });
+  return t;
+}
 function hitAny(g, B) {
   const h = g.h, K = g.boss;
   if (K && Math.abs(B.x - K.x) < K.r && Math.abs(B.y - K.y) < K.r * .7) {
@@ -325,7 +339,7 @@ function hitAny(g, B) {
     if (b.hp > 0 && Math.abs(B.x - b.x) < 14 && Math.abs(B.y - b.y) < 14) { b.hp -= 1; b.flash = .06; h.spark(B.x, b.y + 6, 'hot', 2); return true; }
   }
   for (let i = 0; i < g.mobs.length; i++) {
-    const M = g.mobs[i], hw = 10 * M.size, hh = 12 * M.size;
+    const M = g.mobs[i], hw = 13 * M.size, hh = 15 * M.size;
     if (Math.abs(B.x - M.x) < hw && Math.abs(B.y - M.y) < hh) {
       const left = B.d - M.hp; M.hp -= B.d; M.flash = .08; M.kb = M.size > 1 ? 1 : 6; h.spark(B.x, M.y + 4, 'hot', 2);
       if (M.hp <= 0) { B.d = left; killMob(g, i, M); h.sfx('kill'); if (M.size > 1) { h.shake(.3); h.float(M.x, M.y - 30, '거인 쓰러뜨림!', '#fde047', 26); } return B.d < .3; }

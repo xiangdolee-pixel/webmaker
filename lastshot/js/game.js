@@ -2,7 +2,7 @@
    3D(three.js r160, MIT — js/vendor 에 함께 올림): 바다 위 다리, 병사 · 적은 InstancedMesh 로 수백 명,
    빛나는 총알 줄기 · 불꽃 · 연기 · 파편. 숫자(문 제외) · 떠오르는 글자 · 보스 체력은 위 2D 캔버스에 3D 위치를 투영해 그린다. */
 import * as THREE from './vendor/three.module.min.js';
-import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, STAGES, BOSSES, stageOf, bossOf, squadPos, squadR, newGame, step, autoAim } from './core.js?v=7';
+import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, STAGES, BOSSES, stageOf, bossOf, squadPos, squadR, newGame, step, autoAim } from './core.js?v=8';
 
 const $ = s => document.querySelector(s);
 const glc = $('#gl'), cv = $('#cv'), ctx = cv.getContext('2d');
@@ -640,7 +640,8 @@ function render(dt) {
     for (const B of G.bullets) {
       if (b >= BCAP) break;
       const grow = Math.min(1, (B.y0 - B.y) / 60);
-      M4.compose(V.set(wx(B.x), 1.25, wz(B.y)), Q0, SC.set(wide, 1, .3 + grow * .7)); bullets.setMatrixAt(b, M4); bullets.setColorAt(b, col); b++;
+      E.set(0, -Math.atan2(B.vx, 1150), 0); Q.setFromEuler(E);
+      M4.compose(V.set(wx(B.x), 1.25, wz(B.y)), Q, SC.set(wide, 1, .3 + grow * .7)); bullets.setMatrixAt(b, M4); bullets.setColorAt(b, col); b++;
     }
     bullets.count = b; bullets.instanceMatrix.needsUpdate = true; if (bullets.instanceColor) bullets.instanceColor.needsUpdate = true;
     // 총구 불꽃
