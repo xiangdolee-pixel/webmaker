@@ -150,6 +150,7 @@
       el.style.setProperty('--cx', off + 'px');
       var ar = a.getBoundingClientRect();
       var x = (a === P.el ? ar.left : ar.left + ar.width / 2) - base - off + 4;   // 연결선이 설명하는 낱말 가운데에서 내려온다
+      if (L.anchorEnd) x = P.el.getBoundingClientRect().right - base - off - 2;   // 문장 전체를 꾸미는 것(초록): 1차 문장 끝에서 내려온다
       if (L.coord) x -= narrow ? 20 : 36;
       var w = el.offsetWidth;
       var min = P.x + step;

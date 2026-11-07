@@ -213,6 +213,7 @@
     lines.forEach(function (L, k) {
       L.el = els[k];
       if (L.parent) L.anchorNode = $('[data-i="' + L.head + '"]', L.parent.el) || L.parent.el;
+      L.anchorEnd = !!(L.p && L.p.att === 's');
       L.el.classList.toggle('dim', tierMax > 0 && L.tier > tierMax);
     });
     box.classList.toggle('show-tier', true);
