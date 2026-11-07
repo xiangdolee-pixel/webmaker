@@ -28,6 +28,8 @@ button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .hud-row.sub { margin-top: 6px; justify-content: center; }
 .pill { flex-shrink: 0; padding: 6px 12px; border-radius: var(--pill); background: rgba(15, 23, 42, .72); font-size: .82rem; font-weight: 700; letter-spacing: .02em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .pill b { color: var(--yellow); font-size: 1rem; margin-left: 2px; }
+.pill.mute { pointer-events: auto; color: #fff; font-size: .74rem; padding: 6px 10px; }
+.pill.mute[aria-pressed="true"] { color: #94a3b8; }
 .prog { flex: 1; height: 10px; border-radius: var(--pill); background: rgba(15, 23, 42, .6); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); }
 .prog i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--sky), var(--yellow)); transition: width .3s linear; }
 .chip { padding: 4px 10px; border-radius: var(--pill); background: rgba(250, 204, 21, .92); color: var(--ink); font-size: .78rem; font-weight: 800; }
