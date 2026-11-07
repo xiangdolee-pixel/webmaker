@@ -22,7 +22,7 @@ export const stageOf = L => L <= 1 ? 'basic' : ORDER[(L - 2) % ORDER.length];
 export const bossOf = L => L % 2 ? 'brute' : 'tank';
 export const BOSSES = { brute: '근육 대장', tank: '대포 탱크' };
 // 레벨 → 실제 세기: 6 까지는 가파르게, 그 뒤로는 완만하게(그래도 계속 오른다)
-export const power = L => L <= 6 ? 4.6 + L * .75 : 9.1 + (L - 6) * .45;
+export const power = L => L <= 6 ? 5.4 + L * .85 : 10.5 + (L - 6) * .5;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const ri = (a, b) => Math.floor(rnd(a, b + 1));
@@ -364,7 +364,8 @@ function hitAny(g, B) {
     if (gt.used || Math.abs(B.y - gt.y) > gt.h / 2) continue;
     for (const p of gt.parts) {
       if (B.x >= p.x0 && B.x <= p.x1) {
-        if (p.t === '+') { p.acc += 1; const need = 7 + Math.floor(power(g.L) * .5); if (p.acc >= need) { p.acc = 0; p.v++; p.hit = 1; h.sfx('gateTick'); h.gateHit(gt, p); } }
+        // 처음엔 한 발에 +1, 많이 올릴수록 조금씩 더 맞혀야 오른다(무한정 커지지 않게)
+        if (p.t === '+' && gt.y > -820) { p.acc += 1; const need = 1 + Math.floor((p.gain || 0) / 3); if (p.acc >= need) { p.acc = 0; p.v++; p.gain = (p.gain || 0) + 1; p.hit = 1; h.gateHit(gt, p, B.x); } }
         h.spark(B.x, gt.y + gt.h / 2, 'cool', 1);
         return true;
       }

@@ -2,7 +2,7 @@
    3D(three.js r160, MIT — js/vendor 에 함께 올림): 바다 위 다리, 병사 · 적은 InstancedMesh 로 수백 명,
    빛나는 총알 줄기 · 불꽃 · 연기 · 파편. 숫자(문 제외) · 떠오르는 글자 · 보스 체력은 위 2D 캔버스에 3D 위치를 투영해 그린다. */
 import * as THREE from './vendor/three.module.min.js';
-import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, STAGES, BOSSES, stageOf, bossOf, squadPos, squadR, newGame, step, autoAim } from './core.js?v=9';
+import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, STAGES, BOSSES, stageOf, bossOf, squadPos, squadR, newGame, step, autoAim } from './core.js?v=10';
 
 const $ = s => document.querySelector(s);
 const glc = $('#gl'), cv = $('#cv'), ctx = cv.getContext('2d');
@@ -17,7 +17,7 @@ const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 let level = load('lastshot_level', 1), best = load('lastshot_best', 1), muted = load('lastshot_mute', 0) === 1;
 
 /* ── 소리: 짧은 합성음(파일 없음) ── */
-let AC = null, lastShot = 0, hitT = 0;
+let AC = null, lastShot = 0, hitT = 0, tickT = 0;
 function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); }
 function tone(f0, f1, dur, type, vol, noise) {
   if (muted || !AC) return;
@@ -39,7 +39,7 @@ const SFX = {
   kill() { tone(2600, 200, .08, 'square', .03, true); },
   gateUp() { tone(660, 1320, .14, 'sine', .09); tone(990, 1980, .14, 'triangle', .04); },
   gateDown() { tone(220, 90, .28, 'sawtooth', .07); },
-  gateTick() { tone(1200, 1600, .04, 'sine', .04); },
+  gateTick(k) { const n = performance.now(); if (n - tickT < 35) return; tickT = n; const f = 700 + Math.min(1600, k * 22); tone(f, f * 1.25, .045, 'square', .025); tone(f * 2, f * 2.4, .03, 'sine', .02); },
   boom() { tone(600, 40, .5, 'square', .14, true); },
   cannon() { tone(180, 40, .35, 'square', .12, true); tone(90, 40, .3, 'sawtooth', .06); },
   hurt() { tone(160, 70, .14, 'sawtooth', .05); },
@@ -462,7 +462,7 @@ function syncViews() {
     gt.parts.forEach((p, k) => {
       const pv = v.parts[k];
       if (pv.label !== gateLabel(p)) paintGate(pv, p);
-      const sc = 1 + p.hit * .1; pv.panel.scale.set(sc, sc, 1);
+      const sc = 1 + p.hit * .14; pv.panel.scale.set(sc, sc, 1); pv.panel.material.color.setScalar(1 + p.hit * .9);
       pv.panel.material.opacity = p.taken ? .25 : 1;
     });
   }
@@ -623,6 +623,12 @@ function drawOverlay(dt) {
 /* ── 한 장면 그리기 ── */
 let G = null, state = 'menu', last = 0, T = 0, slow = 0, endTimer = 0, walkT = 0;
 const hooks = {
+  // 문 숫자가 오를 때: 맞은 자리 불꽃 · 작은 +1 · 틱 소리(오를수록 높게)
+  gateHit: (gt, p, x) => {
+    SFX.gateTick(p.gain);
+    for (let i = 0; i < 3; i++) addSpark(wx(x) + rnd(-.4, .4), rnd(1.5, 4), wz(gt.y) + .3, i ? '#bfefff' : '#ffffff', rnd(.7, 1.3), .14, rnd(-5, 5), rnd(1, 6), rnd(2, 6));
+    const n = performance.now(); if (!p.ft || n - p.ft > 90) { p.ft = n; texts.push({ x: wx(x) + rnd(-.5, .5), z: wz(gt.y), h: 4.6, s: '+1', c: '#e0f7ff', size: 17, t: .45, L: .45, small: true }); }
+  },
   blast: fxBlast, burst: fxBurst, spark: fxSpark, smoke: fxSmoke, float: fxFloat, ring: fxRing,
   sfx: n => SFX[n] && SFX[n](), buzz,
   shake: v => { if (!reduce) shake = Math.max(shake, v); },
