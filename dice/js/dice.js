@@ -22,8 +22,8 @@
   try { var saved = parseInt(localStorage.getItem(KEY), 10); if (saved >= MIN && saved <= MAX) count = saved; } catch (e) {}
 
   var dice = [];      // { el, hop, cube, shade, value, fx, fy, x, y, z }
-  var size = 80;
-  var rolling = false;
+  var size = 80, lastSize = 0;
+  var rolling = false, rollStart = 0, rollTimer = 0, anims = [];
   var history = [];
 
   // 치우침 없는 1~6
@@ -61,8 +61,11 @@
   function measure() {
     var w = board.clientWidth, h = board.clientHeight, n = dice.length || count;
     size = Math.round(Math.max(40, Math.min(w > 700 ? 112 : 96, Math.sqrt(w * h / n) * 0.42)));
-    stage.style.setProperty('--s', size + 'px');
-    stage.style.setProperty('--persp', size * 6 + 'px');
+    if (size !== lastSize) {   // 같은 값이면 건드리지 않는다 (주사위 면 전체를 다시 그리게 됨)
+      lastSize = size;
+      stage.style.setProperty('--s', size + 'px');
+      stage.style.setProperty('--persp', size * 6 + 'px');
+    }
   }
 
   // 겹치지 않는 자리 (판 크기 비율로 저장 — 화면 크기가 바뀌어도 그대로)
@@ -104,7 +107,6 @@
     while (dice.length > count) stage.removeChild(dice.pop().el);
     while (dice.length < count) dice.push(makeDie());
     // 개수를 바꾸면 새로 던지기 전까지 흐리게, 결과는 비움
-    stage.classList.add('idle');
     board.classList.remove('rolled');
     clearResult('–');
     layout();
@@ -112,9 +114,13 @@
   }
 
   function throwDice(ox, oy) {
-    if (rolling) return;
+    // 굴러가는 중에 또 누르면 바로 다시 던진다 (실수로 두 번 누른 것만 무시)
+    if (rolling) {
+      if (performance.now() - rollStart < 250) return;
+      stopRoll();
+    }
     rolling = true;
-    stage.classList.remove('idle');
+    rollStart = performance.now();
     board.classList.add('rolled');
     clearResult('…');
     layout();
@@ -130,7 +136,7 @@
       d.z = rand(-30, 30);
       var tx = d.fx * w, ty = d.fy * h;
       var sx = ox + rand(-size * .3, size * .3), sy = oy + rand(-size * .3, size * .3);
-      var dur = reduce ? 200 : Math.round(rand(900, 1250)), delay = reduce ? 0 : i * 35;
+      var dur = reduce ? 200 : Math.round(rand(750, 1000)), delay = reduce ? 0 : i * 25;
       longest = Math.max(longest, dur + delay);
 
       place(d);
@@ -140,18 +146,18 @@
       var timing = { duration: dur, delay: delay, fill: 'backwards' };
       // 누른 자리에서 살짝 휘어 날아가 멈춤
       var mx = (sx + tx) / 2 + rand(-size, size) * .6, my = (sy + ty) / 2 + rand(-size, size) * .6;
-      d.el.animate([
+      anims.push(d.el.animate([
         { transform: posTf(sx, sy) },
         { transform: posTf(mx, my), offset: .35 },
         { transform: posTf(tx, ty) }
-      ], Object.assign({ easing: 'cubic-bezier(.2,.65,.3,1)' }, timing));
+      ], Object.assign({ easing: 'cubic-bezier(.2,.65,.3,1)' }, timing)));
       // 데굴데굴 — 빨리 돌다 천천히 멈춤
-      d.cube.animate([
+      anims.push(d.cube.animate([
         { transform: cubeTf(fromX, fromY, fromZ + rand(-180, 180)) },
         { transform: cubeTf(d.x, d.y, d.z) }
-      ], Object.assign({ easing: 'cubic-bezier(.15,.55,.25,1)' }, timing));
+      ], Object.assign({ easing: 'cubic-bezier(.15,.55,.25,1)' }, timing)));
       // 높이: 손에서 떠올랐다 → 바닥에 두 번 튀고 멈춤 (그림자는 반대로)
-      d.hop.animate([
+      anims.push(d.hop.animate([
         { transform: P + 'scale(1.55)' },
         { transform: P + 'scale(1.3)', offset: .25 },
         { transform: P + 'scale(1)', offset: .52 },
@@ -159,21 +165,29 @@
         { transform: P + 'scale(1)', offset: .8 },
         { transform: P + 'scale(1.025)', offset: .9 },
         { transform: P + 'scale(1)' }
-      ], Object.assign({ easing: 'ease-in-out' }, timing));
-      d.shade.animate([
+      ], Object.assign({ easing: 'ease-in-out' }, timing)));
+      anims.push(d.shade.animate([
         { transform: 'translateY(40%) scale(1.5)', opacity: .25 },
         { transform: 'translateY(20%) scale(1.3)', opacity: .4, offset: .25 },
         { transform: 'none', opacity: 1, offset: .52 },
         { transform: 'translateY(8%) scale(1.1)', opacity: .7, offset: .66 },
         { transform: 'none', opacity: 1 }
-      ], Object.assign({ easing: 'ease-in-out' }, timing));
+      ], Object.assign({ easing: 'ease-in-out' }, timing)));
     });
 
-    setTimeout(function () {
+    rollTimer = setTimeout(function () {
       rolling = false;
+      anims = [];
       showResult();
       if (navigator.vibrate && !reduce) { try { navigator.vibrate(20); } catch (e) {} }
     }, longest);
+  }
+
+  function stopRoll() {
+    clearTimeout(rollTimer);
+    anims.forEach(function (a) { a.cancel(); });
+    anims = [];
+    rolling = false;
   }
 
   function showResult() {
@@ -203,13 +217,14 @@
   document.addEventListener('keydown', function (e) {
     if (e.target === board || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); throwFromBottom(); }
-    else if (!rolling && (e.key === '+' || e.key === '=')) setCount(count + 1);
-    else if (!rolling && e.key === '-') setCount(count - 1);
+    else if (e.key === '+' || e.key === '=') { stopRoll(); setCount(count + 1); }
+    else if (e.key === '-') { stopRoll(); setCount(count - 1); }
   });
 
   for (var i = 0; i < stepBtns.length; i++) {
     stepBtns[i].addEventListener('click', function () {
-      if (!rolling) setCount(count + parseInt(this.getAttribute('data-step'), 10));
+      stopRoll();
+      setCount(count + parseInt(this.getAttribute('data-step'), 10));
     });
   }
 
