@@ -388,6 +388,7 @@ async function withXms(res, request, env, data) {
   const topCfg = data?.top;
   if (topCfg && !(topCfg.except || []).some((x) => x && pagePath(url.pathname).startsWith(pagePath(x)))) tail.push(TOP_BTN);
   // ⑥ 수정 모드로 고친 글자를 넣는다 (글자 조각만 바꿔서 모양은 그대로). 관리자에게는 고칠 수 있는 자리 표시도.
+  //    window.__XE_T = 고친 값 전체 — 사이트 스크립트가 글자 말고 다른 것(예: 영소립 조립도 'sbset.N')을 저장해 두고 읽을 때 쓴다.
   if (data?.texts || data?.me?.admin) {
     const T = JSON.stringify(data.texts || {}).replace(/</g, '\\u003c'); // </script> 가 글자에 있어도 스크립트가 끊기지 않게
     tail.push(`<script>${XE_APPLY.replace('__T__', () => T)}</script>`);
@@ -413,7 +414,7 @@ b.addEventListener('click',function(){var r=matchMedia('(prefers-reduced-motion:
 // 수정 모드 글자 넣기 — 페이지 끝에서 바로 돈다(사이트 스크립트보다 먼저, 화면이 바뀌어 보이지 않게).
 //   글자가 든 요소(바깥쪽 것)마다 원래 글자의 지문(k = 해시.몇 번째)을 붙이고, 고친 값이 있으면 글자 조각을 바꾼다.
 //   머리(header) · 꼬리(footer) 안은 모든 페이지 공통('*'). xms 메뉴 · 계정 버튼 · 게시판 본문은 빼고.
-const XE_APPLY = `(function(T){var S='h1,h2,h3,h4,h5,h6,p,li,a,button,label,figcaption,blockquote,dt,dd,th,td,small,span,b,strong,em',
+const XE_APPLY = `(function(T){window.__XE_T=T;var S='h1,h2,h3,h4,h5,h6,p,li,a,button,label,figcaption,blockquote,dt,dd,th,td,small,span,b,strong,em',
 X='script,style,svg,noscript,textarea,select,[data-xms-account],[data-xms-menu],.xms-c,.xa-menu,[data-xe-off]',seen={},O=window.__XE_ORIG={};
 function h(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619)}return(x>>>0).toString(36)}
 function tn(e){var w=document.createTreeWalker(e,4),a=[],n;while((n=w.nextNode()))a.push(n);return a}

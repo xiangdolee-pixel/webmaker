@@ -7,12 +7,13 @@
   var TIER = ['', '1차', '2차', '3차', '4차', '5차', '6차'];
 
   /* ── 해석: 줄 → { depth, tier, anchor, tokens, gap } ── */
-  var TOK = /\{([^}]*)\}|<([^>]*)>|\[([^\]]*)\]|\(([^)]*)\)|\*([^*]*)\*|~([^~]*)~|\+(\S+)|(\/)|\|([^|]*)\||([^{<\[(*~+\/|]+)/g;
+  var TOK = /!([njvs])\(([^)]*)\)|\{([^}]*)\}|<([^>]*)>|\[([^\]]*)\]|\(([^)]*)\)|\*([^*]*)\*|~([^~]*)~|\+(\S+)|(\/)|\|([^|]*)\||([^{<\[(*~+\/|]+)/g;
   var TYPES = ['v', 'n', 'c', 'm', 'p', 'a', 'k', 'r', 'y', 't'];
   function tokenize(s) {
     var out = [], m; TOK.lastIndex = 0;
     while ((m = TOK.exec(s))) {
-      for (var i = 1; i <= 10; i++) if (m[i] !== undefined) { out.push({ type: TYPES[i - 1], text: m[i] }); break; }
+      if (m[1]) { out.push({ type: 'm', text: m[2], force: m[1] }); continue; }
+      for (var i = 3; i <= 12; i++) if (m[i] !== undefined) { out.push({ type: TYPES[i - 3], text: m[i] }); break; }
     }
     return out;
   }
@@ -20,15 +21,16 @@
     var lines = [], gap = false;
     String(text || '').split('\n').forEach(function (raw) {
       if (!raw.trim()) { gap = lines.length > 0; return; }
-      var ind = raw.match(/^\s*/)[0].replace(/\t/g, '  ').length, s = raw.trim(), tier = 0, anchor = '', m;
-      while ((m = s.match(/^#(\d)\s+/)) || (m = s.match(/^@(\S+)\s+/))) {
-        if (m[0][0] === '#') tier = +m[1]; else anchor = m[1];
+      var ind = raw.match(/^\s*/)[0].replace(/\t/g, '  ').length, s = raw.trim(), tier = 0, anchor = '', gx = null, m;
+      var bw = 0, bh = 0;
+      while ((m = s.match(/^#(\d)\s+/)) || (m = s.match(/^@(\S+)\s+/)) || (m = s.match(/^%([\d.]+)\s+/)) || (m = s.match(/^\^([\d.]+),([\d.]+)\s+/))) {
+        if (m[0][0] === '#') tier = +m[1]; else if (m[0][0] === '%') gx = +m[1]; else if (m[0][0] === '^') { bw = +m[1]; bh = +m[2]; } else anchor = m[1];
         s = s.slice(m[0].length);
       }
       var depth = Math.floor(ind / 2), tokens = tokenize(s);
       var real = tokens.filter(function (t) { return t.text.trim() && !/^[,.;:]+$/.test(t.text.trim()); });
       lines.push({
-        depth: depth, tier: tier || depth + 1, anchor: anchor, tokens: tokens, gap: gap,
+        depth: depth, tier: tier || depth + 1, tierSet: tier, anchor: anchor, gx: gx, bw: bw, bh: bh, tokens: tokens, gap: gap,
         clause: tokens[0] && tokens[0].type === 'c',
         coord: real.length > 0 && real.every(function (t) { return t.type === 'k'; })
       });
@@ -42,6 +44,21 @@
     return lines;
   }
   SB.parseSentence = parse;
+  // 줄 → 입력 기호 (편집기가 고친 것을 다시 글로)
+  var WRAP = { v: ['{', '}'], n: ['<', '>'], c: ['[', ']'], m: ['(', ')'], p: ['*', '*'], a: ['~', '~'], y: ['|', '|'] };
+  function serialize(lines) {
+    return lines.map(function (L) {
+      var h = (L.gap ? '\n' : '') + new Array(L.depth + 1).join('  ') + (L.tierSet ? '#' + L.tierSet + ' ' : '') + (L.anchor ? '@' + L.anchor + ' ' : '') + (L.gx != null ? '%' + L.gx + ' ' : '') + (L.bw ? '^' + L.bw + ',' + L.bh + ' ' : '');
+      return h + L.tokens.map(function (t) {
+        if (t.type === 'm' && t.force) return '!' + t.force + '(' + t.text + ')';
+        if (WRAP[t.type]) return WRAP[t.type][0] + t.text + WRAP[t.type][1];
+        if (t.type === 'k') return '+' + t.text;
+        if (t.type === 'r') return '/';
+        return t.text;
+      }).join('');
+    }).join('\n');
+  }
+  var GRID = 12;   // 편집기 격자 한 칸(px)
   SB.layoutDiagram = function (d, l) { layout(d, l); };
 
   /* ── 그리기 ── */
@@ -73,8 +90,8 @@
         case 'a': h += '<span class="w-a"' + w; break;
         case 'k': h += '<span class="w-k"' + w; break;
         case 'y': h += '<span class="w-y">' + words(t.text) + '</span>'; break;
-        case 'm': t.att = attachOf(L, idx);
-          h += '<span class="pp pp-' + t.att + '" data-w="(' + esc(t.text) + ')"><b>(</b>' + words(t.text) + '<b>)</b></span>'; break;
+        case 'm': t.att = t.force || attachOf(L, idx);
+          h += '<span class="pp pp-' + t.att + '" data-ti="' + idx + '" data-w="(' + esc(t.text) + ')"><b>(</b>' + words(t.text) + '<b>)</b></span>'; break;
         case 'r': h += '<span class="w-r">/</span>'; break;
         default: h += words(t.text);
       }
@@ -119,6 +136,11 @@
     lines.forEach(function (L) { L.el.style.marginLeft = '0px'; L.el.style.maxWidth = ''; });
     lines.forEach(function (L) {
       var el = L.el; L.x = 0;
+      if (L.gx != null) {
+        L.x = Math.max(0, Math.min(L.gx * GRID, Math.max(0, W - 120)));
+        el.style.marginLeft = L.x + 'px'; el.style.maxWidth = (W - L.x) + 'px';
+        return;
+      }
       if (!L.parent) return;
       var P = L.parent, a = L.anchorNode || anchorEl(P, L.anchor);
       var x = a.getBoundingClientRect().left - base - 2;
@@ -137,6 +159,28 @@
       if (!L.parent || L.coord) return;
       var up = L.el.getBoundingClientRect().bottom - L.parent.el.getBoundingClientRect().bottom;
       L.el.style.setProperty('--up', Math.max(8, up) + 'px');
+    });
+    // 절 박스는 그 절에 매달린 줄(예: as soon as she came 아래 into the room)까지 한 박스로 감싼다
+    function under(K, L) { for (var P = K.parent; P; P = P.parent) if (P === L) return true; return false; }
+    lines.forEach(function (L) {
+      var el = L.el, old = el.querySelector('.dl-box'); if (old) old.remove();
+      var c = el.classList.contains('clause') ? 'clause' : el.classList.contains('bx-j') ? 'j' : el.classList.contains('bx-v') ? 'v' : el.classList.contains('bx-s') ? 's' : '';
+      if (!c) return;
+      el.classList.add('boxed');
+      var r0 = el.getBoundingClientRect(), R = { l: r0.left, t: r0.top, r: r0.right, b: r0.bottom };
+      lines.forEach(function (K) {
+        if (K === L || !under(K, L)) return;
+        var r = K.el.getBoundingClientRect();
+        R.l = Math.min(R.l, r.left); R.t = Math.min(R.t, r.top); R.r = Math.max(R.r, r.right); R.b = Math.max(R.b, r.bottom);
+      });
+      var pad = 3, w = R.r - R.l + pad * 2, h = R.b - R.t + pad * 2;
+      if (L.bw) { w = L.bw * GRID; h = L.bh * GRID; }
+      var bx = document.createElement('i');
+      bx.className = 'dl-box c-' + c; bx.setAttribute('aria-hidden', 'true');
+      bx.style.left = (R.l - r0.left - pad) + 'px'; bx.style.top = (R.t - r0.top - pad) + 'px';
+      bx.style.width = w + 'px'; bx.style.height = h + 'px';
+      bx.innerHTML = '<b class="bx-h" title="끌어서 크기 바꾸기"></b>';
+      el.appendChild(bx);
     });
   }
 
@@ -188,7 +232,8 @@
       '</div></div>';
 
     var dEn = $('.tr-diagram[data-lang="en"]', root), dKo = $('.tr-diagram[data-lang="ko"]', root);
-    var en = parse(set.en), ko = parse(set.ko);
+    var fix = savedFix(set);
+    var en = parse(fix ? fix[0] : set.en), ko = parse(fix ? fix[1] : set.ko);
     build(dEn, en, 'en'); build(dKo, ko, 'ko');
     var stage = $('.tr-stage', root), pool = $('.build-pool', root), count = $('.tr-count', root);
     var nextBtn = $('[data-act="next"]', root), autoBtn = $('[data-act="auto"]', root);
@@ -288,8 +333,204 @@
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(relayout, 80); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
     relayout(); paintTier(); reset();
+
+    /* ── 고치기(관리자): 줄을 끌어 자리 · 순서를 바꾸고, 괄호를 눌러 색을 바꾼다. 격자 · 윗줄 낱말 시작에 착 붙는다 ── */
+    var ed = null;
+    canEdit().then(function (ok) {
+      if (!ok) return;
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn btn-line btn-sm tr-edit-btn'; b.textContent = '고치기';
+      $('.tr-bar', root).appendChild(b);
+      b.addEventListener('click', function () { if (!ed) startEdit(); });
+    });
+    function rebuild() {
+      en = parse(serialize(en)); ko = parse(serialize(ko));
+      build(dEn, en, 'en'); build(dKo, ko, 'ko');
+      relayout(); paintTier();
+      en.concat(ko).forEach(function (L) { L.el.classList.remove('pending'); });
+    }
+    function startEdit() {
+      stopAuto();
+      if (st.lang === 'both') $('.seg[data-k="lang"] button[data-v="en"]', root).click();
+      $('.seg[data-k="mode"] button[data-v="all"]', root).click();
+      var back = [serialize(en), serialize(ko)];
+      ed = { dirty: false };
+      root.classList.add('tr-editing');
+      var bar = document.createElement('div');
+      bar.className = 'tr-edbar';
+      bar.innerHTML = '<p><b>고치기</b> 줄을 끌어 옮기세요 — 격자와 윗줄 낱말 시작에 착 붙고, 위아래로 끌면 순서가 바뀌어요. 괄호를 누르면 색을 고를 수 있어요. 박스는 오른쪽 아래 모서리를 끌어 키워요. 줄을 누른 뒤 ◀ ▶ 로 단계를 바꿔요. (영어 · 직독직해 따로 고쳐요)</p>' +
+        '<div class="btns"><button type="button" class="btn btn-line btn-sm" data-ed="depth-">◀ 단계</button><button type="button" class="btn btn-line btn-sm" data-ed="depth+">단계 ▶</button>' +
+        '<button type="button" class="btn btn-line btn-sm" data-ed="auto">자리 · 박스 자동</button><span class="grow"></span>' +
+        '<button type="button" class="btn btn-line btn-sm" data-ed="reset">처음 것으로</button><button type="button" class="btn btn-line btn-sm" data-ed="cancel">취소</button><button type="button" class="btn btn-red btn-sm" data-ed="save">저장</button></div>';
+      root.insertBefore(bar, stage);
+      var pick = document.createElement('div'); pick.className = 'tr-pick'; pick.hidden = true;
+      pick.innerHTML = [['n', '명사 뒤'], ['j', '형용사 뒤'], ['v', '동사 뒤'], ['s', '문장 앞'], ['', '자동']].map(function (o) {
+        return '<button type="button" data-att="' + o[0] + '">' + (o[0] ? '<span class="pp pp-' + o[0] + '"><b>(</b><b>)</b></span> ' : '') + o[1] + '</button>';
+      }).join('');
+      stage.appendChild(pick);
+      var sel = -1, pickAt = null;
+      function cur() { return st.lang === 'ko' ? ko : en; }
+      function curD() { return st.lang === 'ko' ? dKo : dEn; }
+      function mark() { ed.dirty = true; }
+      function paintSel() { $$('.dl', curD()).forEach(function (el, i) { el.classList.toggle('ed-sel', i === sel); }); }
+      // 단계(들여쓰기): 영어 · 직독직해 두 줄을 함께, 아래에 매달린 줄도 함께
+      function depth(i, d) {
+        [en, ko].forEach(function (ls) {
+          var L = ls[i]; if (!L || i === 0) return;
+          var to = Math.max(0, Math.min(L.depth + d, ls[i - 1].depth + 1)), k = to - L.depth; if (!k) return;
+          var old = L.depth;
+          for (var j = i + 1; j < ls.length && ls[j].depth > old; j++) ls[j].depth = Math.max(0, ls[j].depth + k);
+          L.depth = to; if (L.tierSet) L.tierSet = Math.max(1, L.tierSet + k);
+        });
+      }
+      bar.addEventListener('click', function (e) {
+        var a = e.target.closest('[data-ed]'); if (!a) return;
+        a = a.dataset.ed;
+        if (a === 'depth-' || a === 'depth+' || a === 'auto') {
+          if (sel < 0) { alertLike('먼저 고칠 줄을 누르세요.'); return; }
+          if (a === 'auto') { cur()[sel].gx = null; cur()[sel].bw = cur()[sel].bh = 0; } else depth(sel, a === 'depth+' ? 1 : -1);
+          mark(); rebuild(); paintSel(); return;
+        }
+        if (a === 'reset') { en = parse(set.en); ko = parse(set.ko); sel = -1; mark(); rebuild(); return; }
+        if (a === 'cancel') { en = parse(back[0]); ko = parse(back[1]); stop(); return; }
+        if (a === 'save') save();
+      });
+      function stop() {
+        root.classList.remove('tr-editing'); bar.remove(); pick.remove(); ed = null;
+        stage.removeEventListener('pointerdown', down, true);
+        rebuild(); reset();
+      }
+      function save() {
+        var a = serialize(en), b = serialize(ko);
+        var same = a === serialize(parse(set.en)) && b === serialize(parse(set.ko));
+        putFix(set, same ? null : [a, b]).then(function (where) {
+          alertLike(where === 'server' ? '저장했어요. 모든 방문자에게 이렇게 보여요.' : '이 브라우저에만 저장했어요. (관리자로 로그인하면 모두에게 저장돼요)');
+          stop();
+        });
+      }
+      // 괄호 색 고르기
+      pick.addEventListener('click', function (e) {
+        var o = e.target.closest('[data-att]'); if (!o || !pickAt) return;
+        var t = cur()[pickAt.i].tokens[pickAt.ti]; t.force = o.dataset.att || null;
+        pick.hidden = true; mark(); rebuild(); paintSel();
+      });
+      // 끌기
+      function down(e) {
+        if (e.button) return;
+        if (e.target.closest('.tr-pick')) return;
+        var line = e.target.closest('.dl'); if (!line || !curD().contains(line)) { pick.hidden = true; return; }
+        e.stopPropagation();
+        var hd = e.target.closest('.bx-h');
+        if (hd) {   // 박스 모서리: 끌어서 크기 (격자 칸에 맞춤)
+          var bxe = hd.parentNode, BL = cur()[+line.dataset.i], w0 = bxe.offsetWidth, h0 = bxe.offsetHeight, ax = e.clientX, ay = e.clientY;
+          var rmv = function (ev) {
+            bxe.style.width = Math.max(GRID * 3, Math.round((w0 + ev.clientX - ax) / GRID) * GRID) + 'px';
+            bxe.style.height = Math.max(GRID * 2, Math.round((h0 + ev.clientY - ay) / GRID) * GRID) + 'px';
+            ev.preventDefault();
+          };
+          var rup = function () {
+            document.removeEventListener('pointermove', rmv); document.removeEventListener('pointerup', rup); document.removeEventListener('pointercancel', rup);
+            BL.bw = Math.round(bxe.offsetWidth / GRID); BL.bh = Math.round(bxe.offsetHeight / GRID);
+            sel = +line.dataset.i; mark(); rebuild(); paintSel();
+          };
+          document.addEventListener('pointermove', rmv); document.addEventListener('pointerup', rup); document.addEventListener('pointercancel', rup);
+          e.preventDefault(); return;
+        }
+        var i = +line.dataset.i, ppEl = e.target.closest('.pp[data-ti]');
+        var L = cur()[i], sx = e.clientX, sy = e.clientY, moved = false;
+        var dr = curD().getBoundingClientRect(), x0 = L.x || 0, W = curD().clientWidth;
+        // 붙을 자리: 다른 줄 낱말 시작 (없으면 격자)
+        var snaps = [];
+        $$('.dl', curD()).forEach(function (el, j) { if (j !== i) $$('[data-w]', el).forEach(function (w) { snaps.push(w.getBoundingClientRect().left - dr.left - 6); }); });
+        var guide = document.createElement('i'); guide.className = 'tr-guide'; guide.hidden = true; curD().appendChild(guide);
+        var nx = x0, rows = $$('.dl', curD());
+        function mv(ev) {
+          var dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+          if (!moved) { moved = true; line.classList.add('ed-drag'); pick.hidden = true; }
+          var want = Math.max(0, Math.min(x0 + dx, W - 60)), hit = null;
+          snaps.forEach(function (p) { if (Math.abs(p - want) < 8 && (hit === null || Math.abs(p - want) < Math.abs(hit - want))) hit = p; });
+          nx = hit !== null ? Math.max(0, hit) : Math.round(want / GRID) * GRID;
+          guide.hidden = hit === null; guide.style.left = (nx + 6) + 'px';
+          line.style.marginLeft = nx + 'px';
+          line.style.transform = 'translateY(' + dy + 'px)';
+          ev.preventDefault();
+        }
+        function up() {
+          document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+          guide.remove();
+          if (!moved) {
+            sel = i; paintSel();
+            if (ppEl) {
+              pickAt = { i: i, ti: +ppEl.dataset.ti };
+              var r = ppEl.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+              pick.style.left = Math.max(0, Math.min(r.left - sr.left, sr.width - 240)) + 'px'; pick.style.top = (r.bottom - sr.top + 6) + 'px'; pick.hidden = false;
+            } else pick.hidden = true;
+            return;
+          }
+          // 위아래: 가운데가 지나간 줄 자리로 순서를 옮긴다 (영어 · 직독직해 함께)
+          var lr = line.getBoundingClientRect(), cy = lr.top + lr.height / 2, to = i;
+          rows.forEach(function (el, j) {
+            if (j === i) return;
+            var r = el.getBoundingClientRect(), mid = r.top + r.height / 2;
+            if (j < i && cy < mid && j < to) to = j;
+            if (j > i && cy > mid && j > to) to = j;
+          });
+          var before = rows.map(function (el) { return el.getBoundingClientRect().top; });
+          before[i] = lr.top;
+          L.gx = Math.round(nx / GRID * 100) / 100;
+          if (to !== i) [en, ko].forEach(function (ls) { var x = ls.splice(i, 1)[0]; if (x) ls.splice(to, 0, x); if (ls[0]) ls[0].depth = 0; });
+          var order = rows.map(function (_, j) { return j; }); order.splice(to, 0, order.splice(i, 1)[0]);
+          sel = to; mark(); rebuild(); paintSel();
+          // 놓으면 제자리로 부드럽게, 나머지 줄은 미끄러져 비켜난다 (FLIP)
+          if (!reduce) $$('.dl', curD()).forEach(function (el, j) {
+            var old = before[order[j]]; if (old == null) return;
+            var d = old - el.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
+            el.style.transition = 'none'; el.style.transform = 'translateY(' + d + 'px)';
+            void el.offsetWidth; el.style.transition = 'transform .22s cubic-bezier(.22,.8,.24,1)'; el.style.transform = '';
+            setTimeout(function () { el.style.transition = ''; }, 260);
+          });
+        }
+        document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+        e.preventDefault();
+      }
+      stage.addEventListener('pointerdown', down, true);
+    }
     return { destroy: function () { stopAuto(); if (synth) synth.cancel(); } };
   };
+
+  /* ── 고친 조립도 저장: 관리자 → xms(page_texts, 사이트 전체 '*'), 그 밖에는 이 브라우저 ── */
+  function fixKey(set) { return 'sbset.' + (SB.sets.indexOf(set) + 1); }
+  function savedFix(set) {
+    var T = window.__XE_T, k = fixKey(set), v = T && T.all && T.all[k];
+    if (v && v.length === 2) return v;
+    try { var l = JSON.parse(localStorage.getItem('sb_set_fix') || '{}')[k]; if (l) return l; } catch (e) {}
+    return null;
+  }
+  var adminP = null;
+  function canEdit() {
+    if (!adminP) adminP = fetch('/xms-api/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (me) { return !!me.admin; }, function () { return false; })
+      .then(function (ok) { return ok || /^(localhost|127\.0\.0\.1)$/.test(location.hostname); });
+    return adminP;
+  }
+  function putFix(set, val) {
+    var k = fixKey(set);
+    try { var all = JSON.parse(localStorage.getItem('sb_set_fix') || '{}'); if (val) all[k] = val; else delete all[k]; localStorage.setItem('sb_set_fix', JSON.stringify(all)); } catch (e) {}
+    return fetch('/xms-api/admin/page-texts', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: location.pathname, items: [{ k: k, g: '*', t: val }] })
+    }).then(function (r) {
+      if (!r.ok) return 'local';
+      try { localStorage.removeItem('sb_set_fix'); } catch (e) {}
+      if (window.__XE_T) { var A = window.__XE_T.all = window.__XE_T.all || {}; if (val) A[k] = val; else delete A[k]; }
+      return 'server';
+    }, function () { return 'local'; });
+  }
+  function alertLike(msg) {
+    var t = document.createElement('div'); t.className = 'tr-toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+    document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2800);
+  }
 
   /* ── 페이지 연결 ── */
   function init() {
