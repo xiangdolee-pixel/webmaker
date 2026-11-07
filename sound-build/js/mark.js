@@ -460,6 +460,24 @@
     var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(all, 100); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(all);
   }
-  function boot() { init(); examples(); }
+  // 덩어리 단계 숫자는 덩어리 가운데 아래에 둔다(두 줄로 갈린 덩어리는 첫 줄 조각의 가운데)
+  function tierFix() {
+    $$('.mk > .tn').forEach(function (tn) {
+      var r = tn.parentNode.getClientRects()[0]; if (!r) return;
+      var t = tn.getBoundingClientRect();
+      tn.style.setProperty('--c', ((r.left + r.right) / 2 - t.left).toFixed(1) + 'px');
+    });
+  }
+  var tfT;
+  function tierWatch() {
+    var run = function () { clearTimeout(tfT); tfT = setTimeout(tierFix, 30); };
+    if (window.MutationObserver) new MutationObserver(function (ms) {
+      if (ms.some(function (m) { return m.addedNodes.length && !(m.target.closest && m.target.closest('.mk')); })) run();
+    }).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', run);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(run);
+    run();
+  }
+  function boot() { init(); examples(); tierWatch(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
