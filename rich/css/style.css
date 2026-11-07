@@ -251,12 +251,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .cback:hover { transform: translateY(-5px) rotate(0); }
 .cback .jc-face { box-shadow: 0 4px 10px rgba(0, 0, 0, .3); }
 .jc-face { position: absolute; inset: 0; display: block; overflow: hidden; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; container-type: inline-size; color: #1f2328; text-align: left; }
-.jc-back { background: repeating-linear-gradient(45deg, rgba(255, 212, 59, .12) 0 6px, transparent 6px 14px), linear-gradient(160deg, #234a7a, #142c4d); box-shadow: inset 0 0 0 2.4cqw #f1f3f5, inset 0 0 0 3.2cqw #ffd43b; }
+.jc-back { background: repeating-linear-gradient(45deg, rgba(255, 212, 59, .12) 0 6px, transparent 6px 14px), linear-gradient(160deg, #234a7a, #142c4d); box-shadow: inset 0 0 0 5px #f1f3f5, inset 0 0 0 7px #ffd43b; }
 .jc-back.cb { background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, .1) 0 6px, transparent 6px 14px), linear-gradient(160deg, #7950f2, #4c2bb0); }
 .jb-pat { position: absolute; inset: 5cqw; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 1cqw 3cqw; font-size: 8.5cqw; line-height: 1.25; opacity: .22; filter: grayscale(1) brightness(2); color: #fff; font-weight: 900; }
 .jb-band { position: absolute; left: 3.2cqw; right: 3.2cqw; top: 50%; transform: translateY(-50%); display: grid; place-items: center; height: 17cqw; background: linear-gradient(#fff3bf, #ffd43b 40%, #f2b705); color: #1f2328; font-size: 8cqw; font-weight: 900; letter-spacing: .12em; box-shadow: 0 .6cqw 0 rgba(0, 0, 0, .25); }
 .jb-coin { position: absolute; right: 7cqw; top: 7cqw; display: grid; place-items: center; width: 11cqw; height: 11cqw; border-radius: 50%; background: #ffd43b; color: #1f2328; font-size: 6.5cqw; font-weight: 900; box-shadow: 0 0 0 .9cqw #fff; }
-.jc-front { transform: rotateY(180deg); background: #fff; padding: 3.4cqw; box-shadow: inset 0 0 0 1.4cqw #e9ecef; }
+.jc-front { transform: rotateY(180deg); background: #fff; padding: 3.4%; box-shadow: inset 0 0 0 4px #e9ecef; }
 .jf-title { display: block; margin-bottom: 2cqw; text-align: center; font-size: 6.6cqw; font-weight: 900; letter-spacing: -.02em; color: var(--jc); }
 .jf-body { display: grid; grid-template-columns: 34% 1fr; gap: 3cqw; height: calc(100% - 10.5cqw); }
 .jf-pic { display: grid; place-items: center; border-radius: 3cqw; background: radial-gradient(circle at 28% 22%, rgba(255, 255, 255, .7) 0 7%, transparent 8%), linear-gradient(160deg, #fff, var(--jc) 120%); box-shadow: inset 0 0 0 .6cqw rgba(0, 0, 0, .12); }
@@ -271,7 +271,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .jf-s.s3 small { background: #fff9db; }
 .jf-s.cur { box-shadow: 0 0 0 1cqw #fcc419; }
 .jf-up { display: block; text-align: center; font-size: 2.9cqw; font-weight: 900; line-height: 1; color: #e8590c; }
-.jc-front.cc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6cqw; padding: 6cqw; background: radial-gradient(circle at 50% 30%, #9775fa, #5f3dc4); color: #fff; text-align: center; box-shadow: inset 0 0 0 2.4cqw #f1f3f5; }
+.jc-front.cc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.6cqw; padding: 6%; background: radial-gradient(circle at 50% 30%, #9775fa, #5f3dc4); color: #fff; text-align: center; box-shadow: inset 0 0 0 6px #f1f3f5; }
 .cc-hd { position: absolute; left: 5cqw; top: 4.6cqw; padding: .4cqw 2.2cqw; border-radius: 99px; background: #ffd43b; color: #1f2328; font-size: 3.6cqw; font-weight: 900; }
 .cc-ic { font-size: 12cqw; line-height: 1.1; }
 .cc-t { font-size: 4.6cqw; font-weight: 700; line-height: 1.35; word-break: keep-all; }
@@ -280,7 +280,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .cc-amt.minus { color: #ffc9c9; }
 .cc-bonus { padding: 1cqw 2.6cqw; border-radius: 2cqw; background: rgba(255, 255, 255, .16); font-size: 3.3cqw; font-weight: 700; word-break: keep-all; }
 .cc-bonus.hit { background: #ffd43b; color: #1f2328; }
-.jc-front.ac { padding: 0; box-shadow: inset 0 0 0 1.4cqw #e9ecef; }
+.jc-front.ac { padding: 0; box-shadow: inset 0 0 0 4px #e9ecef; }
 .ac-hd { display: block; padding: 2cqw; background: var(--jc); color: #fff; text-align: center; font-size: 4.8cqw; font-weight: 900; letter-spacing: .1em; }
 .ac-body { display: grid; grid-template-columns: 30% 1fr; gap: 3cqw; padding: 3.4cqw 4cqw; }
 .ac-pic { display: grid; place-items: center; aspect-ratio: .85; border-radius: 3cqw; background: linear-gradient(160deg, #fff, var(--jc) 140%); font-size: 15cqw; box-shadow: inset 0 0 0 .6cqw rgba(0, 0, 0, .1); }
@@ -290,13 +290,13 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .ac-info small { font-size: 3.2cqw; font-weight: 600; color: #495057; line-height: 1.35; }
 
 /* 카드가 가운데서 '촥' 열리는 무대 */
-.cardfx { --w: min(380px, 88vw); position: fixed; inset: 0; z-index: 60; background: rgba(10, 8, 5, .6); animation: fade .2s; transition: opacity .2s; overflow: hidden; }
+.cardfx { --w: min(500px, 90vw, 62svh); position: fixed; inset: 0; z-index: 60; background: rgba(10, 8, 5, .6); animation: fade .2s; transition: opacity .2s; overflow: hidden; }
 .cardfx.out { opacity: 0; }
 .jc-pos { position: absolute; left: 50%; top: 42%; width: var(--w); aspect-ratio: 1.4; margin-left: calc(var(--w) / -2); margin-top: calc(var(--w) / -2.8); perspective: 1100px; }
 .jc-in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
 .jc-in .jc-face { box-shadow: 0 18px 40px rgba(0, 0, 0, .55); }
-.jc-in .jc-front { box-shadow: inset 0 0 0 1.4cqw #e9ecef, 0 18px 40px rgba(0, 0, 0, .55); }
-.jc-in .jc-front.cc { box-shadow: inset 0 0 0 2.4cqw #f1f3f5, 0 18px 40px rgba(0, 0, 0, .55); }
+.jc-in .jc-front { box-shadow: inset 0 0 0 4px #e9ecef, 0 18px 40px rgba(0, 0, 0, .55); }
+.jc-in .jc-front.cc { box-shadow: inset 0 0 0 6px #f1f3f5, 0 18px 40px rgba(0, 0, 0, .55); }
 .jc-rays { position: absolute; left: 50%; top: 42%; width: 170vmax; height: 170vmax; margin: -85vmax 0 0 -85vmax; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 224, 102, 0) 0deg 9deg, rgba(255, 224, 102, .3) 9deg 18deg); -webkit-mask-image: radial-gradient(circle, #000 0, transparent 45%); mask-image: radial-gradient(circle, #000 0, transparent 45%); opacity: 0; transition: opacity .35s; animation: rays 14s linear infinite; }
 .jc-rays.on { opacity: 1; }
 @keyframes rays { to { transform: rotate(360deg); } }
