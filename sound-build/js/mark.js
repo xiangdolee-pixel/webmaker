@@ -93,7 +93,7 @@
         h += '<span class="mk ' + x.p.kind + ' a-' + x.p.att + g + '" data-k="' + x.k + '">' + (o.tiers ? '<i class="tn"' + tn(tierOf(stack)) + '></i>' : '') +
           (x.p.kind === 'pp' ? '<b class="br">(</b>' : x.p.att === 'n' ? '<b class="sl">/</b>' : '');
       });
-      if (!t.w) h += '<span class="pu">' + esc(t.t) + '</span>';
+      if (!t.w) h += '<span class="pu' + (t.t === '●' ? ' gap-dot' : '') + '">' + esc(t.t) + '</span>';   // ● = 빠진 주어 자리
       else {
         var c = 'wd' + (roles[i] ? ' r-' + roles[i] : '');
         if (o.wg && o.wg[i]) c += ' g-' + o.wg[i];
