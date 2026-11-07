@@ -171,17 +171,33 @@
       L.el.style.setProperty('--up', Math.max(8, up) + 'px');
       L.el.style.setProperty('--upb', Math.max(6, up - L.el.offsetHeight + 4) + 'px');   // 박스 줄: 박스 윗변까지만
     });
-    // 윗줄 밑줄은 매달린 줄이 설명하는 낱말까지만 (형용사절이면 friend 까지). 문장 전체를 꾸미는 것이 있으면 끝까지
-    lines.forEach(function (P) { P._need = 0; });
+    // 윗줄 밑줄은 매달린 줄이 설명하는 덩어리에만: 명사면 앞의 꾸밈말까지(a friend), 동사면 그 동사만. 문장 전체를 꾸미는 것이 있으면 줄 전체
+    var ROLE = /(^|\s)w-(v|n|p|a|c|k|r)(\s|$)/;
+    function segOf(P, L) {
+      var pr = P.el.getBoundingClientRect();
+      if (L.anchorEnd) return [0, pr.width];
+      var a = L.anchorNode || anchorEl(P, L.anchor);
+      if (a === P.el) return [0, pr.width];
+      var first = a;
+      if (/(^|\s)w-(n|p)(\s|$)/.test(a.className)) {
+        for (var b = a.previousElementSibling; b; b = b.previousElementSibling) {
+          if (b.classList.contains('tier') || ROLE.test(b.className) || b.classList.contains('pp') || b.classList.contains('mk') || !b.hasAttribute('data-w') && !b.hasAttribute('data-i')) break;
+          first = b;
+        }
+      }
+      return [first.getBoundingClientRect().left - pr.left - 2, a.getBoundingClientRect().right - pr.left + 2];
+    }
+    lines.forEach(function (P) { P._seg = null; });
     lines.forEach(function (L) {
       var P = L.parent; if (!P || L.coord) return;
-      var pr = P.el.getBoundingClientRect(), need = pr.width;
-      if (!L.anchorEnd) { var a = L.anchorNode || anchorEl(P, L.anchor); if (a !== P.el) need = a.getBoundingClientRect().right - pr.left + 2; }
-      P._need = Math.max(P._need, need);
+      var g = segOf(P, L);
+      P._seg = P._seg ? [Math.min(P._seg[0], g[0]), Math.max(P._seg[1], g[1])] : g;
     });
     lines.forEach(function (P) {
-      if (!P._need) { P.el.style.removeProperty('--ur'); return; }
-      P.el.style.setProperty('--ur', Math.max(0, P.el.getBoundingClientRect().width - P._need) + 'px');
+      if (!P._seg) { P.el.style.removeProperty('--ur'); P.el.style.removeProperty('--ul'); return; }
+      var w = P.el.getBoundingClientRect().width;
+      P.el.style.setProperty('--ul', Math.max(0, P._seg[0]) + 'px');
+      P.el.style.setProperty('--ur', Math.max(0, w - P._seg[1]) + 'px');
     });
     // 절 박스는 그 절에 매달린 줄(예: as soon as she came 아래 into the room)까지 한 박스로 감싼다
     function under(K, L) { for (var P = K.parent; P; P = P.parent) if (P === L) return true; return false; }
