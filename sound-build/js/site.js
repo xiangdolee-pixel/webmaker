@@ -38,6 +38,7 @@
       var p = a.getAttribute('href').split('?')[0].split('/').pop().replace(/\.html$/, '');
       var here = location.pathname.split('/').pop().replace(/\.html$/, '');
       if (here === 'course' || here === 'classroom') here = 'courses';
+      if (here === 'cartoon') here = 'principle';
       if (p && here === p) a.setAttribute('aria-current', 'page');
     });
   }
