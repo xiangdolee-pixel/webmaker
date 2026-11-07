@@ -88,13 +88,14 @@ function mobGroup(G, y, c, hp, cx, opt = {}) {
   const cols = opt.cols || clamp(Math.ceil(Math.sqrt(c * 1.6)), 2, 16), sp = opt.sp || 17;
   const w = (cols - 1) * sp;
   cx = clamp(cx, ROAD_L + 14 + w / 2, ROAD_R - 14 - w / 2);
-  const grp = { alive: c, pop: 0 };
+  const side = opt.side != null ? opt.side : 40 + Math.min(L, 30) * 2.5;
+  const grp = { alive: c, pop: 0, cx, hw: w / 2 + 6, side };   // 무리는 대형을 유지한 채 가운데(cx)만 내 쪽으로 옮겨 간다
   G.groups.push(grp);
   for (let i = 0; i < c; i++) {
-    const col = i % cols, row = Math.floor(i / cols);
+    const col = i % cols, row = Math.floor(i / cols), ox = -w / 2 + col * sp + rnd(-4, 4);
     G.mobs.push({
-      x: clamp(cx - w / 2 + col * sp + rnd(-4, 4), ROAD_L + 8, ROAD_R - 8), y: y - row * 16 + rnd(-4, 4), hp, max: hp,
-      vy: opt.vy != null ? opt.vy : 14 + Math.min(L, 30) * 1.3, side: opt.side != null ? opt.side : 40 + Math.min(L, 30) * 2.5,
+      ox, x: clamp(cx + ox, ROAD_L + 8, ROAD_R - 8), y: y - row * 16 + rnd(-4, 4), hp, max: hp,
+      vy: opt.vy != null ? opt.vy : 14 + Math.min(L, 30) * 1.3, side,
       step: Math.random() * 6, g: grp, flash: 0, kb: 0, size: 1, hurt: 1
     });
   }
@@ -217,12 +218,17 @@ export function step(G, dt) {
     }
   }
   g.gates = g.gates.filter(gt => gt.y < 160);
-  // 적
+  // 적: 무리 가운데가 내 쪽으로 오고, 각자는 자기 자리(가운데 + ox)로
+  for (const q of g.groups) {
+    if (q.cx == null) continue;
+    const near = g.mobs.some(M => M.g === q && M.y > -520);
+    if (near) { const lim = Math.max(0, (ROAD_R - ROAD_L) / 2 - q.hw - 8), want = clamp(g.px, MID - lim, MID + lim); q.cx += Math.sign(want - q.cx) * Math.min(Math.abs(want - q.cx), q.side * dt); }
+  }
   for (let i = g.mobs.length - 1; i >= 0; i--) {
     const M = g.mobs[i];
     M.flash = Math.max(0, M.flash - dt); M.kb = Math.max(0, M.kb - dt * 60);
     M.y += (g.speed + M.vy) * dt - M.kb * dt * 8; M.step += dt * (M.size > 1 ? 6 : 13);
-    if (M.y > -520) M.x += Math.sign(g.px - M.x) * Math.min(Math.abs(g.px - M.x), M.side * dt);
+    const want = clamp(M.g.cx + M.ox, ROAD_L + 8, ROAD_R - 8); M.x += Math.sign(want - M.x) * Math.min(Math.abs(want - M.x), (M.side + 30) * dt);
     const dx = M.x - g.px, dy = M.y, reach = R + 4 + (M.size - 1) * 14;
     if (dy > -R * .9 - (M.size - 1) * 10 && dy < R * .8 && Math.abs(dx) < reach) {
       g.mobs.splice(i, 1); M.g.alive--; const k = Math.min(g.n, M.hurt); lose(g, k, M.x, M.y, M.size > 1 ? 'giant' : 'mob'); h.shake(M.size > 1 ? .4 : .12); h.sfx('hurt'); h.burst(M.x, M.y, 'red', 5);
