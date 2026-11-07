@@ -22,15 +22,15 @@
     String(text || '').split('\n').forEach(function (raw) {
       if (!raw.trim()) { gap = lines.length > 0; return; }
       var ind = raw.match(/^\s*/)[0].replace(/\t/g, '  ').length, s = raw.trim(), tier = 0, anchor = '', gx = null, m;
-      var bw = 0, bh = 0;
-      while ((m = s.match(/^#(\d)\s+/)) || (m = s.match(/^@(\S+)\s+/)) || (m = s.match(/^%([\d.]+)\s+/)) || (m = s.match(/^\^([\d.]+),([\d.]+)\s+/))) {
-        if (m[0][0] === '#') tier = +m[1]; else if (m[0][0] === '%') gx = +m[1]; else if (m[0][0] === '^') { bw = +m[1]; bh = +m[2]; } else anchor = m[1];
+      var bw = 0, bh = 0, gy = 0;
+      while ((m = s.match(/^#(\d)\s+/)) || (m = s.match(/^@(\S+)\s+/)) || (m = s.match(/^%([\d.]+)(?:,(-?[\d.]+))?\s+/)) || (m = s.match(/^\^([\d.]+),([\d.]+)\s+/))) {
+        if (m[0][0] === '#') tier = +m[1]; else if (m[0][0] === '%') { gx = +m[1]; gy = m[2] ? +m[2] : 0; } else if (m[0][0] === '^') { bw = +m[1]; bh = +m[2]; } else anchor = m[1];
         s = s.slice(m[0].length);
       }
       var depth = Math.floor(ind / 2), tokens = tokenize(s);
       var real = tokens.filter(function (t) { return t.text.trim() && !/^[,.;:]+$/.test(t.text.trim()); });
       lines.push({
-        depth: depth, tier: tier || depth + 1, tierSet: tier, anchor: anchor, gx: gx, bw: bw, bh: bh, tokens: tokens, gap: gap,
+        depth: depth, tier: tier || depth + 1, tierSet: tier, anchor: anchor, gx: gx, gy: gy, bw: bw, bh: bh, tokens: tokens, gap: gap,
         clause: tokens[0] && tokens[0].type === 'c',
         coord: real.length > 0 && real.every(function (t) { return t.type === 'k'; })
       });
@@ -48,7 +48,7 @@
   var WRAP = { v: ['{', '}'], n: ['<', '>'], c: ['[', ']'], m: ['(', ')'], p: ['*', '*'], a: ['~', '~'], y: ['|', '|'] };
   function serialize(lines) {
     return lines.map(function (L) {
-      var h = (L.gap ? '\n' : '') + new Array(L.depth + 1).join('  ') + (L.tierSet ? '#' + L.tierSet + ' ' : '') + (L.anchor ? '@' + L.anchor + ' ' : '') + (L.gx != null ? '%' + L.gx + ' ' : '') + (L.bw ? '^' + L.bw + ',' + L.bh + ' ' : '');
+      var h = (L.gap ? '\n' : '') + new Array(L.depth + 1).join('  ') + (L.tierSet ? '#' + L.tierSet + ' ' : '') + (L.anchor ? '@' + L.anchor + ' ' : '') + (L.gx != null ? '%' + L.gx + (L.gy ? ',' + L.gy : '') + ' ' : '') + (L.bw ? '^' + L.bw + ',' + L.bh + ' ' : '');
       return h + L.tokens.map(function (t) {
         if (t.type === 'm' && t.force) return '!' + t.force + '(' + t.text + ')';
         if (WRAP[t.type]) return WRAP[t.type][0] + t.text + WRAP[t.type][1];
@@ -136,6 +136,7 @@
     lines.forEach(function (L) { L.el.style.marginLeft = '0px'; L.el.style.maxWidth = ''; });
     lines.forEach(function (L) {
       var el = L.el; L.x = 0;
+      el.style.top = L.gy ? L.gy * GRID + 'px' : '';
       if (L.gx != null) {
         L.x = Math.max(0, Math.min(L.gx * GRID, Math.max(0, W - 120)));
         el.style.marginLeft = L.x + 'px'; el.style.maxWidth = (W - L.x) + 'px';
@@ -358,7 +359,7 @@
       root.classList.add('tr-editing');
       var bar = document.createElement('div');
       bar.className = 'tr-edbar';
-      bar.innerHTML = '<p><b>고치기</b> 줄을 끌어 옮기세요 — 격자와 윗줄 낱말 시작에 착 붙고, 위아래로 끌면 순서가 바뀌어요. 괄호를 누르면 색을 고를 수 있어요. 박스는 오른쪽 아래 모서리를 끌어 키워요. 줄을 누른 뒤 ◀ ▶ 로 단계를 바꿔요. (영어 · 직독직해 따로 고쳐요)</p>' +
+      bar.innerHTML = '<p><b>고치기</b> 줄을 끌어 원하는 곳에 놓으세요 — 끈 줄만 움직이고, 격자와 다른 줄 낱말 시작에 착 붙어요. 괄호를 누르면 색을 고를 수 있어요. 박스는 오른쪽 아래 모서리를 끌어 키워요. 줄을 누른 뒤 ◀ ▶ 로 단계를 바꿔요. (영어 · 직독직해 따로 고쳐요)</p>' +
         '<div class="btns"><button type="button" class="btn btn-line btn-sm" data-ed="depth-">◀ 단계</button><button type="button" class="btn btn-line btn-sm" data-ed="depth+">단계 ▶</button>' +
         '<button type="button" class="btn btn-line btn-sm" data-ed="auto">자리 · 박스 자동</button><span class="grow"></span>' +
         '<button type="button" class="btn btn-line btn-sm" data-ed="reset">처음 것으로</button><button type="button" class="btn btn-line btn-sm" data-ed="cancel">취소</button><button type="button" class="btn btn-red btn-sm" data-ed="save">저장</button></div>';
@@ -443,17 +444,21 @@
         var snaps = [];
         $$('.dl', curD()).forEach(function (el, j) { if (j !== i) $$('[data-w]', el).forEach(function (w) { snaps.push(w.getBoundingClientRect().left - dr.left - 6); }); });
         var guide = document.createElement('i'); guide.className = 'tr-guide'; guide.hidden = true; curD().appendChild(guide);
-        var nx = x0, rows = $$('.dl', curD());
+        var nx = x0, ny = (L.gy || 0) * GRID, y0 = ny;
         function mv(ev) {
           var dx = ev.clientX - sx, dy = ev.clientY - sy;
           if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
-          if (!moved) { moved = true; line.classList.add('ed-drag'); pick.hidden = true; }
+          if (!moved) {
+            moved = true; line.classList.add('ed-drag'); pick.hidden = true;
+            cur().forEach(function (K) { if (K.gx == null) K.gx = Math.round((K.x || 0) / GRID * 100) / 100; });   // 다른 줄은 제자리에 고정
+          }
           var want = Math.max(0, Math.min(x0 + dx, W - 60)), hit = null;
           snaps.forEach(function (p) { if (Math.abs(p - want) < 8 && (hit === null || Math.abs(p - want) < Math.abs(hit - want))) hit = p; });
           nx = hit !== null ? Math.max(0, hit) : Math.round(want / GRID) * GRID;
           guide.hidden = hit === null; guide.style.left = (nx + 6) + 'px';
+          ny = Math.round((y0 + dy) / (GRID / 2)) * (GRID / 2);
           line.style.marginLeft = nx + 'px';
-          line.style.transform = 'translateY(' + dy + 'px)';
+          line.style.top = ny + 'px';
           ev.preventDefault();
         }
         function up() {
@@ -468,28 +473,8 @@
             } else pick.hidden = true;
             return;
           }
-          // 위아래: 가운데가 지나간 줄 자리로 순서를 옮긴다 (영어 · 직독직해 함께)
-          var lr = line.getBoundingClientRect(), cy = lr.top + lr.height / 2, to = i;
-          rows.forEach(function (el, j) {
-            if (j === i) return;
-            var r = el.getBoundingClientRect(), mid = r.top + r.height / 2;
-            if (j < i && cy < mid && j < to) to = j;
-            if (j > i && cy > mid && j > to) to = j;
-          });
-          var before = rows.map(function (el) { return el.getBoundingClientRect().top; });
-          before[i] = lr.top;
-          L.gx = Math.round(nx / GRID * 100) / 100;
-          if (to !== i) [en, ko].forEach(function (ls) { var x = ls.splice(i, 1)[0]; if (x) ls.splice(to, 0, x); if (ls[0]) ls[0].depth = 0; });
-          var order = rows.map(function (_, j) { return j; }); order.splice(to, 0, order.splice(i, 1)[0]);
-          sel = to; mark(); rebuild(); paintSel();
-          // 놓으면 제자리로 부드럽게, 나머지 줄은 미끄러져 비켜난다 (FLIP)
-          if (!reduce) $$('.dl', curD()).forEach(function (el, j) {
-            var old = before[order[j]]; if (old == null) return;
-            var d = old - el.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
-            el.style.transition = 'none'; el.style.transform = 'translateY(' + d + 'px)';
-            void el.offsetWidth; el.style.transition = 'transform .22s cubic-bezier(.22,.8,.24,1)'; el.style.transform = '';
-            setTimeout(function () { el.style.transition = ''; }, 260);
-          });
+          L.gx = Math.round(nx / GRID * 100) / 100; L.gy = Math.round(ny / GRID * 100) / 100;
+          sel = i; mark(); rebuild(); paintSel();
         }
         document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
         e.preventDefault();
