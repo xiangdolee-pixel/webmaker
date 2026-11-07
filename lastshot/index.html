@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>라스트샷 LAST SHOT</title>
+<meta name="description" content="손가락으로 좌우로 움직여 문을 고르고, 쏘아서 숫자를 키우고, 부대를 불려 보스를 쓰러뜨리는 세로 화면 슈팅 게임. 결제 없이 실력만으로 레벨이 올라갑니다.">
+<meta name="theme-color" content="#0f172a">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="css/style.css?v=1">
+<script src="js/game.js?v=1" defer></script>
+</head>
+<body>
+<!-- 계정(로그인) 버튼 자리 — 게임 화면을 가리지 않게 숨김 (자리가 없으면 오른쪽 위에 떠서 나오므로 일부러 둔다) -->
+<span class="xms-account" data-xms-account hidden></span>
+
+<main class="game" id="game">
+  <canvas id="cv" aria-label="게임 화면"></canvas>
+
+  <div class="hud" aria-live="polite">
+    <div class="hud-row">
+      <span class="pill lv">LV <b id="hudLv">1</b></span>
+      <div class="prog" aria-hidden="true"><i id="hudProg"></i></div>
+      <span class="pill best">최고 <b id="hudBest">1</b></span>
+    </div>
+    <div class="hud-row sub">
+      <span class="chip" id="hudPow" hidden></span>
+    </div>
+  </div>
+
+  <section class="ov" id="ovStart">
+    <div class="card">
+      <p class="kicker">LAST SHOT</p>
+      <h1>라스트샷</h1>
+      <p class="lv-big">레벨 <b id="startLv">1</b></p>
+      <ul class="how">
+        <li><b>←→ 끌기</b> 손가락으로 좌우로 움직여요</li>
+        <li><b>문</b> 쏘면 숫자가 올라가요. 지나가면 부대가 늘거나 줄어요</li>
+        <li><b>상자</b> 부수면 총이 세져요</li>
+        <li><b>보스</b> 끝까지 버텨서 쓰러뜨리면 다음 레벨</li>
+      </ul>
+      <button type="button" class="btn" id="btnStart">시작</button>
+      <button type="button" class="link" id="btnReset" hidden>레벨 1부터 다시</button>
+    </div>
+  </section>
+
+  <section class="ov" id="ovEnd" hidden>
+    <div class="card">
+      <p class="kicker" id="endKicker">CLEAR</p>
+      <h2 id="endTitle">레벨 클리어!</h2>
+      <p class="end-sub" id="endSub"></p>
+      <button type="button" class="btn" id="btnNext">다음 레벨</button>
+      <button type="button" class="link" id="btnHome">처음 화면</button>
+    </div>
+  </section>
+</main>
+</body>
+</html>
