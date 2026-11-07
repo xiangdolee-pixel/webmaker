@@ -45,6 +45,8 @@ button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
 .card h2 { margin-top: 4px; font-size: 1.7rem; font-weight: 900; letter-spacing: -.03em; }
 .lv-big { margin-top: 6px; font-size: 1.05rem; font-weight: 700; color: var(--muted); }
 .lv-big b { color: var(--ink); font-size: 1.3rem; }
+.lv-big span { color: var(--blue); font-weight: 800; }
+.stage-sub { margin-top: 4px; font-size: .84rem; color: var(--muted); line-height: 1.45; word-break: keep-all; }
 .end-sub { margin-top: 8px; font-size: .95rem; color: var(--muted); line-height: 1.5; }
 .how { margin: 16px 0 4px; list-style: none; text-align: left; display: grid; gap: 7px; }
 .how li { word-break: keep-all; font-size: .9rem; color: #334155; line-height: 1.4; padding-left: 2px; }

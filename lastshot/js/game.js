@@ -2,7 +2,7 @@
    3D(three.js r160, MIT — js/vendor 에 함께 올림): 바다 위 다리, 병사 · 적은 InstancedMesh 로 수백 명,
    빛나는 총알 줄기 · 불꽃 · 연기 · 파편. 숫자(문 제외) · 떠오르는 글자 · 보스 체력은 위 2D 캔버스에 3D 위치를 투영해 그린다. */
 import * as THREE from './vendor/three.module.min.js';
-import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, squadPos, squadR, newGame, step, autoAim } from './core.js?v=6';
+import { ROAD_L, ROAD_R, MID, SPAWN, TIERS, STAGES, BOSSES, stageOf, bossOf, squadPos, squadR, newGame, step, autoAim } from './core.js?v=7';
 
 const $ = s => document.querySelector(s);
 const glc = $('#gl'), cv = $('#cv'), ctx = cv.getContext('2d');
@@ -41,6 +41,7 @@ const SFX = {
   gateDown() { tone(220, 90, .28, 'sawtooth', .07); },
   gateTick() { tone(1200, 1600, .04, 'sine', .04); },
   boom() { tone(600, 40, .5, 'square', .14, true); },
+  cannon() { tone(180, 40, .35, 'square', .12, true); tone(90, 40, .3, 'sawtooth', .06); },
   hurt() { tone(160, 70, .14, 'sawtooth', .05); },
   power() { tone(520, 1560, .3, 'triangle', .1); setTimeout(() => tone(780, 2000, .25, 'triangle', .07), 90); },
   win() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, f, .2, 'triangle', .09), i * 110)); },
@@ -54,11 +55,11 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const SKY = new THREE.Color('#9fd8f5');
-scene.background = SKY;
-scene.fog = new THREE.Fog(SKY, 70, 170);
+scene.background = SKY.clone();
+scene.fog = new THREE.Fog(SKY.clone(), 70, 170);
 const camera = new THREE.PerspectiveCamera(52, 9 / 16, .5, 400);
 
-scene.add(new THREE.HemisphereLight('#eaf6ff', '#7d8792', 1.35));
+const hemi = new THREE.HemisphereLight('#eaf6ff', '#7d8792', 1.35); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#fff6e8', 2.1);
 sun.position.set(-14, 34, 18); sun.target.position.set(0, 0, -16);
 sun.castShadow = true;
@@ -115,6 +116,23 @@ road.rotation.x = -Math.PI / 2; road.position.set(0, .01, -LEN / 2 + 30); road.r
 });
 // 움직이는 것들(차선 · 난간 기둥 · 탑): 길이 다가오는 만큼 당겨 되풀이
 const movers = [];
+let towerMat, cableMat;
+/* 스테이지마다 하늘 · 바다 · 빛 색 (0 낮 · 1 노을 · 2 저녁 · 3 흐림 · 4 밤) */
+const THEMES = [
+  { sky: '#9fd8f5', sea: '#ffffff', hs: '#eaf6ff', hg: '#7d8792', hi: 1.35, sun: '#fff6e8', si: 2.1, tower: '#d8432f', road: '#a9b0b8' },
+  { sky: '#ffb88a', sea: '#ffc9a6', hs: '#ffe2c4', hg: '#8a6f68', hi: 1.25, sun: '#ffb070', si: 2.2, tower: '#c2452e', road: '#b3a8a6' },
+  { sky: '#b89ce8', sea: '#c8b4ff', hs: '#e6dcff', hg: '#6f6a8c', hi: 1.2, sun: '#ffd0f0', si: 1.9, tower: '#7d5cd6', road: '#a4a2b6' },
+  { sky: '#b9c6cc', sea: '#c6d4d6', hs: '#eef2f2', hg: '#7f8a86', hi: 1.45, sun: '#ffffff', si: 1.5, tower: '#5e8c6a', road: '#a5abac' },
+  { sky: '#2a3a6e', sea: '#6f86d8', hs: '#9fb4ff', hg: '#3a3f5a', hi: 1.15, sun: '#c9d6ff', si: 1.7, tower: '#e0a93a', road: '#7f8698' }
+];
+let themeNow = -1;
+function setTheme(i) {
+  if (i === themeNow) return; themeNow = i; const t = THEMES[i];
+  scene.background.set(t.sky); scene.fog.color.set(t.sky);
+  hemi.color.set(t.hs); hemi.groundColor.set(t.hg); hemi.intensity = t.hi;
+  sun.color.set(t.sun); sun.intensity = t.si;
+  sea.material.color.set(t.sea); towerMat.color.set(t.tower); cableMat.color.set(t.tower).multiplyScalar(.9); road.material.color.set(t.road);
+}
 {
   const m = new THREE.Matrix4();
   const n = Math.ceil(LEN / 6);
@@ -126,7 +144,7 @@ const movers = [];
   for (let i = 0; i < pn; i++) { m.makeTranslation((i % 2 ? 1 : -1) * (RW / 2 + 2.6), 1.7, 30 - Math.floor(i / 2) * 3); posts.setMatrixAt(i, m); }
   scene.add(posts); movers.push({ mesh: posts, gap: 3 });
   // 탑 + 주 케이블 + 세로 줄
-  const towerMat = new THREE.MeshLambertMaterial({ color: '#d8432f' }), cableMat = new THREE.MeshLambertMaterial({ color: '#c8392c' });
+  towerMat = new THREE.MeshLambertMaterial({ color: '#d8432f' }); cableMat = new THREE.MeshLambertMaterial({ color: '#c8392c' });
   const tower = new THREE.Group();
   const TH = 34, TX = RW / 2 + 4.2;
   [-1, 1].forEach(s => {
@@ -138,7 +156,6 @@ const movers = [];
       const hg = new THREE.Mesh(new THREE.BoxGeometry(.08, h - 2, .08), cableMat); hg.position.set(s * (TX - .2), 2 + (h - 2) / 2, -t * SPAN); tower.add(hg);
     }
   });
-  [TH - 2].forEach(h => { const beam = new THREE.Mesh(new THREE.BoxGeometry(TX * 2, 2, 2), towerMat); beam.position.set(0, h, 0); tower.add(beam); });
   for (let k = 0; k < 2; k++) { const t = k ? tower.clone() : tower; scene.add(t); movers.push({ group: t, base: -40 - k * SPAN, loop: SPAN * 2 }); }
 }
 let envZ = 0;
@@ -295,17 +312,18 @@ function paintGate(pv, p) {
   else { g.addColorStop(0, 'rgba(255,140,140,.5)'); g.addColorStop(1, 'rgba(230,30,40,.85)'); }
   x.fillStyle = g; x.fillRect(0, 0, W, H);
   x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(0, 0, W, 10);
-  x.font = '900 128px Pretendard, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = `900 ${W < 400 ? 104 : 128}px Pretendard, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
   x.lineJoin = 'round'; x.lineWidth = 16; x.strokeStyle = good ? 'rgba(10,40,110,.8)' : 'rgba(110,10,20,.8)';
   const s = gateLabel(p); x.strokeText(s, W / 2, H / 2 + 8); x.fillStyle = '#fff'; x.fillText(s, W / 2, H / 2 + 8);
-  pv.tex.needsUpdate = true;
+  if (pv.swap) { x.font = '900 30px Pretendard, sans-serif'; x.fillStyle = 'rgba(255,255,255,.95)'; x.fillText('⇄ 바뀌는 문', W / 2, 28); }
+  pv.label = s; pv.tex.needsUpdate = true;
   pv.posts.forEach(m => m.material.color.set(good ? '#2d7cf0' : '#e23a3a'));
 }
 function makeGate(gt) {
   const grp = new THREE.Group(), parts = [];
   gt.parts.forEach(p => {
     const w = (p.x1 - p.x0) * S, cx = wx((p.x0 + p.x1) / 2);
-    const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+    const c = document.createElement('canvas'); c.width = Math.round(512 * w / 14.4); c.height = 160;
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, 4.4), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
     panel.position.set(cx, 2.4, 0); grp.add(panel);
@@ -314,7 +332,7 @@ function makeGate(gt) {
       const post = new THREE.Mesh(new THREE.BoxGeometry(.55, 5.4, .55), new THREE.MeshLambertMaterial({ color: '#2d7cf0' }));
       post.position.set(wx(xx) + (k ? -.28 : .28), 2.7, 0); post.castShadow = true; grp.add(post); posts.push(post);
     });
-    const pv = { panel, tex, cv: c, posts, v: p.v };
+    const pv = { panel, tex, cv: c, posts, label: '', swap: gt.swap };
     paintGate(pv, p); parts.push(pv);
   });
   scene.add(grp);
@@ -380,8 +398,59 @@ function makeBoss() {
   return { grp: g, body, arms, mats, base: mats.map(m => m.color.clone()) };
 }
 
+function makeBarrel() {
+  const g = new THREE.Group();
+  const red = new THREE.MeshLambertMaterial({ color: '#e5392f', emissive: '#000000' });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.75, .75, 1.7, 16), red); body.position.y = .85; body.castShadow = true;
+  const band = new THREE.MeshLambertMaterial({ color: '#ffd23f' });
+  [.45, 1.25].forEach(y => { const b = new THREE.Mesh(new THREE.CylinderGeometry(.78, .78, .16, 16), band); b.position.y = y; g.add(b); });
+  const top = new THREE.Mesh(new THREE.CircleGeometry(.6, 16).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#2b2b2b' })); top.position.y = 1.71;
+  g.add(body, top); scene.add(g);
+  return { grp: g, mat: red };
+}
+function makeTank() {
+  const g = new THREE.Group(), body = new THREE.Group();
+  const mat = c => new THREE.MeshLambertMaterial({ color: c });
+  const hull = mat('#b8322e'), dark = mat('#3a2a2a'), metal = mat('#6c6f76'), glow = new THREE.MeshBasicMaterial({ color: '#ffd23f' });
+  const add = (geo, m, x, y, z, p = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  [-1, 1].forEach(s => { add(new THREE.BoxGeometry(1.6, 1.6, 7.4), dark, s * 3.1, .8, 0); for (let i = 0; i < 5; i++) add(new THREE.CylinderGeometry(.6, .6, 1.7, 12).rotateZ(Math.PI / 2), metal, s * 3.1, .7, -2.8 + i * 1.4); });
+  add(new THREE.BoxGeometry(5, 1.7, 6.6), hull, 0, 2, 0);
+  const turret = new THREE.Group(); turret.position.set(0, 3.4, -.2); body.add(turret);
+  add(new THREE.BoxGeometry(3.4, 1.5, 3.4), hull, 0, 0, 0, turret);
+  add(new THREE.CylinderGeometry(.38, .45, 4.6, 12).rotateX(Math.PI / 2), metal, 0, .1, 3.6, turret);
+  const mouth = add(new THREE.SphereGeometry(.35, 10, 8), glow, 0, .1, 5.9, turret);
+  add(new THREE.BoxGeometry(1, .6, 1), mat('#f0f0f0'), -.9, .9, -.6, turret);
+  g.add(body); scene.add(g);
+  const mats = [hull, dark, metal];
+  return { grp: g, body, turret, mouth, mats, base: mats.map(m => m.color.clone()) };
+}
+const shellGeo = new THREE.SphereGeometry(.55, 12, 10), shellMat = new THREE.MeshBasicMaterial({ color: '#ffcf4a' });
+function makeShell(sh) {
+  const grp = new THREE.Group();
+  const ball = new THREE.Mesh(shellGeo, shellMat); grp.add(ball);
+  const warn = new THREE.Mesh(new THREE.RingGeometry(.86, 1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff3b30', transparent: true, depthWrite: false }));
+  const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ff3b30', transparent: true, opacity: .25, depthWrite: false }));
+  warn.position.y = fill.position.y = .06; warn.scale.setScalar(sh.r * S); fill.scale.setScalar(.01);
+  scene.add(grp, warn, fill);
+  return { grp, ball, warn, fill };
+}
+// 폭발: 커지며 사라지는 빛 덩어리
+const blasts = [];
+function fxBlast(x, y) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffb340', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.position.set(wx(x), 1, wz(y)); scene.add(m); blasts.push({ m, t: .35 });
+  for (let i = 0; i < 14; i++) addSpark(wx(x), rnd(.5, 3), wz(y), i % 2 ? '#ffe27a' : '#ff7a2a', rnd(2, 3.5), rnd(.2, .35), rnd(-10, 10), rnd(2, 9), rnd(-10, 10));
+}
+function updateBlasts(dt) {
+  for (let i = blasts.length - 1; i >= 0; i--) {
+    const b = blasts[i]; b.t -= dt; const k = 1 - b.t / .35;
+    b.m.scale.setScalar(1 + k * 6); b.m.material.opacity = 1 - k;
+    if (b.t <= 0) { scene.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); blasts.splice(i, 1); }
+  }
+}
+
 function disposeObj(o) {
-  o.traverse(c => { if (c.isMesh) { if (c.geometry !== tireGeo && c.geometry !== hubGeo) c.geometry.dispose(); if (c.material !== hubMat) { c.material.map && c.material.map.dispose(); c.material.dispose(); } } });
+  o.traverse(c => { if (c.isMesh) { if (c.geometry !== tireGeo && c.geometry !== hubGeo && c.geometry !== shellGeo) c.geometry.dispose(); if (c.material !== hubMat && c.material !== shellMat) { c.material.map && c.material.map.dispose(); c.material.dispose(); } } });
   scene.remove(o);
 }
 function syncViews() {
@@ -392,7 +461,7 @@ function syncViews() {
     v.grp.position.z = wz(gt.y);
     gt.parts.forEach((p, k) => {
       const pv = v.parts[k];
-      if (pv.v !== p.v) { paintGate(pv, p); pv.v = p.v; }
+      if (pv.label !== gateLabel(p)) paintGate(pv, p);
       const sc = 1 + p.hit * .1; pv.panel.scale.set(sc, sc, 1);
       pv.panel.material.opacity = p.taken ? .25 : 1;
     });
@@ -406,7 +475,31 @@ function syncViews() {
     v.tireMat.emissive.setScalar(X.flash > 0 ? .5 : 0);
     v.tires.forEach((t, i) => { t.scale.setScalar(1 + X.pop * .05); t.rotation.x = Math.sin(T * 2 + i) * .03; });
   }
-  if (G.boss) {
+  for (const b of G.barrels) {
+    live.add(b); let v = views.get(b);
+    if (!v) { v = makeBarrel(); views.set(b, v); }
+    v.grp.position.set(wx(b.x), 0, wz(b.y)); v.mat.emissive.setScalar(b.flash > 0 || b.hp <= 0 ? .6 : 0);
+    v.grp.scale.setScalar(b.hp <= 0 ? 1.25 : 1);
+  }
+  for (const sh of G.shells) {
+    live.add(sh); let v = views.get(sh);
+    if (!v) { v = makeShell(sh); views.set(sh, v); }
+    const k = sh.t / sh.T, x = sh.sx + (sh.x - sh.sx) * k, y = sh.sy + (sh.y - sh.sy) * k;
+    v.ball.position.set(wx(x), 4 + Math.sin(k * Math.PI) * 16 * (1 - k * .2), wz(y));
+    if (Math.random() < .7) addSpark(wx(x), v.ball.position.y, wz(y), '#ff9a3a', rnd(.8, 1.4), .25, 0, 0, 0);
+    v.warn.position.x = v.fill.position.x = wx(sh.x); v.warn.position.z = v.fill.position.z = wz(sh.y);
+    v.fill.scale.setScalar(Math.max(.01, sh.r * S * k)); v.warn.material.opacity = .5 + Math.sin(T * 24) * .4;
+  }
+  if (G.boss && G.boss.kind === 'tank') {
+    const K = G.boss; live.add(K); let v = views.get(K);
+    if (!v) { v = makeTank(); views.set(K, v); }
+    v.grp.position.set(wx(K.x) + (K.flash > 0 ? rnd(-.08, .08) : 0), 0, wz(K.y));
+    v.turret.rotation.y = K.aim;
+    v.body.position.y = Math.sin(T * 30) * .03;
+    v.mouth.scale.setScalar(K.fire < .4 ? 1.4 + Math.sin(T * 40) * .4 : .8);
+    v.mats.forEach((m, i) => { m.color.copy(v.base[i]); if (K.flash > 0) m.color.lerp(C.white, .45); });
+    v.grp.scale.setScalar(1.6 * (1 + K.pop * .02));
+  } else if (G.boss) {
     const K = G.boss; live.add(K); let v = views.get(K);
     if (!v) { v = makeBoss(); views.set(K, v); }
     v.grp.position.set(wx(K.x) + (K.flash > 0 ? rnd(-.1, .1) : 0), 0, wz(K.y));
@@ -417,12 +510,13 @@ function syncViews() {
     v.mats.forEach((m, i) => { m.color.copy(v.base[i]); if (K.flash > 0) m.color.lerp(C.white, .45); });
     v.grp.scale.setScalar(1.25 * (1 + K.pop * .03));
   }
-  for (const [k, v] of views) if (!live.has(k)) { disposeObj(v.grp); views.delete(k); }
+  for (const [k, v] of views) if (!live.has(k)) { dropView(v); views.delete(k); }
 }
-function clearViews() { for (const [, v] of views) disposeObj(v.grp); views.clear(); }
+function dropView(v) { disposeObj(v.grp); if (v.warn) { disposeObj(v.warn); disposeObj(v.fill); } }
+function clearViews() { for (const [, v] of views) dropView(v); views.clear(); }
 
 /* ── 화면 크기 · 카메라 ── */
-let VW = 360, VH = 640, DPR = 1, camDist = 40, camX = 0;
+let VW = 360, VH = 640, DPR = 1, camDist = 40, camX = 0, lookR = .63;
 const PITCH = THREE.MathUtils.degToRad(50), LOOK = new THREE.Vector3();
 function fit() {
   const r = glc.getBoundingClientRect();
@@ -431,16 +525,27 @@ function fit() {
   cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
   camera.aspect = VW / VH;
   // 세로 화면에서 길 폭이 화면을 꽉 채우도록 거리를 잡는다
-  const hf = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
-  camDist = Math.max(22, (RW * .5) / Math.tan(hf) * .62);
+  // 화면 비율이 어떻든 길 폭 전체(양쪽 보도까지)와 부대 맨 앞줄이 화면 안에 들어오는 가장 가까운 거리를 찾는다
+  camera.updateProjectionMatrix();
+  // 거리(길 폭이 꼭 맞게)와 바라보는 곳(부대가 화면 아래 1/4 쯤)을 번갈아 맞춘다
+  for (let it = 0; it < 4; it++) {
+    let lo = 18, hi = 160;
+    for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; camDist = m; aimCamera(0, 0); camera.updateMatrixWorld(); if (PV.set(RW / 2 + 1.2, 0, 1).project(camera).x < .98) hi = m; else lo = m; }
+    camDist = hi; lo = .2; hi = 1.6;
+    for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2; lookR = m; aimCamera(0, 0); camera.updateMatrixWorld(); if (PV.set(0, 0, 1).project(camera).y < -.55) hi = m; else lo = m; }
+    lookR = Math.min(.9, Math.max(.35, lookR));
+  } scene.fog.near = camDist * 1.7; scene.fog.far = camDist * 4.6;
   camera.updateProjectionMatrix();
 }
-function placeCamera(shake) {
-  const tx = G ? wx(G.px) * .3 : 0; camX += (tx - camX) * .1;
+function aimCamera(cx, shake) {
   // 부대 뒤 위에서 앞쪽 멀리까지 비스듬히(참고 화면처럼 길이 멀리 이어져 보이게)
-  LOOK.set(camX * .6, 0, -24);
-  camera.position.set(camX + rnd(-shake, shake), camDist * .62 + rnd(-shake, shake) * .5, camDist * .5);
+  LOOK.set(cx * .6, 0, -camDist * lookR);
+  camera.position.set(cx + rnd(-shake, shake), camDist * .62 + rnd(-shake, shake) * .5, camDist * .5);
   camera.lookAt(LOOK);
+}
+function placeCamera(shake) {
+  const tx = G ? wx(G.px) * .15 : 0; camX += (tx - camX) * .1;
+  aimCamera(camX, shake);
 }
 
 /* ── 2D 위 글자 ── */
@@ -461,13 +566,14 @@ function pill(x, y, s, fs, col) {
 }
 const texts = [];
 function fxFloat(x, y, s, c, size, small) { texts.push({ x: wx(x), z: wz(y), h: 3, s, c, size: size || 18, t: small ? .5 : 1, L: small ? .5 : 1, small }); }
-let tint = null, shake = 0;
+let tint = null, shake = 0, banner = 0;
 function drawOverlay(dt) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, VW, VH);
   if (!G) return;
   const k = Math.min(1.25, VW / 360);
   // 적 무리 숫자
   for (const q of G.groups) {
+    if (q.giant) { const M = q.giant, p = scr(wx(M.x), 5.6, wz(M.y)); if (M.y > SPAWN + 250) pill(p.x, p.y, String(Math.max(0, Math.ceil(M.hp))), 17 * k * (1 + M.flash * 3), '#7f1d1d'); continue; }
     let top = null, sx = 0, n = 0;
     for (const M of G.mobs) if (M.g === q) { sx += M.x; n++; if (!top || M.y < top.y) top = M; }
     if (!top || top.y < SPAWN + 250) continue;
@@ -501,13 +607,23 @@ function drawOverlay(dt) {
     text(t.s, Math.max(hw, Math.min(VW - hw, p.x)), Math.max(150, p.y), fs, t.c, true);
   }
   ctx.globalAlpha = 1;
+  // 시작 안내: 스테이지 이름 · 보스
+  if (banner > 0 && state === 'play') {
+    banner -= dt; const st = STAGES[G.stage], a = Math.min(1, banner * 2, (2.6 - banner) * 4), y = VH * .3;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(15,23,42,.72)'; rr(VW / 2 - Math.min(150, VW / 2 - 16), y - 44, Math.min(300, VW - 32), 96, 18); ctx.fill();
+    text('레벨 ' + G.L + ' · ' + st.name, VW / 2, y - 12, 26 * k, '#fde047', false);
+    ctx.font = '700 ' + (13 * k) + 'px Pretendard, sans-serif'; ctx.fillStyle = '#e2e8f0'; ctx.fillText(st.sub, VW / 2, y + 16);
+    ctx.fillStyle = '#fca5a5'; ctx.fillText('보스: ' + BOSSES[G.bossKind], VW / 2, y + 36);
+    ctx.globalAlpha = 1;
+  }
   if (tint) { tint.t -= dt; if (tint.t <= 0) tint = null; else { ctx.fillStyle = `rgba(${tint.c},${tint.t * .5})`; ctx.fillRect(0, 0, VW, VH); } }
 }
 
 /* ── 한 장면 그리기 ── */
 let G = null, state = 'menu', last = 0, T = 0, slow = 0, endTimer = 0, walkT = 0;
 const hooks = {
-  burst: fxBurst, spark: fxSpark, smoke: fxSmoke, float: fxFloat, ring: fxRing,
+  blast: fxBlast, burst: fxBurst, spark: fxSpark, smoke: fxSmoke, float: fxFloat, ring: fxRing,
   sfx: n => SFX[n] && SFX[n](), buzz,
   shake: v => { if (!reduce) shake = Math.max(shake, v); },
   tint: c => { tint = { c: c === 'red' ? '239,68,68' : '56,189,248', t: .35 }; }
@@ -518,7 +634,7 @@ function render(dt) {
   if (G) {
     const pos = squadPos(G.n);
     for (let i = 0; i < pos.length; i++) soldier(wx(G.px + pos[i][0]), wz(pos[i][1]), 0, 1, walkT + i * .7, true, 0, G.tier);
-    for (const M of G.mobs) { if (M.y < SPAWN + 20) continue; soldier(wx(M.x), wz(M.y), Math.PI, 1, M.step, false, M.flash, 0); }
+    for (const M of G.mobs) { if (M.y < SPAWN + 20) continue; soldier(wx(M.x), wz(M.y), Math.PI, M.size, M.step, false, M.flash, 0); }
     // 총알 줄기
     let b = 0; const col = BCOL[TIERS[G.tier].bullet], wide = 1 + G.tier * .35;
     for (const B of G.bullets) {
@@ -535,7 +651,7 @@ function render(dt) {
     syncViews();
   } else bullets.count = 0;
   flushSoldiers();
-  updateFx(dt); updateRings(dt);
+  updateFx(dt); updateRings(dt); updateBlasts(dt);
   shake = Math.max(0, shake - dt);
   placeCamera(shake * 1.6);
   renderer.render(scene, camera);
@@ -580,7 +696,7 @@ function start() {
   audio();
   $('#ovStart').hidden = true; $('#ovEnd').hidden = true;
   clearViews(); texts.length = 0;
-  G = newGame(level, hooks); state = 'play'; syncHud();
+  G = newGame(level, hooks); state = 'play'; setTheme(STAGES[G.stage].theme); banner = 2.6; syncHud();
 }
 function end(win) {
   state = 'end';
@@ -600,7 +716,7 @@ function end(win) {
   $('#ovEnd').hidden = false; syncHud();
   setTimeout(() => { try { btn.focus({ preventScroll: true }); } catch (e) {} }, 50);
 }
-function preview() { const g = newGame(level, {}); step(g, 0); g.mobs.forEach(m => { m.flash = 0; }); return g; }
+function preview() { setTheme(STAGES[stageOf(level)].theme); const g = newGame(level, {}); step(g, 0); g.mobs.forEach(m => { m.flash = 0; }); return g; }
 function home() { state = 'menu'; clearViews(); G = preview(); $('#ovEnd').hidden = true; $('#ovStart').hidden = false; syncHud(); }
 const prog = () => G ? Math.max(0, Math.min(1, (G.dist - G.ev[0].d - 680) / (G.length - 680))) : 0;
 function syncHud() {
@@ -608,6 +724,7 @@ function syncHud() {
   $('#hudLv').textContent = playing ? G.L : level;
   $('#hudBest').textContent = best;
   $('#startLv').textContent = level;
+  const st = STAGES[stageOf(level)]; $('#startStage').textContent = st.name; $('#startSub').textContent = st.sub + ' · 보스: ' + BOSSES[bossOf(level)];
   $('#btnReset').hidden = level <= 1;
   $('#hudProg').style.width = playing ? prog() * 100 + '%' : '0%';
   const pw = $('#hudPow');
@@ -629,4 +746,4 @@ requestAnimationFrame(t => { last = t; loop(t); });
 if (dbg) { const m = location.search.match(/play=(\d+)/); if (m) { level = +m[1]; window.__ls.auto = true; muted = true; setTimeout(start, 50); } }
 if (dbg) { const w = location.search.match(/[?&]w=(\d+)&h=(\d+)/); if (w) { Object.assign($('#game').style, { width: w[1] + 'px', height: w[2] + 'px', margin: 0 }); fit(); } }
 // 확인용: &ff=초 → 시작하자마자 그 시간만큼 빨리 돌림(마지막 0.5초는 그림까지)
-if (dbg) { const f = location.search.match(/ff=(\d+)/); if (f) setTimeout(() => { const n = +f[1] * 60; for (let i = 0; i < n && state === 'play'; i++) { autoAim(G, 1, 1 / 60, botMem); const b = G.dist; step(G, 1 / 60); moveEnv((G.dist - b) * S); if (G.over) break; if (i > n - 30) render(1 / 60); } window.__ls.auto = false; G.tx = G.px; }, 120); }
+if (dbg) { const f = location.search.match(/ff=(\d+)/); if (f) setTimeout(() => { const n = +f[1] * 60; for (let i = 0; i < n && state === 'play'; i++) { autoAim(G, 1, 1 / 60, botMem); const b = G.dist; step(G, 1 / 60); moveEnv((G.dist - b) * S); if (G.over) break; if (i > n - 30) render(1 / 60); } window.__ls.auto = false; G.tx = G.px; banner = 0; }, 120); }
