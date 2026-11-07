@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>머니로드 — 직업 부자 레이스</title>
-<meta name="description" content="전자룰렛을 눌러 말을 옮기고, 직업 월급 · 레벨업 · 찬스 · 복권 · 투자로 돈을 모으는 가족 보드게임. 2~4명이 폰 한 대로 돌려가며 합니다.">
+<meta name="description" content="전자룰렛을 눌러 말을 옮기고, 직업 월급 · 레벨업 · 찬스 · 복권 · 투자 · 대회로 돈을 모으는 가족 보드게임. 2~4명이 폰 한 대로 돌려가며 합니다.">
 <meta name="theme-color" content="#ffd43b">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="css/style.css?v=1">
-<script src="js/game.js?v=1" defer></script>
+<link rel="stylesheet" href="css/style.css?v=4">
+<script src="js/game.js?v=5" defer></script>
 </head>
 <body>
 <header class="top">
@@ -27,25 +27,28 @@
 </header>
 
 <main class="wrap game">
+  <div class="seats sa" id="seatsA" aria-label="참여자"></div>
   <section class="board-box" aria-label="게임판">
     <div class="board" id="board">
-      <div class="grid" id="grid"></div>
+      <div id="svgBox"></div>
+      <div class="bank" id="bank" aria-hidden="true"></div>
+      <div class="machine" id="machine">
+        <div class="m-top"><span class="m-logo">MONEY ROAD</span><div class="turn" id="turn" aria-live="polite"></div></div>
+        <button type="button" class="spin" id="btnSpin"><span class="spin-cap"></span><b>누르기</b></button>
+        <div class="disp" aria-label="룰렛 숫자"><span class="disp-ghost" aria-hidden="true">88</span><span class="disp-num" id="disp">-</span></div>
+      </div>
       <div class="tokens" id="tokens"></div>
       <div class="toast" id="toast" aria-live="polite"></div>
     </div>
   </section>
-
-  <aside class="side">
-    <div class="machine">
-      <div class="turn" id="turn" aria-live="polite"></div>
-      <div class="disp" aria-label="룰렛 숫자"><span class="disp-ghost" aria-hidden="true">8</span><span class="disp-num" id="disp">-</span></div>
-      <button type="button" class="spin" id="btnSpin">누르기</button>
-    </div>
-    <ol class="players" id="players"></ol>
+  <div class="seats sb" id="seatsB" aria-label="참여자"></div>
+  <section class="logbox">
     <h2 class="sub">기록</h2>
     <ol class="log" id="log"></ol>
-  </aside>
+  </section>
 </main>
+
+<div class="fly" id="fly" aria-hidden="true"></div>
 
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">

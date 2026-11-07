@@ -15,7 +15,7 @@ E:\ws\WebMaker2 작업 프로젝트 모음 — 폴더 하나 = 웹사이트 하�
 - school-timeline/ — 스쿨타임라인 (plators.com, 옛 주소 school-timeline.plators.com 은 301 이동) 초등학교 입학년도 계산기 · 2027 초등 취학 준비 · xim 연결됨 · 애드센스 신청 대상 · 빌드 없는 HTML/JS, 테스트는 폴더 안 _dev/ (npm test · npm run test:e2e)
 - sound-build/ — 영소립 English, Sound & Build 영어 강의 사이트 (https://sound-build.xiangdolee.workers.dev) · xim 연결됨 · 시안 1단계: 홈 · 강의 목록 · 상세 · 강의실 · 내 강의실 · 문장 훈련(학생이 직접 표시 · 채점 · 조립도). 강의 · 문장 자료는 지금 js/data.js 예시 → 2단계에서 xms "강의" · "문장 훈련" 관리로. 게시판 notice(공지사항)
 - dice/ — 주사위 (게임용, dice.plators.com) · 개수 1~10 · 종류 10가지(클래식 · 블랙 · 카지노 레드 · 사파이어 · 에메랄드 · 원목 · 대리석 · 골드 · 민트 · 갤럭시) · 녹색 펠트 판, 누르면 굴러가며 숫자 · 합계 · 이전 기록 · xim 연결됨
-- rich/ — 머니로드 (직업 부자 레이스 보드게임) · 전자룰렛 1~9 · 직업 · 월급날 · 레벨업 · 찬스 · STOP(결혼 · 세금) · 복권 · 투자 · 동승자 · 은퇴 뒤 계산 · 폰 한 대로 2~4명 돌려가며 · 진행은 브라우저에 저장(이어하기) · xim 연결됨
+- rich/ — 머니로드 (직업 부자 레이스 보드게임, https://rich.xiangdolee.workers.dev) · 나무 테이블 위 판지 판 · 판 가운데 전자룰렛 기계(또르르 소리) · 직업 카드 "○○의 길" 3단계 · 찬스(직업 보너스 · 주식 · 부동산) · 지폐가 은행↔자리로 날아감 · LEVEL UP 카드 · 6인승 자동차에 사람 태우기 · 은퇴 주차장 · 1~4명(혼자면 PC 상대) · 차례 알림 · 이어하기 · xim 연결됨
 - xim/ — 고객 사이트 통합 관리(고객·사이트·정지·용량·수정요청). https://xim.xiangdolee.workers.dev , 자세한 건 xim/README.md
 - xms/ — 업체별 홈페이지 관리(회원·게시판·메뉴). 각 사이트주소/admin/ , 자세한 건 xms/README.md
 
