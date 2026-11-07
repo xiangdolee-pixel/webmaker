@@ -581,6 +581,7 @@ a.lesson:hover { background: var(--paper); }
 .ex .wd, .fs .wd { cursor: default; }
 .ex .wd:not([class*="r-"]):hover, .fs .wd:not([class*="r-"]):hover { background: none; }
 .ex-tree { margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.ex > .ex-tree:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .tier-chip { flex-shrink: 0; display: inline-grid; place-items: center; min-width: 40px; height: 24px; padding: 0 7px; border-radius: 6px; font-size: .78rem; font-weight: 800; font-style: normal; background: var(--paper-2); color: var(--ink-2); }
 .tier-chip.t1 { background: var(--ink); color: var(--yellow); }
 .tier-chip.t2 { background: #dfe6f5; color: var(--g-verb); }

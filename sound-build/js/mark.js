@@ -140,8 +140,7 @@
       return L;
     }
     var rootIds = own(root), firstOwn = rootIds.filter(function (i) { return toks[i].w; })[0];
-    var front = root.kids.filter(function (k) { return k.p.att === 's' && k.to < firstOwn; });
-    front.forEach(function (k) { emit(k, 0, null, 2); });
+    var front = [];   // 문장 앞 부품도 2차라서 1차(뼈대) 줄 아랫줄에 둔다 (사용자 지시 2026-11-07)
     // 쌍반점(;)으로 나뉜 뼈대는 따로 한 줄씩 — 각자의 부품이 자기 줄 아래로 붙는다
     var segs = [], cur = [];
     rootIds.forEach(function (i) { cur.push(i); if (toks[i].t === ';') { segs.push(cur); cur = []; } });
@@ -151,6 +150,15 @@
       out.push(R);
       var lo = si ? segs[si - 1][segs[si - 1].length - 1] : -1, hi = si < segs.length - 1 ? ids[ids.length - 1] : Infinity;
       root.kids.forEach(function (k) { if (front.indexOf(k) < 0 && k.from > lo && k.from <= hi) emit(k, 1, R, 2); });
+    });
+    // 문장 앞 부품을 아랫줄로 내렸으니, 뼈대 줄 맨 앞에 남은 쉼표 같은 것은 그 부품 줄 끝으로 보낸다 ("When I was a boy," / "I lived")
+    out.forEach(function (R) {
+      if (R.p) return;
+      while (R.ids.length && !toks[R.ids[0]].w) {
+        var k = R.ids[0], F = out.filter(function (L) { return L.p && L.parent === R && L.p.to === k - 1; })[0];
+        if (!F) break;
+        (F.tail = F.tail || []).push(R.ids.shift());
+      }
     });
     // 매달 단어 = 붙는 자리 규칙대로
     out.forEach(function (L) {
@@ -165,7 +173,7 @@
       }
       if (head === null) {
         var prev = words.filter(function (i) { return i < L.p.from; });
-        head = prev.length ? prev[prev.length - 1] : words[words.length - 1];
+        head = prev.length ? prev[prev.length - 1] : words[0];
       }
       L.head = head;
     });
@@ -190,6 +198,7 @@
     });
     while (open--) h += '</span>';
     if (L.p && L.p.kind === 'pp') h += '<b class="br a-' + L.p.att + '">)</b>';
+    (L.tail || []).forEach(function (i) { h += esc(toks[i].t); });
     return h;
   }
   function drawDiagram(box, toks, roles, parts, tierMax) {
@@ -449,8 +458,8 @@
     var trees = [];
     $$('[data-a]').forEach(function (el) {
       var A = parseA(el.getAttribute('data-a'));
-      el.innerHTML = '<p class="ex-s">' + inline(A.toks, A.roles, A.parts, { tiers: true }) + '</p>';
-      if (!el.hasAttribute('data-tree')) return;
+      // 보기 문장은 모두 계단(조립도)으로: 1차 정보 줄 아래에 2차, 그 아래 3차 (빨간 박스는 1차라 뼈대 줄에 그대로)
+      el.innerHTML = '';
       var d = document.createElement('div'); d.className = 'tr-diagram ex-tree'; el.appendChild(d);
       trees.push(function () { drawDiagram(d, A.toks, A.roles, A.parts, 0); });
     });
