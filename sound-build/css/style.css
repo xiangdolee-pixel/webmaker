@@ -553,13 +553,19 @@ a.lesson:hover { background: var(--paper); }
 .doc-s { display: inline-block; padding: 0 5px; border-radius: 2px; border: 2px solid var(--g-conn); color: var(--g-conn); font-weight: 700; line-height: 1.3; }
 
 /* ── 문장 원리 ───────────────────────────── */
-.doc-toc { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 clamp(28px, 4vw, 44px); }
-.doc-toc a { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px 0 6px; border-radius: var(--pill); background: var(--card); border: 1px solid var(--line); font-size: .92rem; font-weight: 600; color: var(--ink-2); transition: border-color .2s, color .2s; }
-.doc-toc a b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--paper-2); font-size: .8rem; color: var(--ink); transition: background .2s, color .2s; }
+/* 차례: 한 줄, 머리 아래에 붙어 따라다님, 지금 읽는 장으로 배경이 미끄러진다 */
+.doc-toc { position: sticky; top: var(--hdr); z-index: 30; display: flex; flex-wrap: nowrap; justify-content: safe center; gap: 6px; margin: 0 calc(-1 * var(--gut)) clamp(20px, 3vw, 32px); padding: 10px var(--gut); overflow-x: auto; scrollbar-width: none; background: rgba(243, 245, 248, .94); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); transition: box-shadow .3s; }
+.doc-toc::-webkit-scrollbar { display: none; }
+.doc-toc.stuck { box-shadow: 0 6px 16px rgba(22, 20, 15, .06); }
+.doc-toc a { position: relative; z-index: 1; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px 0 5px; border-radius: var(--pill); background: var(--card); border: 1px solid var(--line); font-size: .88rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; transition: border-color .2s, color .35s var(--ease), background .35s var(--ease); }
+.doc-toc a b { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--paper-2); font-size: .8rem; color: var(--ink); transition: background .35s var(--ease), color .35s var(--ease); }
 .doc-toc a:hover { border-color: var(--ink); color: var(--ink); }
-.doc-toc a:hover b { background: var(--ink); color: var(--yellow); }
+.doc-toc.has-ind a.on { background: transparent; border-color: transparent; color: #fff; }
+.doc-toc a.on b { background: var(--yellow); color: var(--ink); }
+.doc-toc:not(.has-ind) a.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.toc-ind { position: absolute; z-index: 0; top: 10px; left: 0; height: 36px; width: 0; border-radius: var(--pill); background: var(--ink); transition: transform .35s var(--ease), width .35s var(--ease); }
 .doc { display: grid; gap: clamp(20px, 3vw, 28px); }
-.doc-sec { scroll-margin-top: calc(var(--hdr) + 16px); padding: clamp(24px, 4vw, 44px); border-radius: var(--r); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.doc-sec { scroll-margin-top: calc(var(--hdr) + 72px); padding: clamp(24px, 4vw, 44px); border-radius: var(--r); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .doc-sec > p, .doc-sec .doc-way > p { margin: 12px 0; color: var(--ink-2); font-size: 1.05rem; line-height: 1.85; }
 .doc-sec p b { color: var(--ink); }
 .doc-no { margin: 0 0 4px !important; font-family: var(--serif); font-size: 1.4rem !important; font-weight: 700; color: var(--red) !important; }
@@ -722,6 +728,8 @@ a.lesson:hover { background: var(--paper); }
   .dt-row { grid-template-columns: .9fr 1fr 1fr; }
   .dt-row > span { padding: 10px 8px; font-size: .86rem; }
   .doc-parts li { padding-left: 50px; }
+  .doc-toc { justify-content: flex-start; padding-top: 8px; padding-bottom: 8px; }
+  .toc-ind { top: 8px; height: 34px; }
   .doc-toc a { height: 34px; font-size: .86rem; }
   .ex { padding: 12px 12px; }
   .gen-in { padding: 14px; }

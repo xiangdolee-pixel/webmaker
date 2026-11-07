@@ -42,6 +42,46 @@
     });
   }
 
+  /* ── 문장 원리 차례: 따라다니고, 지금 읽는 장으로 배경이 미끄러진다 ── */
+  function initToc() {
+    var toc = $('.doc-toc'); if (!toc) return;
+    var links = $$('a', toc), secs = links.map(function (a) { return $(a.getAttribute('href')); });
+    var ind = document.createElement('i'); ind.className = 'toc-ind'; ind.setAttribute('aria-hidden', 'true');
+    toc.insertBefore(ind, toc.firstChild);
+    var cur = -1, lock = 0;
+    function place(k, instant) {
+      var a = links[k]; if (!a || !a.offsetWidth) { toc.classList.remove('has-ind'); return; }
+      toc.classList.add('has-ind');
+      if (instant) ind.style.transition = 'none';
+      ind.style.width = a.offsetWidth + 'px';
+      ind.style.transform = 'translateX(' + a.offsetLeft + 'px)';
+      if (instant) { void ind.offsetWidth; ind.style.transition = ''; }
+    }
+    function set(k, instant) {
+      if (k === cur && !instant) return;
+      cur = k;
+      links.forEach(function (a, i) { a.classList.toggle('on', i === k); if (i === k) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+      place(k, instant);
+      var a = links[k];   // 폰: 고른 칸이 보이게 차례 줄을 옆으로 민다
+      if (a && toc.scrollWidth > toc.clientWidth) toc.scrollTo({ left: a.offsetLeft - (toc.clientWidth - a.offsetWidth) / 2, behavior: instant ? 'auto' : 'smooth' });
+    }
+    function spy() {
+      toc.classList.toggle('stuck', toc.getBoundingClientRect().top <= parseFloat(getComputedStyle(toc).top) + 1);
+      if (Date.now() < lock) return;
+      var line = toc.getBoundingClientRect().bottom + 40, k = 0;
+      secs.forEach(function (s, i) { if (s && s.getBoundingClientRect().top <= line) k = i; });
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) k = secs.length - 1;
+      set(k);
+    }
+    links.forEach(function (a, i) {
+      a.addEventListener('click', function () { set(i); lock = Date.now() + 900; });   // 누르는 즉시 배경부터, 스크롤 중에는 흔들리지 않게
+    });
+    window.addEventListener('scroll', spy, { passive: true });
+    window.addEventListener('resize', function () { place(cur, true); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { place(cur, true); });
+    spy(); place(cur, true);
+  }
+
   /* ── 알약 탭: 떠 있는 배경 하나가 미끄러진다 ── */
   SB.seg = function (el, onChange) {
     var ind = document.createElement('i'); ind.className = 'seg-ind'; ind.setAttribute('aria-hidden', 'true');
@@ -349,7 +389,7 @@
   }
 
   function init() {
-    initHeader(); initHome(); initCourses(); initDetail(); initClassroom(); initMy();
+    initHeader(); initToc(); initHome(); initCourses(); initDetail(); initClassroom(); initMy();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
