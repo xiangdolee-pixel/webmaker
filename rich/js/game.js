@@ -197,19 +197,24 @@
       src.connect(f); f.connect(g); g.connect(a.destination); src.start();
     } catch (e) {}
   }
-  function rollTick(k) { // 또르르 — 구슬이 톱니를 넘는 소리
+  // 또르르르 — 실로폰 같은 맑은 음이 굴러가듯 올라간다
+  var ROLL_NOTES = [1047, 1175, 1319, 1568, 1760, 2093, 1760, 1568, 1319, 1568, 1760, 2093, 2349, 2637];
+  function pluck(f, t, vol, dur) {
+    var a = audio(), o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain(), lp = a.createBiquadFilter();
+    o.type = 'sine'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2.01;
+    lp.type = 'lowpass'; lp.frequency.value = 5200;
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(vol, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    var g2 = a.createGain(); g2.gain.value = .25;
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp); lp.connect(a.destination);
+    o.start(t); o2.start(t); o.stop(t + dur + .02); o2.stop(t + dur + .02);
+  }
+  function rollTick(k) {
     if (!sound) return;
-    try {
-      var a = audio(), t = a.currentTime, o = a.createOscillator(), g = a.createGain();
-      o.type = 'triangle'; o.frequency.setValueAtTime(2400 - k * 40, t); o.frequency.exponentialRampToValueAtTime(900, t + .035);
-      g.gain.setValueAtTime(.07, t); g.gain.exponentialRampToValueAtTime(.0001, t + .045);
-      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + .06);
-      var len = Math.floor(a.sampleRate * .012), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
-      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-      var n = a.createBufferSource(), f = a.createBiquadFilter(), g2 = a.createGain();
-      n.buffer = buf; f.type = 'highpass'; f.frequency.value = 3000; g2.gain.value = .25;
-      n.connect(f); f.connect(g2); g2.connect(a.destination); n.start(t);
-    } catch (e) {}
+    try { pluck(ROLL_NOTES[k % ROLL_NOTES.length], audio().currentTime, .05, .12); } catch (e) {}
+  }
+  function rollDone() {
+    if (!sound) return;
+    try { var t = audio().currentTime; pluck(2093, t, .07, .25); pluck(2637, t + .07, .07, .35); pluck(3136, t + .14, .05, .45); } catch (e) {}
   }
   function jingle(good) {
     var notes = good ? [660, 880, 1320] : [440, 330, 220];
@@ -595,13 +600,13 @@
   function spinTo(numEl, n) {
     if (reduced()) { numEl.textContent = n; beep(1200, .08); return sleep(250).then(function () { return n; }); }
     return new Promise(function (resolve) {
-      var steps = 16 + Math.floor(Math.random() * 5), k = 0, last = 0;
+      var steps = 11 + Math.floor(Math.random() * 3), k = 0, last = 0;
       (function tick() {
         k++;
-        if (k >= steps) { numEl.textContent = n; rollTick(0); beep(1320, .16, 'triangle', .08); setTimeout(function () { resolve(n); }, 260); return; }
+        if (k >= steps) { numEl.textContent = n; rollDone(); setTimeout(function () { resolve(n); }, 160); return; }
         var v; do { v = roll(); } while (v === last); last = v;
         numEl.textContent = v; rollTick(k);
-        setTimeout(tick, 40 + k * k * 1.1);
+        setTimeout(tick, 26 + k * k * .55);
       })();
     });
   }
