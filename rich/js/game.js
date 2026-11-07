@@ -9,7 +9,7 @@
   var ALLOWANCE = 2000;   // 학생 용돈
   var FINISH_BONUS = [20000, 10000, 5000, 0];
   var CONTEST_PRIZE = 30000;
-  var SAVE_KEY = 'rich-save-v2';
+  var SAVE_KEY = 'rich-save-v3';
   var SOUND_KEY = 'rich-sound';
 
   var COLORS = ['#e8413c', '#2f6fed', '#fcc419', '#82c91e'];
@@ -71,36 +71,49 @@
 
   // 43칸 — 학교 → STOP 직업 → 사회생활 · 결혼 · 가족 → 은퇴 주차장
   var T = [
-    ['start'], ['earn', '장학금', 10000, '🎓'], ['lv1'], ['spend', '교재 사기', 5000, '📚'], ['earn', '아르바이트', 8000, '🧋'], ['pay'],
-    ['chance'], ['stopJob'], ['spend', '정장 맞추기', 10000, '👔'], ['lv1'], ['again'], ['pay'],
-    ['earn', '첫 프로젝트 성공', 15000, '🎯'], ['chance'], ['spend', '자취방 보증금', 20000, '🏠'], ['lv2'], ['pay'], ['contest', '노래자랑', '🎤'],
-    ['stopWed'], ['spend', '신혼 가구', 15000, '🛋️'], ['lv1'], ['pay'],
-    ['baby'], ['chance'], ['lotto'], ['spend', '가족 여행', 12000, '🏖️'], ['lv1'], ['pay'],
-    ['invest'], ['stopTax'], ['earn', '특별 상여금', 20000, '💵'], ['chance'],
-    ['baby'], ['spend', '자동차 수리', 9000, '🔧'], ['contest', '마라톤 대회', '🏃'], ['lv2'], ['job'], ['pay'],
-    ['chance'], ['finish']
+    ['start'], ['earn', '입학 축하금', 10000, '🎒'], ['lvc'], ['spend', '새 교복 맞추기', 8000, '👕'], ['earn', '성적 우수상', 15000, '🎓'], ['pay'],
+    ['spend', '수학여행', 6000, '🚌'], ['lvc'], ['again'], ['spend', '학원 등록', 7000, '✏️'], ['earn', '방학 아르바이트', 8000, '🧋'], ['lvc'], ['pay'],
+    ['stopJob'],
+    ['spend', '면접 정장', 10000, '👔'], ['lvc'], ['earn', '입사 축하금', 10000, '💐'], ['spend', '자취방 보증금', 20000, '🏠'], ['pay'], ['lvc'],
+    ['contest', '노래자랑', '🎤'], ['spend', '친구 결혼식 축의금', 6000, '💌'], ['earn', '발명 대회 금상', 30000, '🏆'], ['lvc2'], ['pay'],
+    ['spend', '운전면허 따기', 9000, '🚗'], ['lottoFree'], ['lvc'],
+    ['stopWed'],
+    ['spend', '신혼여행', 20000, '✈️'], ['pay'], ['lvc'], ['spend', '신혼집 가구', 15000, '🛋️'], ['baby'], ['earn', '올해의 우수 사원', 15000, '🏅'],
+    ['lvc'], ['pay2'], ['spend', '가족 캠핑', 10000, '🏕️'], ['kidparty'], ['lvc'], ['invest'], ['again'], ['pay'],
+    ['spend', '넓은 집으로 이사', 25000, '📦'], ['baby'], ['lvc'], ['stopTax'], ['earn', '특허 등록', 25000, '💡'], ['pay'], ['chance'],
+    ['spend', '자동차 수리', 12000, '🔧'], ['lvc'], ['contest', '탁구 대회', '🏓'], ['spend', '부모님 효도 여행', 20000, '🧳'], ['pay'], ['lvc2'],
+    ['boom'], ['spend', '건강 검진', 8000, '🩺'], ['earn', '강연 초대', 20000, '🎙️'], ['lvc'], ['pay'], ['lottoFree'],
+    ['spend', '자녀 대학 등록금', 30000, '🏫'], ['again'], ['lvc'], ['pay2'], ['contest', '자전거 대회', '🚴'], ['stopTax'],
+    ['earn', '책 출간 인세', 30000, '📖'], ['lvc'], ['pay'],
+    ['spend', '은혼식 크루즈 여행', 30000, '🛳️'], ['invest'], ['lvc'], ['earn', '그림 전시회 판매', 40000, '🖼️'], ['pay'],
+    ['spend', '이웃 돕기 기부', 10000, '🤝'], ['lvc'], ['lottoFree'], ['pay'], ['spend', '손주 선물', 8000, '🧸'], ['earn', '연금 첫 수령', 30000, '👴'],
+    ['finish']
   ];
   var TILES = T.map(function (a) { return { type: a[0], name: a[1], amt: a[2], ic: a[a.length - 1] }; });
   var LAST = TILES.length - 1;
 
   // 판 좌표: 7칸 × 11칸 격자, 한 칸 100
-  var M = 16, CELL = 100, BW = M * 2 + 7 * CELL, BH = M * 2 + 11 * CELL;
+  var M = 16, CELL = 100, BW = M * 2 + 10 * CELL, BH = M * 2 + 14 * CELL;
   var POS = (function () {
     var a = [], c, r;
-    for (r = 5; r >= 0; r--) a.push([0, r]);
-    for (c = 1; c <= 6; c++) a.push([c, 0]);
-    for (r = 1; r <= 10; r++) a.push([6, r]);
-    for (c = 5; c >= 0; c--) a.push([c, 10]);
-    for (r = 9; r >= 7; r--) a.push([0, r]);
-    a.push([1, 7]);
-    for (r = 7; r >= 2; r--) a.push([2, r]);
-    a.push([3, 2], [4, 2]);
+    for (c = 0; c <= 9; c++) a.push([c, 13]);   // 아래 줄 →
+    for (r = 12; r >= 0; r--) a.push([9, r]);   // 오른쪽 ↑
+    for (c = 8; c >= 0; c--) a.push([c, 0]);    // 위 줄 ←
+    for (r = 1; r <= 11; r++) a.push([0, r]);   // 왼쪽 ↓
+    a.push([1, 11]);                            // 안으로
+    for (r = 11; r >= 2; r--) a.push([2, r]);   // 둘째 바퀴 ↑
+    for (c = 3; c <= 7; c++) a.push([c, 2]);    // →
+    for (r = 3; r <= 11; r++) a.push([7, r]);   // ↓
+    for (c = 6; c >= 3; c--) a.push([c, 11]);   // ←
+    for (c = 3; c <= 6; c++) a.push([c, 10]);   // 셋째 →
+    for (r = 9; r >= 3; r--) a.push([6, r]);    // ↑ 은퇴
     return a;
   })();
   function XY(i) { return [M + POS[i][0] * CELL + 50, M + POS[i][1] * CELL + 50]; }
-  var BANK = [M + 400, M + 790];
-  var PARK = [0, 1, 2, 3].map(function (k) { return [M + 325 + k * 50, M + 150]; });
-  var MACH = { x: M + 300, y: M + 300, w: 200, h: 400 }; // 판 가운데 전자룰렛 자리
+  var BANK = [M + 450, M + 1250];
+  var PARK = [0, 1, 2, 3].map(function (k) { return [M + 300 + 37.5 + k * 75, M + 350]; });
+  var MACH = { x: M + 312, y: M + 420, w: 276, h: 560 }; // 판 가운데 전자룰렛 자리
+  if (POS.length !== T.length) console.error('칸 수와 자리 수가 다름', POS.length, T.length);
 
   // 지폐
   var DEN = [100000, 50000, 20000, 10000, 5000, 1000];
@@ -264,48 +277,82 @@
     for (var k = 0; k < 8; k++) { var a = Math.PI / 8 + k * Math.PI / 4; pts.push((x + Math.cos(a) * 17).toFixed(1) + ',' + (y + Math.sin(a) * 17).toFixed(1)); }
     return '<polygon points="' + pts.join(' ') + '" fill="#e03131" stroke="#fff" stroke-width="2.5"/>' + tx(x, y + 1, 'STOP', 9.5, '#fff', 'font-weight="900"');
   }
+  function wrap(str, n) { // 낱말 단위로 n 글자 안팎 줄바꿈
+    var w = str.split(' '), out = [], line = '';
+    w.forEach(function (x) { if (line && (line + ' ' + x).length > n) { out.push(line); line = x; } else line = line ? line + ' ' + x : x; });
+    if (line) out.push(line);
+    return out.slice(0, 2);
+  }
   function tileSvg(t, i) {
-    var p = XY(i), x = p[0], y = p[1], h = 44, s = '', lab = '', fill = '#fff', fg = '#1f2328', ic = '';
-    var box = '<rect x="' + (x - h) + '" y="' + (y - h) + '" width="' + h * 2 + '" height="' + h * 2 + '" rx="12" ';
+    var p = XY(i), x = p[0], y = p[1], h = 45, s = '', fill = '#fff', fg = '#1f2328';
+    var box = '<rect x="' + (x - h) + '" y="' + (y - h) + '" width="' + h * 2 + '" height="' + h * 2 + '" rx="10" ';
+    function g(inner) { return '<g class="tl" data-i="' + i + '">' + inner + '</g>'; }
+    function two(a, b, col, big) { return tx(x, y + 12, a, big || 15, col, 'font-weight="900"') + (b ? tx(x, y + 30, b, 12.5, col, 'font-weight="800"') : ''); }
     switch (t.type) {
-      case 'pay':
-        return '<g class="tl" data-i="' + i + '"><circle cx="' + x + '" cy="' + y + '" r="52" fill="#fff9db" stroke="#f08c00" stroke-width="4"/>' +
-          '<circle cx="' + x + '" cy="' + y + '" r="45" fill="none" stroke="#ffe066" stroke-width="3" stroke-dasharray="4 5"/>' +
-          moneySvg(x, y - 6) + tx(x, y + 30, '월급날', 18, '#1f2328', 'font-weight="900"') + '</g>';
+      case 'pay': case 'pay2':
+        return g('<circle cx="' + x + '" cy="' + y + '" r="54" fill="#fff9db" stroke="#f08c00" stroke-width="4"/>' +
+          '<circle cx="' + x + '" cy="' + y + '" r="47" fill="none" stroke="#ffe066" stroke-width="3" stroke-dasharray="4 5"/>' +
+          moneySvg(x, y - 8) + tx(x, y + 30, '월급날', 18, '#1f2328', 'font-weight="900"') +
+          (t.type === 'pay2' ? '<circle cx="' + (x - 34) + '" cy="' + (y - 34) + '" r="17" fill="#1c4fd8" stroke="#fff" stroke-width="3"/>' + tx(x - 34, y - 33, '×2', 15, '#fff', 'font-weight="900"') : ''));
       case 'start': {
         var pts = [];
-        for (var k = 0; k < 24; k++) { var a = k * Math.PI / 12, r = k % 2 ? 44 : 56; pts.push((x + Math.cos(a) * r).toFixed(1) + ',' + (y + Math.sin(a) * r).toFixed(1)); }
-        return '<g class="tl" data-i="' + i + '"><polygon points="' + pts.join(' ') + '" fill="#1c7ed6" stroke="#fff" stroke-width="4"/>' +
-          tx(x, y - 8, '🚩', 26, '#fff') + tx(x, y + 20, '출발', 21, '#fff', 'font-weight="900"') + '</g>';
+        for (var k = 0; k < 24; k++) { var an = k * Math.PI / 12, r = k % 2 ? 46 : 60; pts.push((x + Math.cos(an) * r).toFixed(1) + ',' + (y + Math.sin(an) * r).toFixed(1)); }
+        return g('<polygon points="' + pts.join(' ') + '" fill="#1c7ed6" stroke="#fff" stroke-width="4"/>' + tx(x, y - 8, '🚩', 26, '#fff') + tx(x, y + 20, '출발', 22, '#fff', 'font-weight="900"'));
       }
-      case 'lv1': case 'lv2':
-        s = box + 'fill="#e8413c"/>' +
-          '<circle cx="' + (x - 22) + '" cy="' + (y - 22) + '" r="17" fill="#1c4fd8" stroke="#fff" stroke-width="2.5"/>' +
-          tx(x - 22, y - 21, t.type === 'lv1' ? '+1' : '+2', 17, '#fff', 'font-weight="900"') +
-          tx(x + 12, y - 20, '⭐', 20, '#fff') +
-          tx(x, y + 12, '레벨업', 19, '#fff', 'font-weight="900"') + tx(x, y + 32, 'LEVEL UP', 10, '#ffe3e3', 'font-weight="800"');
-        return '<g class="tl" data-i="' + i + '">' + s + '</g>';
+      case 'lvc': case 'lvc2': case 'lv1': case 'lv2':
+        var two2 = /2$/.test(t.type);
+        return g(box + 'fill="#e8413c" stroke="#fff" stroke-width="2.5"/>' +
+          '<circle cx="' + (x - 24) + '" cy="' + (y - 24) + '" r="17" fill="#1c4fd8" stroke="#fff" stroke-width="2.5"/>' + tx(x - 24, y - 23, two2 ? '+2' : '+1', 17, '#fff', 'font-weight="900"') +
+          tx(x + 14, y - 22, '⭐', 20, '#fff') + tx(x, y + 8, '레벨업', 19, '#fff', 'font-weight="900"') +
+          (/^lvc/.test(t.type) ? tx(x, y + 29, '찬스카드', 15, '#ffe066', 'font-weight="900"') : tx(x, y + 29, 'LEVEL UP', 11, '#ffe3e3', 'font-weight="800"')));
       case 'stopJob': case 'stopWed': case 'stopTax': case 'finish': {
-        var L = { stopJob: ['직업', '카드 뽑기', '💼'], stopWed: ['결혼', '축의금', '💍'], stopTax: ['세금', '내는 날', '🧾'], finish: ['은퇴', '주차장으로', '🏁'] }[t.type];
-        s = box + 'fill="#1c4fd8" stroke="#fff" stroke-width="3"/>' + stopBadge(x - 20, y - 22) + tx(x + 18, y - 20, L[2], 22, '#fff') +
-          tx(x, y + 10, L[0], 22, '#fff', 'font-weight="900"') + tx(x, y + 31, L[1], 12, '#d0ebff', 'font-weight="700"');
-        return '<g class="tl" data-i="' + i + '">' + s + '</g>';
+        var L = { stopJob: ['직업', '카드 뽑기!', '💼'], stopWed: ['축! 결혼', '축의금 받기', '💍'], stopTax: ['레벨업 찬스!', '(세금 내기)', '🧾'], finish: ['은퇴!', '계산하기', '🏁'] }[t.type];
+        return g(box + 'fill="#1c4fd8" stroke="#fff" stroke-width="3"/>' + stopBadge(x - 22, y - 24) + tx(x + 18, y - 22, L[2], 22, '#fff') +
+          tx(x, y + 9, L[0], L[0].length > 4 ? 15 : 20, '#fff', 'font-weight="900"') + tx(x, y + 30, L[1], 11.5, '#d0ebff', 'font-weight="800"'));
       }
-      case 'chance': fill = '#7048e8'; fg = '#fff'; ic = '❓'; lab = '찬스'; break;
-      case 'earn': fill = '#ff922b'; fg = '#fff'; ic = t.ic; lab = '+' + short(t.amt); break;
-      case 'spend': fill = '#fff'; fg = '#e03131'; ic = t.ic; lab = '−' + short(t.amt); break;
-      case 'lotto': fill = '#fcc419'; ic = '🎫'; lab = '복권'; break;
-      case 'invest': fill = '#20c997'; fg = '#fff'; ic = '📈'; lab = '투자'; break;
-      case 'again': fill = '#dee2e6'; ic = '🔁'; lab = '한 번 더'; break;
-      case 'contest': fill = '#f06595'; fg = '#fff'; ic = t.ic; lab = t.name.length > 4 ? t.name.slice(0, 3) : t.name; break;
-      case 'baby': fill = '#ffdeeb'; ic = '👶'; lab = '가족 +1'; break;
-      case 'job': fill = '#74c0fc'; ic = '💼'; lab = '이직'; break;
+      case 'spend': case 'earn': {
+        var sp = t.type === 'spend', ln = wrap(t.name, 5);
+        fill = sp ? '#fff' : '#ff922b'; fg = sp ? '#1f2328' : '#fff';
+        s = box + 'fill="' + fill + '" stroke="rgba(0,0,0,.14)" stroke-width="2"/>' + tx(x, y - 26, t.ic, 20, fg);
+        s += ln.length > 1 ? tx(x, y - 4, ln[0], 13.5, fg, 'font-weight="800"') + tx(x, y + 12, ln[1], 13.5, fg, 'font-weight="800"') : tx(x, y + 4, ln[0], 14, fg, 'font-weight="800"');
+        s += '<rect x="' + (x - 40) + '" y="' + (y + 21) + '" width="80" height="18" rx="9" fill="' + (sp ? '#ffe3e3' : 'rgba(255,255,255,.92)') + '"/>' +
+          tx(x, y + 30.5, num(t.amt) + (sp ? ' 내기' : ' 받기'), 11.5, sp ? '#c92a2a' : '#d9480f', 'font-weight="900"');
+        return g(s);
+      }
+      case 'chance': fill = '#7048e8'; fg = '#fff'; s = two('찬스', '카드 뽑기', fg, 20); s = tx(x, y - 16, '❓', 26, fg) + s; break;
+      case 'lottoFree': fill = '#7048e8'; fg = '#fff'; s = tx(x, y - 16, '🎫', 26, fg) + two('복권 당첨', '룰렛 누르기', '#fff', 17); break;
+      case 'invest': fill = '#20c997'; fg = '#fff'; s = tx(x, y - 16, '📈', 26, fg) + two('투자', '사고 · 팔기', fg, 19); break;
+      case 'again': fill = '#dee2e6'; s = tx(x, y - 18, '🔁', 22, fg) + tx(x, y + 4, '선두가', 12.5, fg, 'font-weight="800"') + tx(x, y + 19, '아니면', 12.5, fg, 'font-weight="800"') + tx(x, y + 34, '한 번 더!', 12.5, '#c92a2a', 'font-weight="900"'); break;
+      case 'contest': fill = '#f06595'; fg = '#fff'; s = tx(x, y - 16, t.ic, 26, fg) + two(t.name, '모두 참가!', fg, t.name.length > 4 ? 14 : 17); break;
+      case 'baby': fill = '#ffdeeb'; s = tx(x, y - 16, '👶', 26, fg) + two('아기 탄생', '모두 축하금', '#c2255c', 16); break;
+      case 'kidparty': fill = '#fff3bf'; s = tx(x, y - 16, '🎂', 26, fg) + two('자녀 생일', '아이 있으면 축하금', '#e67700', 16); break;
+      case 'boom': fill = '#7048e8'; fg = '#fff'; s = tx(x, y - 16, '🚀', 26, fg) + two('주가 폭등!', '주식·부동산 보너스', '#ffe066', 15); break;
+      case 'job': fill = '#74c0fc'; s = tx(x, y - 16, '💼', 26, fg) + two('이직', '카드 새로 뽑기', fg, 19); break;
     }
-    s = box + 'fill="' + fill + '" stroke="rgba(0,0,0,.12)" stroke-width="2"/>' +
-      '<rect x="' + (x - h + 4) + '" y="' + (y + h - 8) + '" width="' + (h * 2 - 8) + '" height="4" rx="2" fill="rgba(0,0,0,.1)"/>' +
-      tx(x, y - 12, ic, 32, fg) + tx(x, y + 24, lab, 20, fg, 'font-weight="900"');
-    if (t.type === 'spend' || t.type === 'earn') s += tx(x, y + 39, t.type === 'spend' ? '내기' : '받기', 9, fg, 'font-weight="700" opacity=".75"');
-    return '<g class="tl" data-i="' + i + '">' + s + '</g>';
+    return g(box + 'fill="' + fill + '" stroke="rgba(0,0,0,.14)" stroke-width="2"/>' + s);
+  }
+  function house(x, y, w, h, col, roof) {
+    var s = '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + col + '" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>';
+    if (roof) s += '<polygon points="' + (x - 4) + ',' + y + ' ' + (x + w / 2) + ',' + (y - h * .45) + ' ' + (x + w + 4) + ',' + y + '" fill="' + roof + '"/>';
+    for (var wy = y + 6; wy < y + h - 10; wy += 12) for (var wx = x + 5; wx < x + w - 7; wx += 11) s += '<rect x="' + wx + '" y="' + wy + '" width="6" height="7" fill="#fff3bf" opacity=".9"/>';
+    return s;
+  }
+  function scene(c, r, kind) { // 길 사이 빈칸 그림
+    var bx = M + c * CELL, by = M + r * CELL, s = '';
+    switch (kind) {
+      case 'tree': s = tree(bx + 32 + rnd() * 10, by + 40 + rnd() * 8, 44) + tree(bx + 68 + rnd() * 6, by + 66 + rnd() * 6, 38);
+        for (var k = 0; k < 3; k++) s += flower(bx + 12 + rnd() * 76, by + 14 + rnd() * 76, pick(['#ff6b6b', '#f783ac', '#ffffff', '#da77f2'])); break;
+      case 'city': s = house(bx + 8, by + 30, 26, 62, pick(['#748ffc', '#4dabf7', '#9775fa'])) + house(bx + 38, by + 14, 28, 78, pick(['#63e6be', '#ffa8a8', '#adb5bd'])) + house(bx + 70, by + 44, 24, 48, pick(['#ffd43b', '#91a7ff'])); break;
+      case 'school': s = house(bx + 14, by + 40, 72, 50, '#ffe8cc', '#e8590c') + '<rect x="' + (bx + 44) + '" y="' + (by + 70) + '" width="12" height="20" fill="#8d5524"/>' + tx(bx + 50, by + 24, '🏫', 20, '#000'); break;
+      case 'hall': s = house(bx + 14, by + 40, 72, 50, '#fff0f6', '#f06595') + tx(bx + 50, by + 66, '💒', 26, '#000'); break;
+      case 'hospital': s = house(bx + 16, by + 30, 68, 60, '#f8f9fa') + '<rect x="' + (bx + 44) + '" y="' + (by + 36) + '" width="12" height="30" fill="#e03131"/><rect x="' + (bx + 35) + '" y="' + (by + 45) + '" width="30" height="12" fill="#e03131"/>'; break;
+      case 'office': s = house(bx + 12, by + 8, 34, 84, '#5c7cfa') + house(bx + 52, by + 26, 36, 66, '#4c6ef5'); break;
+      case 'park': s = '<circle cx="' + (bx + 50) + '" cy="' + (by + 50) + '" r="30" fill="#74c0fc" stroke="#fff" stroke-width="5"/><circle cx="' + (bx + 50) + '" cy="' + (by + 50) + '" r="9" fill="#d0ebff"/>' + flower(bx + 14, by + 16, '#ff6b6b') + flower(bx + 86, by + 84, '#f783ac'); break;
+      case 'stadium': s = '<ellipse cx="' + (bx + 50) + '" cy="' + (by + 55) + '" rx="42" ry="30" fill="#2f9e44" stroke="#fff" stroke-width="4"/><path d="M' + (bx + 50) + ' ' + (by + 35) + 'l18 20 -18 20 -18 -20z" fill="#d9a066"/>' + tx(bx + 50, by + 18, '⚾', 16, '#000'); break;
+      case 'airport': s = '<rect x="' + (bx + 6) + '" y="' + (by + 58) + '" width="88" height="16" rx="3" fill="#495057"/><path d="M' + (bx + 12) + ' ' + (by + 66) + 'h76" stroke="#fff" stroke-width="2" stroke-dasharray="8 6"/>' + tx(bx + 50, by + 34, '🛫', 30, '#000'); break;
+      case 'sign': s = '<rect x="' + (bx + 46) + '" y="' + (by + 40) + '" width="8" height="50" fill="#8d5524"/><rect x="' + (bx + 12) + '" y="' + (by + 14) + '" width="76" height="34" rx="6" fill="#fff" stroke="#1c4fd8" stroke-width="3"/>' + tx(bx + 50, by + 31, '출발 →', 15, '#1c4fd8', 'font-weight="900"'); break;
+    }
+    return s;
   }
   function drawBoard() {
     seed = 11;
@@ -314,73 +361,53 @@
     s.push('<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#74c0fc"/><stop offset="1" stop-color="#d0ebff"/></linearGradient>' +
       '<pattern id="grass" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="#8fd14f"/><path d="M5 20l2-6 2 6M16 10l2-6 2 6" stroke="#6fb52c" stroke-width="2" fill="none" stroke-linecap="round"/></pattern>' +
       '<pattern id="water" width="40" height="20" patternUnits="userSpaceOnUse"><rect width="40" height="20" fill="#4dabf7"/><path d="M2 12q8-6 16 0t16 0" stroke="#a5d8ff" stroke-width="2.5" fill="none" stroke-linecap="round"/></pattern></defs>');
-    // 바탕: 파란 테두리 + 잔디
     s.push('<rect width="' + BW + '" height="' + BH + '" rx="28" fill="#1c7ed6"/>');
-    s.push('<rect x="' + (M - 6) + '" y="' + (M - 6) + '" width="' + (BW - M * 2 + 12) + '" height="' + (BH - M * 2 + 12) + '" rx="22" fill="url(#grass)"/>');
-    // 위쪽 도시 (1~2열)
-    b = cellBox(1, 1, 2, 1, 4);
-    s.push(rect(b, 'url(#sky)', 14));
-    s.push('<circle cx="' + (b.x + 40) + '" cy="' + (b.y + 22) + '" r="11" fill="#fff" opacity=".9"/><circle cx="' + (b.x + 56) + '" cy="' + (b.y + 18) + '" r="14" fill="#fff" opacity=".9"/><circle cx="' + (b.x + 72) + '" cy="' + (b.y + 24) + '" r="9" fill="#fff" opacity=".9"/>');
-    s.push('<circle cx="' + (b.x + b.w - 30) + '" cy="' + (b.y + 22) + '" r="12" fill="#ffd43b"/>');
-    var bc = ['#5c7cfa', '#748ffc', '#4dabf7', '#9775fa', '#63e6be', '#ffa8a8', '#adb5bd'];
-    for (x = b.x + 6; x < b.x + b.w - 12;) {
-      var w = 24 + Math.floor(rnd() * 22), hh = 30 + Math.floor(rnd() * 48);
-      if (x + w > b.x + b.w - 6) w = b.x + b.w - 6 - x;
-      var top = b.y + b.h - hh;
-      s.push('<rect x="' + x + '" y="' + top + '" width="' + w + '" height="' + hh + '" fill="' + pick(bc) + '"/>');
-      for (y = top + 6; y < b.y + b.h - 8; y += 11) for (var wx = x + 4; wx < x + w - 6; wx += 9) if (rnd() > .35) s.push('<rect x="' + wx + '" y="' + y + '" width="5" height="6" fill="#fff3bf" opacity=".85"/>');
-      x += w + 3;
-    }
-    s.push('<rect x="' + b.x + '" y="' + (b.y + b.h - 6) + '" width="' + b.w + '" height="6" fill="#495057"/>');
-    // 은퇴 주차장 (3~4열 1줄, 은퇴 칸 바로 위)
-    b = cellBox(3, 1, 4, 1, 4);
-    s.push(rect(b, '#5c636a', 12, 'stroke="#fff" stroke-width="4"'));
-    PARK.forEach(function (q, i) {
-      s.push('<rect x="' + (q[0] - 23) + '" y="' + (b.y + 8) + '" width="46" height="' + (b.h - 16) + '" fill="none" stroke="#fff" stroke-width="2.5"/>');
-      s.push(tx(q[0], b.y + b.h - 18, 'P' + (i + 1), 17, 'rgba(255,255,255,.85)', 'font-weight="900"'));
-    });
-    s.push('<rect x="' + (b.x + b.w / 2 - 50) + '" y="' + (b.y - 8) + '" width="100" height="20" rx="6" fill="#ffd43b"/>' + tx(b.x + b.w / 2, b.y + 2, '🅿 은퇴 주차장', 12, '#1f2328', 'font-weight="900"'));
-    // 오른쪽 강
-    b = cellBox(5, 1, 5, 9, 12);
-    s.push(rect(b, 'url(#water)', 40, 'stroke="#d0ebff" stroke-width="5"'));
-    s.push(tx(b.x + b.w / 2, b.y + 130, '⛵', 30, '#fff') + tx(b.x + b.w / 2, b.y + 480, '🦆', 24, '#fff') + tx(b.x + b.w / 2, b.y + 720, '🐟', 22, '#fff'));
-    // 숲 · 출발 표지판
-    [[1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 8], [1, 9], [2, 8], [0, 6]].forEach(function (c) {
-      var bx = M + c[0] * CELL, by = M + c[1] * CELL;
-      if (c[0] === 0) {
-        s.push('<rect x="' + (bx + 46) + '" y="' + (by + 40) + '" width="8" height="50" fill="#8d5524"/><rect x="' + (bx + 14) + '" y="' + (by + 14) + '" width="72" height="34" rx="6" fill="#fff" stroke="#1c4fd8" stroke-width="3"/>' + tx(bx + 50, by + 31, '▲ 출발', 15, '#1c4fd8', 'font-weight="900"'));
-        return;
-      }
-      s.push(tree(bx + 32 + rnd() * 10, by + 38 + rnd() * 8, 46) + tree(bx + 66 + rnd() * 6, by + 64 + rnd() * 6, 40));
-      for (k = 0; k < 3; k++) s.push(flower(bx + 12 + rnd() * 76, by + 14 + rnd() * 76, pick(['#ff6b6b', '#f783ac', '#ffffff', '#da77f2'])));
-    });
-    // 가운데 전자룰렛 받침 (꽃밭 광장)
-    b = cellBox(3, 2, 4, 6, 0); b = { x: MACH.x - 8, y: MACH.y - 14, w: MACH.w + 16, h: MACH.h + 26 };
+    s.push('<rect x="' + (M - 6) + '" y="' + (M - 6) + '" width="' + (BW - M * 2 + 12) + '" height="' + (BH - M * 2 + 12) + '" rx="22" fill="url(#sky)"/>');
+    // 안쪽 잔디 (둘째 바퀴 안팎)
+    b = cellBox(1, 1, 8, 12, 0); s.push(rect(b, 'url(#grass)', 26));
+    // 위 줄 사이: 도시 빌딩숲 + 간판
+    for (k = 1; k <= 8; k++) if (k < 3 || k > 6) s.push(scene(k, 1, 'city'));
+    b = cellBox(3, 1, 6, 1, 10); s.push(rect(b, '#fff', 18, 'stroke="#1f2328" stroke-width="4"'));
+    s.push(tx(b.x + b.w / 2, b.y + 32, '머니로드', 40, '#1f2328', 'font-weight="900" letter-spacing="-1"') + tx(b.x + b.w / 2, b.y + 62, '직업 부자 레이스', 15, '#f08c00', 'font-weight="800"'));
+    // 오른쪽 사이: 강
+    b = cellBox(8, 2, 8, 12, 14); s.push(rect(b, 'url(#water)', 36, 'stroke="#d0ebff" stroke-width="5"'));
+    s.push(tx(b.x + b.w / 2, b.y + 140, '⛵', 30, '#fff') + tx(b.x + b.w / 2, b.y + 520, '🦆', 24, '#fff') + tx(b.x + b.w / 2, b.y + 860, '🐟', 22, '#fff'));
+    // 왼쪽 사이 · 아래 사이: 동네 건물
+    var left = ['school', 'tree', 'school', 'tree', 'hospital', 'tree', 'office', 'tree', 'hall', 'tree'];
+    for (k = 1; k <= 10; k++) s.push(scene(1, k, left[k - 1]));
+    s.push(scene(1, 12, 'tree') + scene(0, 12, 'sign'));
+    var bottom = ['tree', 'stadium', 'tree', 'park', 'airport', 'tree', 'tree'];
+    for (k = 2; k <= 8; k++) if (k !== 4 && k !== 5) s.push(scene(k, 12, bottom[k - 2]));
+    // 둘째 바퀴 안: 기계 받침 · 은퇴 주차장
+    b = { x: MACH.x - 10, y: MACH.y - 16, w: MACH.w + 20, h: MACH.h + 30 };
     s.push(rect(b, '#c0eb75', 30, 'stroke="#fff" stroke-width="5"'));
-    s.push('<rect x="' + (MACH.x + 6) + '" y="' + (MACH.y + 18) + '" width="' + (MACH.w - 12) + '" height="' + (MACH.h - 8) + '" rx="30" fill="rgba(0,0,0,.22)"/>');
-    for (k = 0; k < 14; k++) s.push(flower(b.x + 10 + rnd() * (b.w - 20), (rnd() < .5 ? b.y + 6 + rnd() * 10 : b.y + b.h - 14 - rnd() * 8), pick(['#ff6b6b', '#f783ac', '#ffffff', '#da77f2', '#ffd43b'])));
-    // 은행 (지폐가 여기서 나간다)
+    s.push('<rect x="' + (MACH.x + 6) + '" y="' + (MACH.y + 20) + '" width="' + (MACH.w - 12) + '" height="' + (MACH.h - 8) + '" rx="34" fill="rgba(0,0,0,.22)"/>');
+    for (k = 0; k < 16; k++) s.push(flower(b.x + 10 + rnd() * (b.w - 20), (rnd() < .5 ? b.y + 6 + rnd() * 10 : b.y + b.h - 14 - rnd() * 8), pick(['#ff6b6b', '#f783ac', '#ffffff', '#da77f2', '#ffd43b'])));
+    b = cellBox(3, 3, 5, 3, 6); s.push(rect(b, '#5c636a', 12, 'stroke="#fff" stroke-width="4"'));
+    PARK.forEach(function (q, i) {
+      s.push('<rect x="' + (q[0] - 34) + '" y="' + (b.y + 8) + '" width="68" height="' + (b.h - 16) + '" fill="none" stroke="#fff" stroke-width="2.5"/>');
+      s.push(tx(q[0], b.y + b.h - 18, 'P' + (i + 1), 18, 'rgba(255,255,255,.85)', 'font-weight="900"'));
+    });
+    s.push('<rect x="' + (b.x + b.w / 2 - 56) + '" y="' + (b.y - 10) + '" width="112" height="22" rx="6" fill="#ffd43b"/>' + tx(b.x + b.w / 2, b.y + 1, '🅿 은퇴 주차장', 13, '#1f2328', 'font-weight="900"'));
+    // 은행 (아래 사이 가운데)
     x = BANK[0]; y = BANK[1];
     s.push('<polygon points="' + (x - 46) + ',' + (y - 22) + ' ' + x + ',' + (y - 50) + ' ' + (x + 46) + ',' + (y - 22) + '" fill="#e9ecef" stroke="#868e96" stroke-width="2.5"/>' +
       '<rect x="' + (x - 42) + '" y="' + (y - 22) + '" width="84" height="52" fill="#f8f9fa" stroke="#868e96" stroke-width="2.5"/>' +
       [-28, -10, 10, 28].map(function (o) { return '<rect x="' + (x + o - 4) + '" y="' + (y - 16) + '" width="8" height="40" fill="#dee2e6"/>'; }).join('') +
-      '<rect x="' + (x - 48) + '" y="' + (y + 30) + '" width="96" height="8" fill="#adb5bd"/>' + tx(x, y - 32, '₩', 15, '#f08c00', 'font-weight="900"') +
-      '<rect x="' + (x - 34) + '" y="' + (y + 42) + '" width="68" height="22" rx="6" fill="#1c4fd8"/>' + tx(x, y + 53, '머니 은행', 13, '#fff', 'font-weight="900"'));
-    s.push(tree(x - 76, y + 8, 38) + tree(x + 78, y + 10, 36));
-    // 아래 간판
-    b = cellBox(2, 9, 4, 9, 10);
-    s.push(rect(b, '#fff', 18, 'stroke="#1f2328" stroke-width="4"'));
-    s.push(tx(b.x + b.w / 2, b.y + 34, '머니로드', 40, '#1f2328', 'font-weight="900" letter-spacing="-1"') + tx(b.x + b.w / 2, b.y + 64, '직업 부자 레이스', 15, '#f08c00', 'font-weight="800"'));
-    // 길
-    var d = 'M' + POS.map(function (_, i) { return XY(i).join(' '); }).join(' L');
-    s.push('<path d="' + d + '" fill="none" stroke="#e8a500" stroke-width="102" stroke-linejoin="round" stroke-linecap="round"/>');
-    s.push('<path d="' + d + '" fill="none" stroke="#ffe066" stroke-width="92" stroke-linejoin="round" stroke-linecap="round"/>');
-    // 방향 화살표
+      '<rect x="' + (x - 48) + '" y="' + (y + 28) + '" width="96" height="8" fill="#adb5bd"/>' + tx(x, y - 32, '₩', 15, '#f08c00', 'font-weight="900"') +
+      '<rect x="' + (x - 36) + '" y="' + (y + 38) + '" width="72" height="20" rx="6" fill="#1c4fd8"/>' + tx(x, y + 48, '머니 은행', 12.5, '#fff', 'font-weight="900"'));
+    // 길: 이어진 칸끼리만 노란 다리 (옆 줄과는 떨어져 보이게)
+    var plates = '', edges = '';
     for (k = 0; k < LAST; k++) {
-      var a = XY(k), c2 = XY(k + 1), dx = (c2[0] - a[0]) / 100, dy = (c2[1] - a[1]) / 100, mx = (a[0] + c2[0]) / 2, my = (a[1] + c2[1]) / 2;
-      s.push('<polygon points="' + (mx + dx * 6) + ',' + (my + dy * 6) + ' ' + (mx - dx * 4 - dy * 6) + ',' + (my - dy * 4 + dx * 6) + ' ' + (mx - dx * 4 + dy * 6) + ',' + (my - dy * 4 - dx * 6) + '" fill="#b07a00" opacity=".7"/>');
+      var a = XY(k), c2 = XY(k + 1), x0 = Math.min(a[0], c2[0]) - 47, y0 = Math.min(a[1], c2[1]) - 47, w = Math.abs(a[0] - c2[0]) + 94, hh = Math.abs(a[1] - c2[1]) + 94;
+      edges += '<rect x="' + (x0 - 4) + '" y="' + (y0 - 4) + '" width="' + (w + 8) + '" height="' + (hh + 8) + '" rx="16" fill="#b07a00"/>';
+      plates += '<rect x="' + x0 + '" y="' + y0 + '" width="' + w + '" height="' + hh + '" rx="13" fill="#ffe066"/>';
     }
-    // 칸
+    s.push(edges + plates);
+    for (k = 0; k < LAST; k++) {
+      var a2 = XY(k), b2 = XY(k + 1), dx = (b2[0] - a2[0]) / 100, dy = (b2[1] - a2[1]) / 100, mx = (a2[0] + b2[0]) / 2, my = (a2[1] + b2[1]) / 2;
+      s.push('<polygon points="' + (mx + dx * 5) + ',' + (my + dy * 5) + ' ' + (mx - dx * 3 - dy * 5) + ',' + (my - dy * 3 + dx * 5) + ' ' + (mx - dx * 3 + dy * 5) + ',' + (my - dy * 3 - dx * 5) + '" fill="#b07a00"/>');
+    }
     TILES.forEach(function (t, i) { s.push(tileSvg(t, i)); });
     s.push('</svg>');
     $('svgBox').innerHTML = s.join('');
@@ -391,6 +418,38 @@
     mc.style.width = (MACH.w / BW * 100) + '%'; mc.style.height = (MACH.h / BH * 100) + '%';
   }
 
+  // ---------- 카메라: 말이 움직일 때 차를 따라 확대 ----------
+  var cam = { s: 1, x: BW / 2, y: BH / 2 }, camManual = false;
+  function zoomLevel() { return innerWidth < 600 ? 2.5 : innerWidth < 960 ? 2 : 1.7; }
+  function setCam(sc, ux, uy) {
+    var b = $('board'); if (!b) return;
+    var W = b.clientWidth, H = b.clientHeight, k = W / BW;
+    cam.s = sc; cam.x = ux; cam.y = uy;
+    if (sc <= 1) { b.style.transform = ''; b.classList.remove('zoomed'); return; }
+    var tx2 = W / 2 - ux * k * sc, ty2 = H / 2 - uy * k * sc;
+    tx2 = Math.min(0, Math.max(W - W * sc, tx2)); ty2 = Math.min(0, Math.max(H - H * sc, ty2));
+    b.style.transform = 'translate(' + tx2 + 'px,' + ty2 + 'px) scale(' + sc + ')';
+    b.classList.add('zoomed');
+  }
+  function camTo(p) { var q = XY(p.pos); setCam(zoomLevel(), q[0], q[1]); }
+  function camHome() { if (camManual && S) camTo(cur()); else setCam(1); }
+  function setZoomBtn() { var b = $('btnZoom'); if (b) { b.classList.toggle('on', camManual); b.textContent = camManual ? '전체 보기' : '크게 보기'; } }
+  function initPan() {
+    var box = $('boardBox'), drag = null;
+    box.addEventListener('pointerdown', function (e) {
+      if (cam.s <= 1 || e.target.closest('button')) return;
+      drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y };
+      box.setPointerCapture(e.pointerId); $('board').classList.add('dragging');
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var k = $('board').clientWidth / BW * cam.s;
+      setCam(cam.s, Math.max(0, Math.min(BW, drag.cx - (e.clientX - drag.x) / k)), Math.max(0, Math.min(BH, drag.cy - (e.clientY - drag.y) / k)));
+    });
+    function end() { drag = null; $('board').classList.remove('dragging'); }
+    box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  }
+
   var OFF = [[-20, -17], [20, -17], [-20, 19], [20, 19]], TS = 36, TSH = TS * 46 / 32;
   function placeTokens() {
     var box = $('tokens');
@@ -399,7 +458,7 @@
     S.players.forEach(function (p, i) {
       var el = box.children[i], q;
       var ck = crewOf(p).join(); if (el.dataset.crew !== ck) { el.innerHTML = carSvg(p.color, crewOf(p)); el.dataset.crew = ck; }
-      if (p.done && p.rank) { q = PARK[p.rank - 1]; q = [q[0] - TS / 2, q[1] - TSH / 2 - 8]; }
+      if (p.done && p.rank) { q = PARK[p.rank - 1]; q = [q[0] - TS / 2, q[1] - TSH / 2 - 6]; }
       else { q = XY(p.pos); q = [q[0] + OFF[i][0] - TS / 2, q[1] + OFF[i][1] - TSH / 2]; }
       el.style.width = (TS / BW * 100) + '%';
       el.style.left = (q[0] / BW * 100) + '%';
@@ -763,26 +822,28 @@
   function others(p) { return S.players.filter(function (q) { return q !== p; }); }
 
   // ---------- 움직이기 ----------
-  async function payday(p) {
-    var pay = payOf(p), si = stageInfo(p), amt;
+  async function payday(p, mul) {
+    var pay = payOf(p), si = stageInfo(p), amt; mul = mul || 1;
     if (typeof pay === 'object') {
       var n = await spinModal('💰 월급날 · 룰렛 월급', '<p><b>L' + stage(p) + ' ' + esc(si[0]) + '</b>는 룰렛 숫자 × ' + num(pay.spin) + '원을 받아요.</p>');
       amt = n * pay.spin;
     } else amt = pay;
-    money(p, amt, si ? '월급날' : '용돈날');
+    amt *= mul;
+    money(p, amt, (si ? '월급날' : '용돈날') + (mul > 1 ? ' ×2' : ''));
     beep(990, .1, 'triangle', .07);
-    await toast('💰 ' + (si ? '월급날' : '용돈날') + '<br><span class="plus">' + signed(amt) + '</span>', 1100);
+    await toast('💰 ' + (si ? '월급날' : '용돈날') + (mul > 1 ? ' ×2!' : '') + '<br><span class="plus">' + signed(amt) + '</span>', 1100);
   }
   async function move(p, n) {
     var dir = n < 0 ? -1 : 1, left = Math.abs(n);
+    camTo(p); await sleep(reduced() ? 0 : 450);
     for (var k = 0; k < left; k++) {
       if (dir > 0 && p.pos >= LAST) break;
       if (dir < 0 && p.pos <= 0) break;
       p.pos += dir;
-      placeTokens(); beep(dir > 0 ? 520 : 380, .05, 'triangle', .06);
+      placeTokens(); camTo(p); beep(dir > 0 ? 520 : 380, .05, 'triangle', .06);
       await sleep(reduced() ? 60 : 250);
       var t = TILES[p.pos];
-      if (dir > 0 && t.type === 'pay' && p.pos !== p.lastPay) { p.lastPay = p.pos; flashTile(p.pos); await payday(p); }
+      if (dir > 0 && /^pay/.test(t.type) && p.pos !== p.lastPay) { p.lastPay = p.pos; flashTile(p.pos); await payday(p, t.type === 'pay2' ? 2 : 1); }
       if (dir > 0 && /^stop|finish/.test(t.type) && k < left - 1) {
         flashTile(p.pos);
         await toast('✋ STOP! 여기서 멈춰요', 1000);
@@ -807,7 +868,35 @@
         await levelUp(p, n, '레벨업 칸');
         break;
       }
-      case 'pay': break;
+      case 'pay': case 'pay2': break;
+      case 'lvc': case 'lvc2': {
+        var nn = t.type === 'lvc' ? 1 : 2;
+        jingle(true);
+        await toast('⭐ 레벨업 +' + nn + '<br><span class="plus">찬스 카드도 뽑아요</span>', 1000);
+        await levelUp(p, nn, '레벨업 찬스 칸');
+        await chance(p, depth);
+        break;
+      }
+      case 'lottoFree': {
+        var lf = await spinModal('🎫 복권 당첨!', '<p>공짜 복권이에요! 룰렛을 눌러 상금을 정해요.</p><p class="note">1~4 → 5,000원 · 5~7 → 15,000원 · 8 → 30,000원 · 9 → 60,000원</p>', '추첨');
+        var lp = lf === 9 ? 60000 : lf === 8 ? 30000 : lf >= 5 ? 15000 : 5000;
+        money(p, lp, '복권 당첨 ' + lf); jingle(true);
+        await toast('🎫 복권 ' + lf + '<br><span class="plus">' + signed(lp) + '</span>', 1300);
+        break;
+      }
+      case 'kidparty': {
+        var kids = crewOf(p).filter(function (x) { return x === 'baby'; }).length;
+        if (!kids) { await toast('🎂 아직 아이가 없어요<br><span class="plus">그냥 지나가요</span>', 1300); break; }
+        await moneyScene(o.map(function (q) { return { from: q, to: p, amt: 3000 * kids }; }), { ic: '🎂', title: '자녀 생일 파티!', sub: '아이 ' + kids + '명 · 모두 ' + esc(p.name) + '에게 축하금을 줘요' });
+        break;
+      }
+      case 'boom': {
+        var own = (p.assets || []).length;
+        if (!own) { await toast('🚀 주가 폭등!<br><span class="plus">가진 주식 · 부동산이 없어요</span>', 1300); break; }
+        money(p, own * 15000, '주가 폭등 보너스'); jingle(true);
+        await ok('🚀 주가 폭등!', '<p>가진 주식 · 부동산 ' + own + '장 × 15,000원 보너스!</p><span class="big plus">' + signed(own * 15000) + '</span>');
+        break;
+      }
       case 'chance': await chance(p, depth); break;
       case 'stopJob':
         if (!p.job) await drawJobCard(p, '✋ STOP · 직업 카드 뽑기', esc(p.name) + ', 학교를 마쳤어요! 앞으로 걸어갈 길을 뽑아요.');
@@ -1105,10 +1194,11 @@
     var n = await spinTo($('disp'), roll());
     log(p.name + ' · 룰렛 ' + n);
     await move(p, n);
+    await sleep(reduced() ? 0 : 300);
     await land(p, 0);
     nextTurn();
     await sleep(reduced() ? 0 : 400); // 지폐가 다 도착하게
-    if (S.phase === 'play') { render(); await announce(cur()); }
+    if (S.phase === 'play') { render(); camHome(); await announce(cur()); }
     busy = false; actor = null;
     save(); render();
     if (S.phase === 'end') showResult(); else autoTurn();
@@ -1220,6 +1310,9 @@
     drawBoard();
     setSoundBtn();
     $('btnSpin').addEventListener('click', onSpin);
+    initPan();
+    $('btnZoom').addEventListener('click', function () { camManual = !camManual; setZoomBtn(); if (camManual && S) camTo(cur()); else setCam(1); });
+    window.addEventListener('resize', function () { if (cam.s > 1) setCam(cam.s, cam.x, cam.y); });
     $('btnAuto').addEventListener('click', function () {
       if (!S || S.phase !== 'play') return;
       S.auto = !S.auto; setAutoBtn(); save(); render();

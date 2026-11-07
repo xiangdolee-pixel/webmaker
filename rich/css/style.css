@@ -56,8 +56,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .seats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 10px; }
 .seats:empty { display: none; }
 .seats > .seat:only-child { grid-column: 1 / -1; }
-.board-box { display: flex; justify-content: center; padding: 0 4px; }
-.board { position: relative; width: 100%; border-radius: 22px; box-shadow: 0 3px 0 #0b5394, 0 7px 0 #083c6b, 0 22px 40px rgba(0, 0, 0, .55); }
+.board-box { position: relative; margin: 0 4px; overflow: hidden; border-radius: 22px; box-shadow: 0 3px 0 #0b5394, 0 7px 0 #083c6b, 0 22px 40px rgba(0, 0, 0, .55); touch-action: pan-y; }
+.board { position: relative; width: 100%; border-radius: 22px; transform-origin: 0 0; transition: transform .45s cubic-bezier(.3, .7, .3, 1); will-change: transform; }
+.board.zoomed { cursor: grab; }
+.board.dragging { transition: none; cursor: grabbing; }
+.board-box:has(.board.zoomed) { touch-action: none; }
 .board::before { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; pointer-events: none; opacity: .5; mix-blend-mode: multiply;
   background-image:
     linear-gradient(90deg, transparent calc(50% - 1.5px), rgba(0, 0, 0, .28) calc(50% - 1.5px), rgba(0, 0, 0, .28) 50%, rgba(255, 255, 255, .5) 50%, rgba(255, 255, 255, .5) calc(50% + 1.5px), transparent calc(50% + 1.5px)),
@@ -172,8 +175,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   .seats:empty { display: flex; }
   .sa { grid-area: sa; }
   .sb { grid-area: sb; }
-  .board-box { grid-area: board; padding: 0; }
-  .board { width: auto; height: calc(100svh - 48px - 28px); aspect-ratio: 732 / 1132; }
+  .board-box { grid-area: board; margin: 0; height: calc(100svh - 48px - 28px); aspect-ratio: 1032 / 1432; }
+  .board { height: 100%; }
   .logbox { grid-area: lg; padding: 0; align-self: end; }
   .log { max-height: 120px; }
   .seat { padding: 14px 16px; }
@@ -382,7 +385,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 @keyframes payshake { 20% { transform: translateX(-6px) rotate(-1.5deg); } 40% { transform: translateX(6px) rotate(1.5deg); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
 
 /* 자동 모드 버튼 */
-.tbtn.auto.on { background: #ffd43b; color: #1f2328; box-shadow: 0 0 0 2px #fff; animation: autoglow 1.6s ease-in-out infinite; }
+.tbtn.on, .tbtn.auto.on { background: #ffd43b; color: #1f2328; box-shadow: 0 0 0 2px #fff; animation: autoglow 1.6s ease-in-out infinite; }
 @keyframes autoglow { 50% { box-shadow: 0 0 0 2px #fff, 0 0 14px 2px rgba(255, 212, 59, .8); } }
 
 /* 자리: 직업 명패 */
@@ -390,7 +393,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .seat-job:hover .jp { transform: translateY(-1px); }
 .jp { --jc: #868e96; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 6px 6px 6px; border-radius: 12px; background: linear-gradient(135deg, color-mix(in srgb, var(--jc) 16%, #fff), #fff 70%); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--jc) 55%, #fff); text-align: left; transition: transform .2s var(--ease); }
 .jp.student { --jc: #adb5bd; }
-.jp-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--jc); font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18); }
+.jp-ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: radial-gradient(circle, #fff 0 52%, rgba(255, 255, 255, .5) 53% 58%, var(--jc) 59%); font-size: 18px; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18); }
 .jp-t { min-width: 0; line-height: 1.2; }
 .jp-t small { display: block; font-size: 11px; font-weight: 800; color: var(--jc); filter: brightness(.8); }
 .jp.student .jp-t small { color: #868e96; filter: none; }
@@ -462,4 +465,16 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   .fm small { font-size: 8.5px; }
   .fm:not(.in) small { visibility: hidden; }
   .fm-done { position: absolute; right: 8px; top: 40px; }
+}
+
+/* 폰: 머리 버튼이 넘치지 않게 */
+@media (max-width: 560px) {
+  .logo .logo-txt { display: none; }
+  .top-act { gap: 3px; }
+  .tbtn { height: 34px; padding: 0 9px; font-size: 13px; }
+  .ibtn { width: 34px; height: 34px; }
+}
+@media (max-width: 360px) {
+  .tbtn { padding: 0 7px; font-size: 12px; }
+  #btnSound { display: none; }
 }
